@@ -38,6 +38,8 @@ const db = {
   warns: {},
   autoLine: {},
   autoReplies: {},
+  users: {},
+  levelRoles: {},
 };
 
 function saveDB() {
@@ -49,18 +51,21 @@ function loadDB() {
 loadDB();
 setInterval(saveDB, 60000);
 
+// ========== دوال الإعدادات ==========
 function getGuildConfig(guildId) {
   if (!db.config[guildId]) {
     db.config[guildId] = {
       logChannel: null,
       welcomeChannel: null,
+      welcomeMessage: 'أهلاً بك في السيرفر! 🎉',
+      welcomeImage: null,
       muteRole: null,
       joinRole: null,
       ticketPanelImage: null,
       rolesImage: null,
       bannerImage: null,
       generalImage: null,
-      levelChannelId: null, // قناة الليفل المخصصة
+      levelChannelId: null,
     };
   }
   return db.config[guildId];
@@ -70,6 +75,7 @@ function updateGuildConfig(guildId, data) {
   db.config[guildId] = { ...getGuildConfig(guildId), ...data };
 }
 
+// ========== دوال التذاكر ==========
 function getTicketSettings(guildId) {
   if (!db.ticketSettings[guildId]) {
     db.ticketSettings[guildId] = {
@@ -90,18 +96,17 @@ function saveTicketSettings(guildId, data) {
   db.ticketSettings[guildId] = data;
 }
 
+// ========== دوال التحذيرات ==========
 function getWarns(userId, guildId) {
   const key = `${guildId}-${userId}`;
   return db.warns[key] || [];
 }
-
 function addWarn(userId, guildId, reason, moderator) {
   const key = `${guildId}-${userId}`;
   if (!db.warns[key]) db.warns[key] = [];
   db.warns[key].push({ reason, moderator, date: new Date().toISOString() });
   return db.warns[key].length;
 }
-
 function clearWarns(userId, guildId) {
   const key = `${guildId}-${userId}`;
   db.warns[key] = [];
@@ -110,16 +115,10 @@ function clearWarns(userId, guildId) {
 // ========== دوال الأوتو لاين ==========
 function getAutoLine(guildId) {
   if (!db.autoLine[guildId]) {
-    db.autoLine[guildId] = {
-      channelId: null,
-      text: null,
-      image: null,
-      enabled: false,
-    };
+    db.autoLine[guildId] = { channelId: null, text: null, image: null, enabled: false };
   }
   return db.autoLine[guildId];
 }
-
 function setAutoLine(guildId, data) {
   db.autoLine[guildId] = { ...getAutoLine(guildId), ...data };
 }
@@ -129,19 +128,13 @@ function getAutoReplies(guildId) {
   if (!db.autoReplies[guildId]) db.autoReplies[guildId] = [];
   return db.autoReplies[guildId];
 }
-
 function addAutoReply(guildId, keyword, reply, image = null) {
   const replies = getAutoReplies(guildId);
   const existing = replies.find(r => r.keyword.toLowerCase() === keyword.toLowerCase());
-  if (existing) {
-    existing.reply = reply;
-    existing.image = image;
-    return false;
-  }
+  if (existing) { existing.reply = reply; existing.image = image; return false; }
   replies.push({ keyword, reply, image });
   return true;
 }
-
 function removeAutoReply(guildId, keyword) {
   const replies = getAutoReplies(guildId);
   const index = replies.findIndex(r => r.keyword.toLowerCase() === keyword.toLowerCase());
@@ -149,15 +142,32 @@ function removeAutoReply(guildId, keyword) {
   replies.splice(index, 1);
   return true;
 }
-
 function findAutoReply(guildId, keyword) {
   const replies = getAutoReplies(guildId);
   return replies.find(r => keyword.toLowerCase().includes(r.keyword.toLowerCase()));
 }
 
-// ========== دالة حساب المستوى ==========
+// ========== دوال المستويات ==========
 function getLevelXP(level) {
   return (level + 1) * 100;
+}
+function getUserData(userId, guildId) {
+  if (!db.users[guildId]) db.users[guildId] = {};
+  if (!db.users[guildId][userId]) {
+    db.users[guildId][userId] = { xp: 0, level: 0, messages: 0 };
+  }
+  return db.users[guildId][userId];
+}
+function saveUserData(userId, guildId, data) {
+  db.users[guildId][userId] = data;
+}
+
+// ========== دالة الصورة العامة ==========
+function getGeneralImage(guild, config) {
+  if (config.generalImage) return config.generalImage;
+  if (config.bannerImage) return config.bannerImage;
+  if (guild.iconURL()) return guild.iconURL({ size: 1024 });
+  return null;
 }
 
 // ========== العميل ==========
@@ -177,33 +187,44 @@ client.once('ready', () => {
   client.user.setActivity('!مساعدة', { type: 'WATCHING' });
 });
 
-// ========== دالة لجلب الصورة العامة ==========
-function getGeneralImage(guild, config) {
-  if (config.generalImage) return config.generalImage;
-  if (config.bannerImage) return config.bannerImage;
-  if (guild.iconURL()) return guild.iconURL({ size: 1024 });
-  return null;
-}
+// ============================================================
+// ========== نظام الترحيب المتقدم ==========
+// ============================================================
 
-// ========== نظام الترحيب بالصور ==========
 async function generateWelcomeImage(member, memberCount) {
   const canvas = createCanvas(1200, 600);
   const ctx = canvas.getContext('2d');
 
+  // خلفية متدرجة
   const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, '#1a1a2e');
-  gradient.addColorStop(0.5, '#16213e');
-  gradient.addColorStop(1, '#0f3460');
+  gradient.addColorStop(0, '#0f0c29');
+  gradient.addColorStop(0.5, '#302b63');
+  gradient.addColorStop(1, '#24243e');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  // إطار مزخرف
   ctx.strokeStyle = '#e94560';
-  ctx.lineWidth = 10;
-  ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
+  ctx.lineWidth = 6;
+  const borderRadius = 20;
+  const x = 30, y = 30, w = canvas.width - 60, h = canvas.height - 60;
+  ctx.beginPath();
+  ctx.moveTo(x + borderRadius, y);
+  ctx.lineTo(x + w - borderRadius, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + borderRadius);
+  ctx.lineTo(x + w, y + h - borderRadius);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - borderRadius, y + h);
+  ctx.lineTo(x + borderRadius, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - borderRadius);
+  ctx.lineTo(x, y + borderRadius);
+  ctx.quadraticCurveTo(x, y, x + borderRadius, y);
+  ctx.closePath();
+  ctx.stroke();
 
+  // صورة المستخدم (دائرية)
   const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 256 });
   const avatar = await loadImage(avatarURL);
-  const radius = 150;
+  const radius = 140;
   const centerX = 250;
   const centerY = 300;
   ctx.save();
@@ -214,31 +235,45 @@ async function generateWelcomeImage(member, memberCount) {
   ctx.drawImage(avatar, centerX - radius, centerY - radius, radius * 2, radius * 2);
   ctx.restore();
 
+  // إطار حول الصورة
   ctx.beginPath();
-  ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+  ctx.arc(centerX, centerY, radius + 6, 0, Math.PI * 2);
   ctx.strokeStyle = '#e94560';
-  ctx.lineWidth = 8;
+  ctx.lineWidth = 6;
   ctx.stroke();
 
+  // نص الترحيب
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  ctx.font = 'bold 48px Arial';
+  ctx.shadowColor = 'rgba(0,0,0,0.5)';
+  ctx.shadowBlur = 10;
+
+  // الاسم
+  ctx.font = 'bold 52px Arial';
   ctx.fillStyle = '#ffffff';
-  ctx.fillText(`مرحباً ${member.user.username}`, 450, 200);
+  ctx.shadowBlur = 15;
+  ctx.fillText(`مرحباً ${member.user.username}`, 460, 190);
 
-  ctx.font = '32px Arial';
-  ctx.fillStyle = '#aaaaaa';
-  ctx.fillText(`#${memberCount}`, 450, 280);
-
-  ctx.font = '24px Arial';
-  ctx.fillStyle = '#888888';
-  ctx.fillText('أهلاً بك في السيرفر!', 450, 360);
-
-  ctx.textAlign = 'right';
-  ctx.font = '20px Arial';
+  // ترتيب العضو
+  ctx.font = '36px Arial';
   ctx.fillStyle = '#e94560';
+  ctx.shadowBlur = 10;
+  ctx.fillText(`العضو رقم #${memberCount}`, 460, 270);
+
+  // رسالة ترحيبية
+  ctx.font = '28px Arial';
+  ctx.fillStyle = '#aaaaaa';
+  ctx.shadowBlur = 5;
+  ctx.fillText('نتمنى لك قضاء وقت ممتع في السيرفر! 🎉', 460, 340);
+
+  // شعار السيرفر
+  ctx.textAlign = 'right';
+  ctx.font = '22px Arial';
+  ctx.fillStyle = '#555555';
+  ctx.shadowBlur = 0;
   ctx.fillText('TEAM WOLF', canvas.width - 50, canvas.height - 40);
 
+  ctx.shadowBlur = 0;
   return canvas.toBuffer('image/png');
 }
 
@@ -250,17 +285,25 @@ client.on('guildMemberAdd', async (member) => {
 
   const memberCount = member.guild.memberCount;
   db.memberCount[member.guild.id] = memberCount;
+
+  // إنشاء الصورة
   const imageBuffer = await generateWelcomeImage(member, memberCount);
 
+  // بناء Embed
   const generalImage = getGeneralImage(member.guild, config);
   const embed = new EmbedBuilder()
     .setTitle('🐱 Welcome To TEAM WOLF Community')
-    .setDescription(`User: ${member}\nmember count: ${memberCount}`)
+    .setDescription(config.welcomeMessage || `أهلاً ${member} في السيرفر!`)
     .setColor(0x2b2d31)
     .setImage('attachment://welcome.png')
     .setTimestamp();
 
-  if (generalImage) embed.setThumbnail(generalImage);
+  if (config.welcomeImage) {
+    embed.setThumbnail(config.welcomeImage);
+  }
+  if (generalImage) {
+    embed.setFooter({ text: 'نتمنى لك قضاء وقت ممتع!', iconURL: generalImage });
+  }
 
   await channel.send({
     content: `${member}`,
@@ -268,94 +311,128 @@ client.on('guildMemberAdd', async (member) => {
     files: [{ attachment: imageBuffer, name: 'welcome.png' }]
   });
 
+  // منح دور الدخول إن وجد
   if (config.joinRole) {
     const role = member.guild.roles.cache.get(config.joinRole);
     if (role) await member.roles.add(role).catch(() => {});
   }
+
+  // تسجيل في اللوق
+  const logChannel = member.guild.channels.cache.get(config.logChannel);
+  if (logChannel) {
+    const logEmbed = new EmbedBuilder()
+      .setTitle('👤 عضو جديد')
+      .setColor(0x2b2d31)
+      .setDescription(`**${member.user.tag}** انضم إلى السيرفر.`)
+      .setThumbnail(member.user.displayAvatarURL())
+      .addFields({ name: 'عدد الأعضاء', value: `${memberCount}`, inline: true })
+      .setTimestamp();
+    await logChannel.send({ embeds: [logEmbed] }).catch(() => {});
+  }
 });
 
-// ========== نظام المستويات (Level System) ==========
+// ============================================================
+// ========== نظام المستويات ==========
+// ============================================================
+
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
-  if (message.content.startsWith('!')) return; // تجاهل الأوامر
+  if (message.content.startsWith('!')) return;
 
   const guildId = message.guild.id;
   const config = getGuildConfig(guildId);
 
-  // التحقق من قناة الليفل المحددة (إن وجدت)
-  if (config.levelChannelId && message.channel.id !== config.levelChannelId) {
-    return; // لا يحسب XP إلا في القناة المحددة
-  }
+  // التحقق من قناة الليفل
+  if (config.levelChannelId && message.channel.id !== config.levelChannelId) return;
 
   const userId = message.author.id;
-  const guild = message.guild;
-
-  // جلب بيانات المستخدم من قاعدة البيانات (سنستخدم كائن مؤقت بدلاً من SQLite حقيقي، لكننا سنحاكي التخزين)
-  // في الكود الحقيقي، نستخدم جدول users. لكن هنا سنستخدم كائن في الذاكرة مع حفظ دوري.
-  // للإيجاز، سأفترض أن جدول users موجود (كما في الكود السابق).
-  // لكنني سأضيف منطق XP هنا بدلاً من الاعتماد على الكود القديم.
-
-  // سنستخدم دالة مساعدة (غير موجودة في الكود أعلاه) للحصول على بيانات المستوى.
-  // في الكود الكامل، يجب أن تكون موجودة. سأقوم بإدراجها هنا.
-
-  // استخدام نظام تخزين بسيط (نفس db المستخدم)
-  if (!db.users) db.users = {};
-  if (!db.users[guildId]) db.users[guildId] = {};
-  if (!db.users[guildId][userId]) {
-    db.users[guildId][userId] = { xp: 0, level: 0, messages: 0 };
-  }
-
-  const userData = db.users[guildId][userId];
+  const userData = getUserData(userId, guildId);
   userData.messages += 1;
 
-  // زيادة XP بشكل عشوائي (5-15 نقطة)
-  const gain = Math.floor(Math.random() * 10) + 5;
+  const gain = Math.floor(Math.random() * 15) + 5;
   userData.xp += gain;
 
-  // حساب المستوى المطلوب
   let currentLevel = userData.level;
   let requiredXP = getLevelXP(currentLevel);
 
-  // رفع المستوى إذا تجاوز XP
   if (userData.xp >= requiredXP) {
     userData.level += 1;
     userData.xp = 0;
 
-    // إرسال رسالة الترقية في القناة المحددة (أو القناة الحالية إن لم تكن محددة)
+    // إرسال رسالة الترقية
     const levelChannelId = config.levelChannelId || message.channel.id;
-    const levelChannel = guild.channels.cache.get(levelChannelId);
+    const levelChannel = message.guild.channels.cache.get(levelChannelId);
     if (levelChannel) {
-      const generalImage = getGeneralImage(guild, config);
       const embed = new EmbedBuilder()
         .setTitle('🎉 مستوى جديد!')
         .setDescription(`${message.author} وصل إلى المستوى **${userData.level}**!`)
         .setColor(0x2b2d31)
         .setTimestamp();
+      const generalImage = getGeneralImage(message.guild, config);
       if (generalImage) embed.setThumbnail(generalImage);
       await levelChannel.send({ embeds: [embed] });
     }
 
     // منح دور المستوى إن وجد
-    const levelRole = db.level_roles?.[guildId]?.[userData.level];
+    const levelRole = db.levelRoles?.[guildId]?.[userData.level];
     if (levelRole) {
-      const role = guild.roles.cache.get(levelRole);
+      const role = message.guild.roles.cache.get(levelRole);
       if (role) {
-        const member = await guild.members.fetch(userId).catch(() => null);
+        const member = await message.guild.members.fetch(userId).catch(() => null);
         if (member) await member.roles.add(role).catch(() => {});
       }
     }
   }
 
-  // حفظ البيانات (في الكود الحقيقي يتم حفظها في ملف)
-  // هنا سنكتفي بالتحديث في الذاكرة، مع حفظ دوري في saveDB
-  // سنضيف جدول users إلى db
-  if (!db.users) db.users = {};
-  db.users = db.users || {};
-  db.users[guildId] = db.users[guildId] || {};
-  db.users[guildId][userId] = userData;
+  saveUserData(userId, guildId, userData);
 });
 
+// ============================================================
+// ========== نظام الأوتو لاين والردود التلقائية ==========
+// ============================================================
+
+client.on('messageCreate', async (message) => {
+  if (message.author.bot || !message.guild) return;
+  if (message.content.startsWith('!')) return;
+
+  const guildId = message.guild.id;
+
+  // الأوتو لاين
+  const auto = getAutoLine(guildId);
+  if (auto.enabled && auto.channelId && auto.text && message.channel.id === auto.channelId) {
+    if (auto.image) {
+      const embed = new EmbedBuilder()
+        .setDescription(auto.text)
+        .setColor(0x2b2d31)
+        .setImage(auto.image)
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+    } else {
+      await message.reply(auto.text).catch(() => {});
+    }
+    return;
+  }
+
+  // الردود التلقائية
+  const autoReply = findAutoReply(guildId, message.content);
+  if (autoReply) {
+    if (autoReply.image) {
+      const embed = new EmbedBuilder()
+        .setDescription(autoReply.reply)
+        .setColor(0x2b2d31)
+        .setImage(autoReply.image)
+        .setTimestamp();
+      await message.reply({ embeds: [embed] }).catch(() => {});
+    } else {
+      await message.reply(autoReply.reply).catch(() => {});
+    }
+  }
+});
+
+// ============================================================
 // ========== أوامر البوت ==========
+// ============================================================
+
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
   if (!message.content.startsWith('!')) return;
@@ -365,7 +442,6 @@ client.on('messageCreate', async (message) => {
   const guildId = message.guild.id;
   const config = getGuildConfig(guildId);
   const generalImage = getGeneralImage(message.guild, config);
-  const ticketSettings = getTicketSettings(guildId);
 
   // ========== أمر المساعدة ==========
   if (cmd === 'مساعدة') {
@@ -379,6 +455,7 @@ client.on('messageCreate', async (message) => {
         { name: '🔊 إدارة الصوت', value: '`نقل_كل` `طرد_صوتي` `كتم_صوتي` `فك_كتم_صوتي`', inline: false },
         { name: '📌 إدارة الرسائل', value: '`تثبيت` `الغاء_تثبيت`', inline: false },
         { name: '📊 المستويات', value: '`مستوى` `ترتيب` `تعيين روم_ليفل #قناة`', inline: false },
+        { name: '👋 الترحيب', value: '`تعيين ترحيب #قناة` `تعيين رسالة_ترحيب نص` `تعيين صورة_ترحيب رابط`', inline: false },
         { name: '🤖 الأوتو لاين', value: '`تعيين اوتر_لاين #روم نص` `تعيين صورة_اوترلاين رابط` `تعيين تفعيل_اوترلاين` `تعيين تعطيل_اوترلاين`', inline: false },
         { name: '💬 الردود التلقائية', value: '`رد_تلقائي كلمة رد` `رد_تلقائي_صورة كلمة رد رابط` `حذف_رد_تلقائي كلمة` `عرض_الردود`', inline: false },
         { name: '📝 أوامر البوت', value: '`قول نص` `ايمبد [عنوان] ، [وصف]` `اعلان [نص]` `اعلان here [نص]`', inline: false },
@@ -394,14 +471,47 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
+  // ========== أوامر الترحيب ==========
+  if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'ترحيب') {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+    const channel = message.mentions.channels.first();
+    if (!channel) {
+      updateGuildConfig(guildId, { welcomeChannel: null });
+      return message.reply('✅ تم إلغاء تحديد قناة الترحيب.');
+    }
+    updateGuildConfig(guildId, { welcomeChannel: channel.id });
+    await message.reply(`✅ تم تعيين قناة الترحيب إلى ${channel}`);
+    return;
+  }
+
+  if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'رسالة_ترحيب') {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+    const text = args.slice(1).join(' ');
+    if (!text) return message.reply('⚠️ أدخل نص الترحيب الجديد.');
+    updateGuildConfig(guildId, { welcomeMessage: text });
+    await message.reply(`✅ تم تعيين نص الترحيب:\n${text}`);
+    return;
+  }
+
+  if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'صورة_ترحيب') {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+    const url = args.slice(1).join(' ');
+    if (!url) {
+      updateGuildConfig(guildId, { welcomeImage: null });
+      return message.reply('✅ تم إلغاء صورة الترحيب.');
+    }
+    updateGuildConfig(guildId, { welcomeImage: url });
+    await message.reply(`✅ تم تعيين صورة الترحيب: ${url}`);
+    return;
+  }
+
   // ========== أمر مستوى ==========
   if (cmd === 'مستوى') {
     const member = message.mentions.members.first() || message.member;
-    const userId = member.id;
-    const userData = db.users?.[guildId]?.[userId];
-    if (!userData) {
-      return message.reply(`⚠️ ${member.user.username} ليس لديه أي نقاط حتى الآن.`);
-    }
+    const userData = getUserData(member.id, guildId);
     const embed = new EmbedBuilder()
       .setTitle(`📊 مستوى ${member.user.username}`)
       .setColor(0x2b2d31)
@@ -419,7 +529,7 @@ client.on('messageCreate', async (message) => {
   if (cmd === 'ترتيب') {
     const guildUsers = db.users?.[guildId];
     if (!guildUsers || Object.keys(guildUsers).length === 0) {
-      return message.reply('📭 لا توجد بيانات مستويات في هذا السيرفر.');
+      return message.reply('📭 لا توجد بيانات مستويات.');
     }
     const sorted = Object.entries(guildUsers)
       .sort((a, b) => b[1].level - a[1].level || b[1].xp - a[1].xp)
@@ -440,25 +550,10 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== أوامر الإعدادات (روم الليفل) ==========
-  if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'روم_ليفل') {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
-      return message.reply('❌ تحتاج صلاحية أدمن.');
-    const channel = message.mentions.channels.first();
-    if (!channel) {
-      // إذا لم يحدد قناة، نلغي التحديد
-      updateGuildConfig(guildId, { levelChannelId: null });
-      return message.reply('✅ تم إلغاء تحديد قناة الليفل. سيعمل النظام في كل القنوات.');
-    }
-    updateGuildConfig(guildId, { levelChannelId: channel.id });
-    await message.reply(`✅ تم تعيين قناة الليفل إلى ${channel}. سيتم احتساب النقاط فقط في هذه القناة.`);
-    return;
-  }
-
   // ========== أمر قول ==========
   if (cmd === 'قول') {
     const text = args.join(' ');
-    if (!text) return message.reply('⚠️ اكتب النص الذي تريد أن يقوله البوت.');
+    if (!text) return message.reply('⚠️ اكتب النص.');
     await message.channel.send(text);
     await message.delete().catch(() => {});
     return;
@@ -467,24 +562,18 @@ client.on('messageCreate', async (message) => {
   // ========== أمر ايمبد ==========
   if (cmd === 'ايمبد') {
     const fullText = args.join(' ');
-    if (!fullText) return message.reply('⚠️ الصيغة: `!ايمبد [العنوان] ، [الوصف]` (يمكن إضافة رابط صورة في نهاية الوصف)');
+    if (!fullText) return message.reply('⚠️ الصيغة: `!ايمبد [العنوان] ، [الوصف]`');
     const parts = fullText.split(/[،,]\s*/).map(s => s.trim());
     let title = 'بدون عنوان';
     let description = fullText;
-    if (parts.length >= 2) {
-      title = parts[0];
-      description = parts.slice(1).join(' ، ');
-    }
+    if (parts.length >= 2) { title = parts[0]; description = parts.slice(1).join(' ، '); }
     const embed = new EmbedBuilder()
       .setTitle(title)
       .setDescription(description)
       .setColor(0x2b2d31)
       .setTimestamp();
     const imageMatch = description.match(/(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp))/i);
-    if (imageMatch) {
-      embed.setImage(imageMatch[1]);
-      embed.setDescription(description.replace(imageMatch[1], '').trim() || 'بدون وصف');
-    }
+    if (imageMatch) { embed.setImage(imageMatch[1]); embed.setDescription(description.replace(imageMatch[1], '').trim() || 'بدون وصف'); }
     if (generalImage) embed.setThumbnail(generalImage);
     await message.channel.send({ embeds: [embed] });
     await message.delete().catch(() => {});
@@ -497,10 +586,7 @@ client.on('messageCreate', async (message) => {
       return message.reply('❌ تحتاج صلاحية أدمن.');
     let mentionType = 'everyone';
     let text = args.join(' ');
-    if (args[0]?.toLowerCase() === 'here') {
-      mentionType = 'here';
-      text = args.slice(1).join(' ');
-    }
+    if (args[0]?.toLowerCase() === 'here') { mentionType = 'here'; text = args.slice(1).join(' '); }
     if (!text) return message.reply('⚠️ اكتب نص الإعلان.');
     const embed = new EmbedBuilder()
       .setTitle('📢 إعلان')
@@ -509,77 +595,8 @@ client.on('messageCreate', async (message) => {
       .setTimestamp()
       .setFooter({ text: `بواسطة ${message.author.tag}` });
     if (generalImage) embed.setImage(generalImage);
-    const mention = mentionType === 'everyone' ? '@everyone' : '@here';
-    await message.channel.send({ content: mention, embeds: [embed] });
+    await message.channel.send({ content: mentionType === 'everyone' ? '@everyone' : '@here', embeds: [embed] });
     await message.delete().catch(() => {});
-    return;
-  }
-
-  // ========== أوامر الردود التلقائية ==========
-  if (cmd === 'رد_تلقائي') {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
-      return message.reply('❌ تحتاج صلاحية أدمن.');
-    const keyword = args[0];
-    const reply = args.slice(1).join(' ');
-    if (!keyword || !reply) return message.reply('⚠️ الصيغة: `!رد_تلقائي [الكلمة] [الرد]`');
-    const added = addAutoReply(guildId, keyword, reply);
-    const embed = new EmbedBuilder()
-      .setTitle(added ? '✅ تم إضافة رد تلقائي' : '🔄 تم تحديث رد تلقائي')
-      .setColor(0x2b2d31)
-      .setDescription(`**الكلمة:** ${keyword}\n**الرد:** ${reply}`)
-      .setFooter({ text: 'سيرد البوت تلقائياً عند كتابة هذه الكلمة.' });
-    if (generalImage) embed.setImage(generalImage);
-    await message.channel.send({ embeds: [embed] });
-    return;
-  }
-
-  if (cmd === 'رد_تلقائي_صورة') {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
-      return message.reply('❌ تحتاج صلاحية أدمن.');
-    const keyword = args[0];
-    const image = args[args.length - 1];
-    const reply = args.slice(1, -1).join(' ');
-    if (!keyword || !reply || !image) return message.reply('⚠️ الصيغة: `!رد_تلقائي_صورة [الكلمة] [الرد] [رابط_الصورة]`');
-    if (!image.match(/^https?:\/\/.+/)) return message.reply('⚠️ الرابط غير صالح.');
-    const added = addAutoReply(guildId, keyword, reply, image);
-    const embed = new EmbedBuilder()
-      .setTitle(added ? '✅ تم إضافة رد تلقائي مع صورة' : '🔄 تم تحديث رد تلقائي مع صورة')
-      .setColor(0x2b2d31)
-      .setDescription(`**الكلمة:** ${keyword}\n**الرد:** ${reply}`)
-      .setImage(image)
-      .setFooter({ text: 'سيرد البوت مع الصورة تلقائياً.' });
-    if (generalImage) embed.setThumbnail(generalImage);
-    await message.channel.send({ embeds: [embed] });
-    return;
-  }
-
-  if (cmd === 'حذف_رد_تلقائي') {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
-      return message.reply('❌ تحتاج صلاحية أدمن.');
-    const keyword = args.join(' ');
-    if (!keyword) return message.reply('⚠️ اكتب الكلمة المفتاحية التي تريد حذفها.');
-    const removed = removeAutoReply(guildId, keyword);
-    if (!removed) return message.reply(`⚠️ لا يوجد رد تلقائي للكلمة "${keyword}".`);
-    const embed = new EmbedBuilder()
-      .setTitle('🗑️ تم حذف الرد التلقائي')
-      .setColor(0x2b2d31)
-      .setDescription(`تم حذف الرد التلقائي للكلمة: **${keyword}**`);
-    if (generalImage) embed.setImage(generalImage);
-    await message.channel.send({ embeds: [embed] });
-    return;
-  }
-
-  if (cmd === 'عرض_الردود') {
-    const replies = getAutoReplies(guildId);
-    if (!replies.length) return message.reply('📭 لا توجد ردود تلقائية في هذا السيرفر.');
-    const list = replies.map((r, i) => `${i+1}. **${r.keyword}** → ${r.reply}${r.image ? ' (🖼️)' : ''}`).join('\n');
-    const embed = new EmbedBuilder()
-      .setTitle('💬 قائمة الردود التلقائية')
-      .setColor(0x2b2d31)
-      .setDescription(list)
-      .setFooter({ text: `عدد الردود: ${replies.length}` });
-    if (generalImage) embed.setImage(generalImage);
-    await message.channel.send({ embeds: [embed] });
     return;
   }
 
@@ -1250,11 +1267,81 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
+  // ========== أوامر الردود التلقائية ==========
+  if (cmd === 'رد_تلقائي') {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+    const keyword = args[0];
+    const reply = args.slice(1).join(' ');
+    if (!keyword || !reply) return message.reply('⚠️ الصيغة: `!رد_تلقائي [الكلمة] [الرد]`');
+    const added = addAutoReply(guildId, keyword, reply);
+    const embed = new EmbedBuilder()
+      .setTitle(added ? '✅ تم إضافة رد تلقائي' : '🔄 تم تحديث رد تلقائي')
+      .setColor(0x2b2d31)
+      .setDescription(`**الكلمة:** ${keyword}\n**الرد:** ${reply}`)
+      .setFooter({ text: 'سيرد البوت تلقائياً عند كتابة هذه الكلمة.' });
+    if (generalImage) embed.setImage(generalImage);
+    await message.channel.send({ embeds: [embed] });
+    return;
+  }
+
+  if (cmd === 'رد_تلقائي_صورة') {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+    const keyword = args[0];
+    const image = args[args.length - 1];
+    const reply = args.slice(1, -1).join(' ');
+    if (!keyword || !reply || !image) return message.reply('⚠️ الصيغة: `!رد_تلقائي_صورة [الكلمة] [الرد] [رابط_الصورة]`');
+    if (!image.match(/^https?:\/\/.+/)) return message.reply('⚠️ الرابط غير صالح.');
+    const added = addAutoReply(guildId, keyword, reply, image);
+    const embed = new EmbedBuilder()
+      .setTitle(added ? '✅ تم إضافة رد تلقائي مع صورة' : '🔄 تم تحديث رد تلقائي مع صورة')
+      .setColor(0x2b2d31)
+      .setDescription(`**الكلمة:** ${keyword}\n**الرد:** ${reply}`)
+      .setImage(image)
+      .setFooter({ text: 'سيرد البوت مع الصورة تلقائياً.' });
+    if (generalImage) embed.setThumbnail(generalImage);
+    await message.channel.send({ embeds: [embed] });
+    return;
+  }
+
+  if (cmd === 'حذف_رد_تلقائي') {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+    const keyword = args.join(' ');
+    if (!keyword) return message.reply('⚠️ اكتب الكلمة المفتاحية التي تريد حذفها.');
+    const removed = removeAutoReply(guildId, keyword);
+    if (!removed) return message.reply(`⚠️ لا يوجد رد تلقائي للكلمة "${keyword}".`);
+    const embed = new EmbedBuilder()
+      .setTitle('🗑️ تم حذف الرد التلقائي')
+      .setColor(0x2b2d31)
+      .setDescription(`تم حذف الرد التلقائي للكلمة: **${keyword}**`);
+    if (generalImage) embed.setImage(generalImage);
+    await message.channel.send({ embeds: [embed] });
+    return;
+  }
+
+  if (cmd === 'عرض_الردود') {
+    const replies = getAutoReplies(guildId);
+    if (!replies.length) return message.reply('📭 لا توجد ردود تلقائية في هذا السيرفر.');
+    const list = replies.map((r, i) => `${i+1}. **${r.keyword}** → ${r.reply}${r.image ? ' (🖼️)' : ''}`).join('\n');
+    const embed = new EmbedBuilder()
+      .setTitle('💬 قائمة الردود التلقائية')
+      .setColor(0x2b2d31)
+      .setDescription(list)
+      .setFooter({ text: `عدد الردود: ${replies.length}` });
+    if (generalImage) embed.setImage(generalImage);
+    await message.channel.send({ embeds: [embed] });
+    return;
+  }
+
   // ========== أوامر الإعدادات العامة ==========
   if (cmd === 'تعيين') {
     if (args[0]?.toLowerCase() === 'تذكرة' || args[0]?.toLowerCase() === 'اوتر_لاين' ||
         args[0]?.toLowerCase() === 'صورة_اوترلاين' || args[0]?.toLowerCase() === 'تفعيل_اوترلاين' ||
-        args[0]?.toLowerCase() === 'تعطيل_اوترلاين' || args[0]?.toLowerCase() === 'روم_ليفل') return;
+        args[0]?.toLowerCase() === 'تعطيل_اوترلاين' || args[0]?.toLowerCase() === 'روم_ليفل' ||
+        args[0]?.toLowerCase() === 'ترحيب' || args[0]?.toLowerCase() === 'رسالة_ترحيب' ||
+        args[0]?.toLowerCase() === 'صورة_ترحيب') return;
 
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
       return message.reply('❌ تحتاج صلاحية أدمن.');
@@ -1262,47 +1349,48 @@ client.on('messageCreate', async (message) => {
     const sub = args[0]?.toLowerCase();
     const value = args.slice(1).join(' ');
 
-    if (sub === 'ترحيب') {
+    if (sub === 'روم_ليفل') {
       const channel = message.mentions.channels.first();
-      if (!channel) return message.reply('⚠️ منشن القناة.');
-      updateGuildConfig(guildId, { welcomeChannel: channel.id });
-      await message.reply(`✅ تم تعيين قناة الترحيب إلى ${channel}`);
-    } 
-    else if (sub === 'دور_دخول') {
+      if (!channel) {
+        updateGuildConfig(guildId, { levelChannelId: null });
+        return message.reply('✅ تم إلغاء تحديد قناة الليفل.');
+      }
+      updateGuildConfig(guildId, { levelChannelId: channel.id });
+      await message.reply(`✅ تم تعيين قناة الليفل إلى ${channel}`);
+    } else if (sub === 'دور_دخول') {
       const role = message.mentions.roles.first();
       if (!role) return message.reply('⚠️ منشن الدور.');
       updateGuildConfig(guildId, { joinRole: role.id });
       await message.reply(`✅ تم تعيين دور الدخول إلى ${role}`);
-    } 
-    else if (sub === 'صورة_بانل') {
+    } else if (sub === 'صورة_بانل') {
       if (!value) return message.reply('⚠️ أدخل رابط الصورة.');
       updateGuildConfig(guildId, { ticketPanelImage: value });
       await message.reply(`✅ تم تعيين صورة البانل: ${value}`);
-    } 
-    else if (sub === 'صورة_رتب') {
+    } else if (sub === 'صورة_رتب') {
       if (!value) return message.reply('⚠️ أدخل رابط الصورة.');
       updateGuildConfig(guildId, { rolesImage: value });
       await message.reply(`✅ تم تعيين صورة رتب الإشعارات: ${value}`);
-    } 
-    else if (sub === 'صورة_بنر') {
+    } else if (sub === 'صورة_بنر') {
       if (!value) return message.reply('⚠️ أدخل رابط الصورة.');
       updateGuildConfig(guildId, { bannerImage: value });
       await message.reply(`✅ تم تعيين صورة البنر: ${value}`);
-    } 
-    else if (sub === 'صورة_عامة') {
+    } else if (sub === 'صورة_عامة') {
       if (!value) return message.reply('⚠️ أدخل رابط الصورة.');
       updateGuildConfig(guildId, { generalImage: value });
       await message.reply(`✅ تم تعيين الصورة العامة: ${value}`);
-    } 
-    else {
-      await message.reply('⚠️ الأوامر المتاحة: `!تعيين ترحيب #قناة` ، `!تعيين دور_دخول @دور` ، `!تعيين صورة_بانل رابط` ، `!تعيين صورة_رتب رابط` ، `!تعيين صورة_بنر رابط` ، `!تعيين صورة_عامة رابط`');
+    } else {
+      await message.reply('⚠️ الأوامر المتاحة: `!تعيين روم_ليفل #قناة` ، `!تعيين دور_دخول @دور` ، `!تعيين صورة_بانل رابط` ، `!تعيين صورة_رتب رابط` ، `!تعيين صورة_بنر رابط` ، `!تعيين صورة_عامة رابط`');
     }
     return;
   }
 });
 
+// ============================================================
 // ========== معالج التفاعلات ==========
+// ============================================================
+
 client.on('interactionCreate', async (interaction) => {
+  // القائمة المنسدلة للتذاكر
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_menu') {
     await interaction.deferReply({ ephemeral: true });
     const selected = interaction.values[0];
@@ -1356,7 +1444,9 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
+  // ========== أزرار ==========
   if (interaction.isButton()) {
+    // أزرار رتب الإشعارات
     if (['role_game', 'role_event', 'role_ajr'].includes(interaction.customId)) {
       const roleMap = {
         role_game: 'Game Notice',
@@ -1376,6 +1466,7 @@ client.on('interactionCreate', async (interaction) => {
       }
     }
 
+    // زر فتح مودال تغيير الاسم
     if (interaction.customId === 'open_name_modal') {
       const userId = interaction.user.id;
       const last = db.nameCooldown[userId];
@@ -1400,6 +1491,7 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.showModal(modal);
     }
 
+    // زر إغلاق التذكرة
     if (interaction.customId === 'close_ticket') {
       const channel = interaction.channel;
       if (!channel.name.startsWith('تذكرة-')) {
@@ -1449,6 +1541,7 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
+  // ========== مودال تغيير الاسم ==========
   if (interaction.isModalSubmit() && interaction.customId === 'name_change_modal') {
     const newName = interaction.fields.getTextInputValue('new_name');
     if (newName.length < 2 || newName.length > 32) {
@@ -1464,7 +1557,10 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
+// ============================================================
 // ========== تشغيل البوت ==========
+// ============================================================
+
 client.login(TOKEN).catch((err) => {
   console.error('❌ فشل تسجيل الدخول:', err);
   process.exit(1);
