@@ -56,6 +56,7 @@ function getGuildConfig(guildId) {
       ticketPanelImage: null,
       rolesImage: null,
       bannerImage: null,
+      generalImage: null, // الصورة العامة لكل الإمبدات
     };
   }
   return db.config[guildId];
@@ -102,8 +103,9 @@ client.once('ready', () => {
   client.user.setActivity('!مساعدة', { type: 'WATCHING' });
 });
 
-// ========== دالة مساعدة لجلب صورة البنر ==========
-function getBannerImage(guild, config) {
+// ========== دالة لجلب الصورة العامة ==========
+function getGeneralImage(guild, config) {
+  if (config.generalImage) return config.generalImage;
   if (config.bannerImage) return config.bannerImage;
   if (guild.iconURL()) return guild.iconURL({ size: 1024 });
   return null;
@@ -176,7 +178,7 @@ client.on('guildMemberAdd', async (member) => {
   db.memberCount[member.guild.id] = memberCount;
   const imageBuffer = await generateWelcomeImage(member, memberCount);
 
-  const banner = getBannerImage(member.guild, config);
+  const generalImage = getGeneralImage(member.guild, config);
   const embed = new EmbedBuilder()
     .setTitle('🐱 Welcome To TEAM WOLF Community')
     .setDescription(`User: ${member}\nmember count: ${memberCount}`)
@@ -184,7 +186,7 @@ client.on('guildMemberAdd', async (member) => {
     .setImage('attachment://welcome.png')
     .setTimestamp();
 
-  if (banner) embed.setThumbnail(banner);
+  if (generalImage) embed.setThumbnail(generalImage);
 
   await channel.send({
     content: `${member}`,
@@ -207,7 +209,7 @@ client.on('messageCreate', async (message) => {
   const cmd = args.shift().toLowerCase();
   const guildId = message.guild.id;
   const config = getGuildConfig(guildId);
-  const banner = getBannerImage(message.guild, config);
+  const generalImage = getGeneralImage(message.guild, config);
   const ticketSettings = getTicketSettings(guildId);
 
   // ========== أمر المساعدة ==========
@@ -219,11 +221,11 @@ client.on('messageCreate', async (message) => {
         { name: '🎫 التذاكر', value: '`!بانل` – إنشاء لوحة تذاكر\n`!عرض_تذكرة` – عرض الإعدادات\n`!تعيين تذكرة` – إدارة الأقسام (للمشرفين)', inline: false },
         { name: '🔔 رتب الإشعارات', value: '`!رتب` – عرض أزرار الرتب مع صورة (للمشرفين)', inline: false },
         { name: '✏️ تغيير الاسم', value: '`!تغيير_اسم` – فتح واجهة تغيير الاسم في السيرفر', inline: false },
-        { name: '⚙️ الإعدادات', value: '`!تعيين ترحيب #قناة` `!تعيين دور_دخول @دور` `!تعيين صورة_بانل رابط` `!تعيين صورة_رتب رابط` `!تعيين صورة_بنر رابط`', inline: false },
+        { name: '⚙️ الإعدادات', value: '`!تعيين ترحيب #قناة` `!تعيين دور_دخول @دور` `!تعيين صورة_بانل رابط` `!تعيين صورة_رتب رابط` `!تعيين صورة_بنر رابط` `!تعيين صورة_عامة رابط`', inline: false },
         { name: '🎮 عامة', value: '`!بينق` `!سيرفر`', inline: false }
       )
       .setFooter({ text: `البادئة: !` });
-    if (banner) embed.setImage(banner);
+    if (generalImage) embed.setImage(generalImage);
     await message.channel.send({ embeds: [embed] });
     return;
   }
@@ -242,7 +244,7 @@ client.on('messageCreate', async (message) => {
         { name: '🖼️ الصورة', value: settings.image ? `[رابط](${settings.image})` : 'لا توجد صورة', inline: true }
       )
       .setFooter({ text: 'استخدم !تعيين تذكرة لإدارة الأقسام' });
-    if (banner) embed.setThumbnail(banner);
+    if (generalImage) embed.setImage(generalImage);
     await message.channel.send({ embeds: [embed] });
     return;
   }
@@ -270,7 +272,7 @@ client.on('messageCreate', async (message) => {
           { name: '👀 عرض الإعدادات', value: '`!عرض_تذكرة`' }
         )
         .setFooter({ text: 'الأقسام الحالية: ' + settings.sections.map(s => s.name).join(', ') });
-      if (banner) embed.setThumbnail(banner);
+      if (generalImage) embed.setImage(generalImage);
       await message.channel.send({ embeds: [embed] });
       return;
     }
@@ -338,9 +340,8 @@ client.on('messageCreate', async (message) => {
       .setImage(imageUrl)
       .setFooter({ text: 'سيتم إنشاء قناة خاصة بك وسيرد عليك الفريق.' });
 
-    if (banner) embed.setThumbnail(banner);
+    if (generalImage) embed.setThumbnail(generalImage);
 
-    // بناء القائمة المنسدلة من الأقسام المخزنة
     const options = settings.sections.map(s => ({
       label: s.name,
       value: s.name,
@@ -377,7 +378,7 @@ client.on('messageCreate', async (message) => {
       .setImage(imageUrl)
       .setFooter({ text: 'اضغط مرة للحصول على الرتبة، ومرة أخرى لإزالتها.' });
 
-    if (banner) embed.setThumbnail(banner);
+    if (generalImage) embed.setThumbnail(generalImage);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('role_game').setLabel('🎮 Game Notice').setStyle(ButtonStyle.Primary),
@@ -404,7 +405,7 @@ client.on('messageCreate', async (message) => {
       .setColor(0x2b2d31)
       .setFooter({ text: 'يمكنك تغيير اسمك مرة كل 5 ساعات.' });
 
-    if (banner) embed.setImage(banner);
+    if (generalImage) embed.setImage(generalImage);
 
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -418,7 +419,6 @@ client.on('messageCreate', async (message) => {
 
   // ========== أوامر الإعدادات العامة ==========
   if (cmd === 'تعيين') {
-    // تجنب تعارض مع "تعيين تذكرة" الذي تم معالجته أعلاه
     if (args[0]?.toLowerCase() === 'تذكرة') return;
 
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
@@ -454,8 +454,13 @@ client.on('messageCreate', async (message) => {
       updateGuildConfig(guildId, { bannerImage: value });
       await message.reply(`✅ تم تعيين صورة البنر: ${value}`);
     } 
+    else if (sub === 'صورة_عامة') {
+      if (!value) return message.reply('⚠️ أدخل رابط الصورة.');
+      updateGuildConfig(guildId, { generalImage: value });
+      await message.reply(`✅ تم تعيين الصورة العامة: ${value}`);
+    } 
     else {
-      await message.reply('⚠️ الأوامر المتاحة: `!تعيين ترحيب #قناة` ، `!تعيين دور_دخول @دور` ، `!تعيين صورة_بانل رابط` ، `!تعيين صورة_رتب رابط` ، `!تعيين صورة_بنر رابط`');
+      await message.reply('⚠️ الأوامر المتاحة: `!تعيين ترحيب #قناة` ، `!تعيين دور_دخول @دور` ، `!تعيين صورة_بانل رابط` ، `!تعيين صورة_رتب رابط` ، `!تعيين صورة_بنر رابط` ، `!تعيين صورة_عامة رابط`');
     }
   }
 
@@ -464,7 +469,7 @@ client.on('messageCreate', async (message) => {
     const embed = new EmbedBuilder()
       .setColor(0x2b2d31)
       .setDescription(`🏓 البينق: ${client.ws.ping}ms`);
-    if (banner) embed.setImage(banner);
+    if (generalImage) embed.setImage(generalImage);
     await message.channel.send({ embeds: [embed] });
   }
   if (cmd === 'سيرفر') {
@@ -477,21 +482,21 @@ client.on('messageCreate', async (message) => {
         { name: '👑 المالك', value: `<@${message.guild.ownerId}>`, inline: true }
       )
       .setThumbnail(message.guild.iconURL());
-    if (banner) embed.setImage(banner);
+    if (generalImage) embed.setImage(generalImage);
     await message.channel.send({ embeds: [embed] });
   }
 });
 
 // ========== معالج التفاعلات ==========
 client.on('interactionCreate', async (interaction) => {
-  // ========== القائمة المنسدلة للتذاكر ==========
+  // القائمة المنسدلة للتذاكر
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_menu') {
     await interaction.deferReply({ ephemeral: true });
     const selected = interaction.values[0];
     const guild = interaction.guild;
     const member = interaction.member;
     const config = getGuildConfig(guild.id);
-    const banner = getBannerImage(guild, config);
+    const generalImage = getGeneralImage(guild, config);
     const settings = getTicketSettings(guild.id);
     const section = settings.sections.find(s => s.name === selected);
 
@@ -518,9 +523,8 @@ client.on('interactionCreate', async (interaction) => {
         .setColor(0x2b2d31)
         .setTimestamp();
 
-      if (banner) embed.setImage(banner);
+      if (generalImage) embed.setImage(generalImage);
 
-      // منشن الدور إن وجد
       let mention = '';
       if (section.roleId) {
         const role = guild.roles.cache.get(section.roleId);
@@ -539,7 +543,7 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // ========== أزرار ==========
+  // أزرار
   if (interaction.isButton()) {
     // أزرار رتب الإشعارات
     if (['role_game', 'role_event', 'role_ajr'].includes(interaction.customId)) {
@@ -595,7 +599,7 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // ========== مودال تغيير الاسم ==========
+  // مودال تغيير الاسم
   if (interaction.isModalSubmit() && interaction.customId === 'name_change_modal') {
     const newName = interaction.fields.getTextInputValue('new_name');
     if (newName.length < 2 || newName.length > 32) {
