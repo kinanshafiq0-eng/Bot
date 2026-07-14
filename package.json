@@ -1,7 +1,7 @@
 {
   "name": "advanced-bot",
   "version": "1.0.0",
-  "description": "بوت ديسكورد متقدم مع صور ترحيبية وتذاكر ورتب إشعارات",
+  "description": "بوت ديسكورد متقدم مع نظام تذاكر قابل للتخصيص",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
