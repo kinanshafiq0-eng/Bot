@@ -1,4 +1,17 @@
-const { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder, PermissionsBitField, ChannelType, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
+const {
+  Client,
+  GatewayIntentBits,
+  EmbedBuilder,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  StringSelectMenuBuilder,
+  PermissionsBitField,
+  ChannelType,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+} = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const express = require('express');
 const fs = require('fs');
@@ -21,6 +34,7 @@ const db = {
   config: {},
   nameCooldown: {},
   memberCount: {},
+  ticketSettings: {}, // guildId: { sections: [{ name, roleId }], text, image }
 };
 
 function saveDB() {
@@ -41,7 +55,7 @@ function getGuildConfig(guildId) {
       joinRole: null,
       ticketPanelImage: null,
       rolesImage: null,
-      bannerImage: null, // صورة البنر
+      bannerImage: null,
     };
   }
   return db.config[guildId];
@@ -49,6 +63,26 @@ function getGuildConfig(guildId) {
 
 function updateGuildConfig(guildId, data) {
   db.config[guildId] = { ...getGuildConfig(guildId), ...data };
+}
+
+function getTicketSettings(guildId) {
+  if (!db.ticketSettings[guildId]) {
+    db.ticketSettings[guildId] = {
+      sections: [
+        { name: 'دعم فني', roleId: null },
+        { name: 'شكوى', roleId: null },
+        { name: 'اقتراح', roleId: null },
+        { name: 'أخرى', roleId: null },
+      ],
+      text: 'مرحباً بكم جميعاً في قسم التذاكر، لفتح تذكرة أرجو ضغط على قائمة أدناه و اختيار التذكرة التي تناسبك.',
+      image: 'https://i.imgur.com/GkKqN3G.png',
+    };
+  }
+  return db.ticketSettings[guildId];
+}
+
+function saveTicketSettings(guildId, data) {
+  db.ticketSettings[guildId] = data;
 }
 
 // ========== العميل ==========
@@ -174,6 +208,7 @@ client.on('messageCreate', async (message) => {
   const guildId = message.guild.id;
   const config = getGuildConfig(guildId);
   const banner = getBannerImage(message.guild, config);
+  const ticketSettings = getTicketSettings(guildId);
 
   // ========== أمر المساعدة ==========
   if (cmd === 'مساعدة') {
@@ -181,7 +216,7 @@ client.on('messageCreate', async (message) => {
       .setTitle('📖 قائمة الأوامر')
       .setColor(0x2b2d31)
       .addFields(
-        { name: '🎫 التذاكر', value: '`!بانل` – إنشاء لوحة تذاكر (للمشرفين)', inline: false },
+        { name: '🎫 التذاكر', value: '`!بانل` – إنشاء لوحة تذاكر\n`!عرض_تذكرة` – عرض الإعدادات\n`!تعيين تذكرة` – إدارة الأقسام (للمشرفين)', inline: false },
         { name: '🔔 رتب الإشعارات', value: '`!رتب` – عرض أزرار الرتب مع صورة (للمشرفين)', inline: false },
         { name: '✏️ تغيير الاسم', value: '`!تغيير_اسم` – فتح واجهة تغيير الاسم في السيرفر', inline: false },
         { name: '⚙️ الإعدادات', value: '`!تعيين ترحيب #قناة` `!تعيين دور_دخول @دور` `!تعيين صورة_بانل رابط` `!تعيين صورة_رتب رابط` `!تعيين صورة_بنر رابط`', inline: false },
@@ -193,34 +228,134 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== أمر بانل (التذاكر مع الصورة) ==========
+  // ========== عرض إعدادات التذاكر ==========
+  if (cmd === 'عرض_تذكرة') {
+    const settings = getTicketSettings(guildId);
+    const embed = new EmbedBuilder()
+      .setTitle('📋 إعدادات التذاكر')
+      .setColor(0x2b2d31)
+      .setDescription(`**النص:** ${settings.text}`)
+      .addFields(
+        { name: '📌 الأقسام', value: settings.sections.map((s, i) => 
+          `${i+1}. **${s.name}** ${s.roleId ? `<@&${s.roleId}>` : '(بدون دور)'}`
+        ).join('\n') || 'لا يوجد أقسام', inline: false },
+        { name: '🖼️ الصورة', value: settings.image ? `[رابط](${settings.image})` : 'لا توجد صورة', inline: true }
+      )
+      .setFooter({ text: 'استخدم !تعيين تذكرة لإدارة الأقسام' });
+    if (banner) embed.setThumbnail(banner);
+    await message.channel.send({ embeds: [embed] });
+    return;
+  }
+
+  // ========== إدارة التذاكر (للمشرفين) ==========
+  if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'تذكرة') {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+
+    const sub = args[1]?.toLowerCase();
+    const value = args.slice(2).join(' ');
+
+    const settings = getTicketSettings(guildId);
+
+    // عرض تعليمات
+    if (!sub) {
+      const embed = new EmbedBuilder()
+        .setTitle('⚙️ إدارة التذاكر')
+        .setColor(0x2b2d31)
+        .addFields(
+          { name: '➕ إضافة قسم', value: '`!تعيين تذكرة إضافة [الاسم] @دور`' },
+          { name: '➖ حذف قسم', value: '`!تعيين تذكرة حذف [الاسم]`' },
+          { name: '📝 تغيير النص', value: '`!تعيين تذكرة نص [النص]`' },
+          { name: '🖼️ تغيير الصورة', value: '`!تعيين تذكرة صورة [رابط]`' },
+          { name: '👀 عرض الإعدادات', value: '`!عرض_تذكرة`' }
+        )
+        .setFooter({ text: 'الأقسام الحالية: ' + settings.sections.map(s => s.name).join(', ') });
+      if (banner) embed.setThumbnail(banner);
+      await message.channel.send({ embeds: [embed] });
+      return;
+    }
+
+    // إضافة قسم
+    if (sub === 'إضافة') {
+      const nameMatch = value.match(/^(.+?)\s+<@&(\d+)>$/);
+      if (!nameMatch) return message.reply('⚠️ الصيغة: `!تعيين تذكرة إضافة [الاسم] @دور`');
+      const sectionName = nameMatch[1].trim();
+      const roleId = nameMatch[2];
+      if (settings.sections.find(s => s.name === sectionName)) {
+        return message.reply(`⚠️ قسم "${sectionName}" موجود بالفعل.`);
+      }
+      settings.sections.push({ name: sectionName, roleId });
+      saveTicketSettings(guildId, settings);
+      await message.reply(`✅ تم إضافة قسم **${sectionName}** مع دور <@&${roleId}>.`);
+      return;
+    }
+
+    // حذف قسم
+    if (sub === 'حذف') {
+      const sectionName = value.trim();
+      const index = settings.sections.findIndex(s => s.name === sectionName);
+      if (index === -1) return message.reply(`⚠️ قسم "${sectionName}" غير موجود.`);
+      settings.sections.splice(index, 1);
+      saveTicketSettings(guildId, settings);
+      await message.reply(`✅ تم حذف قسم **${sectionName}**.`);
+      return;
+    }
+
+    // تغيير النص
+    if (sub === 'نص') {
+      if (!value) return message.reply('⚠️ أدخل النص الجديد.');
+      settings.text = value;
+      saveTicketSettings(guildId, settings);
+      await message.reply(`✅ تم تغيير نص التذاكر:\n${value}`);
+      return;
+    }
+
+    // تغيير الصورة
+    if (sub === 'صورة') {
+      if (!value) return message.reply('⚠️ أدخل رابط الصورة.');
+      settings.image = value;
+      saveTicketSettings(guildId, settings);
+      await message.reply(`✅ تم تغيير صورة التذاكر: ${value}`);
+      return;
+    }
+
+    await message.reply('⚠️ أمر غير معروف. استخدم `!تعيين تذكرة` لعرض التعليمات.');
+    return;
+  }
+
+  // ========== أمر بانل (التذاكر مع الإعدادات) ==========
   if (cmd === 'بانل') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
       return message.reply('❌ تحتاج صلاحية أدمن.');
 
-    const defaultImage = 'https://i.imgur.com/GkKqN3G.png';
-    const imageUrl = config.ticketPanelImage || defaultImage;
+    const settings = getTicketSettings(guildId);
+    const imageUrl = settings.image || 'https://i.imgur.com/GkKqN3G.png';
 
     const embed = new EmbedBuilder()
       .setTitle('🎫 تذاكر دعم فني')
-      .setDescription('مرحباً بكم جميعاً في قسم تذاكر، لفتح تذكرة أرجو ضغط على قائمة أدناه و اختيار التذكرة التي تناسبك.')
+      .setDescription(settings.text)
       .setColor(0x2b2d31)
       .setImage(imageUrl)
       .setFooter({ text: 'سيتم إنشاء قناة خاصة بك وسيرد عليك الفريق.' });
 
     if (banner) embed.setThumbnail(banner);
 
+    // بناء القائمة المنسدلة من الأقسام المخزنة
+    const options = settings.sections.map(s => ({
+      label: s.name,
+      value: s.name,
+      emoji: '📌',
+    }));
+
+    if (options.length === 0) {
+      return message.reply('⚠️ لا توجد أقسام مضافة. استخدم `!تعيين تذكرة إضافة` لإضافة قسم.');
+    }
+
     const row = new ActionRowBuilder().addComponents(
       new StringSelectMenuBuilder()
         .setCustomId('ticket_menu')
         .setPlaceholder('📌 اختر القسم...')
-        .addOptions([
-          { label: '🛠️ High Support', value: 'High Support', emoji: '🛠️' },
-          { label: '👥 Support Team', value: 'Support Team', emoji: '👥' },
-          { label: '🚫 Kick Support', value: 'Kick Support', emoji: '🚫' },
-          { label: '🎮 Event Support', value: 'Event Support', emoji: '🎮' },
-          { label: '📋 Rest Menu', value: 'Rest Menu', emoji: '📋' },
-        ])
+        .addOptions(options)
     );
 
     await message.channel.send({ embeds: [embed], components: [row] });
@@ -254,7 +389,7 @@ client.on('messageCreate', async (message) => {
     await message.reply('✅ تم إنشاء لوحة الرتب.');
   }
 
-  // ========== أمر تغيير الاسم (Embed + زر داخل السيرفر) ==========
+  // ========== أمر تغيير الاسم ==========
   if (cmd === 'تغيير_اسم') {
     const userId = message.author.id;
     const last = db.nameCooldown[userId];
@@ -281,8 +416,11 @@ client.on('messageCreate', async (message) => {
     await message.channel.send({ embeds: [embed], components: [row] });
   }
 
-  // ========== أوامر الإعدادات ==========
+  // ========== أوامر الإعدادات العامة ==========
   if (cmd === 'تعيين') {
+    // تجنب تعارض مع "تعيين تذكرة" الذي تم معالجته أعلاه
+    if (args[0]?.toLowerCase() === 'تذكرة') return;
+
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
       return message.reply('❌ تحتاج صلاحية أدمن.');
 
@@ -346,7 +484,7 @@ client.on('messageCreate', async (message) => {
 
 // ========== معالج التفاعلات ==========
 client.on('interactionCreate', async (interaction) => {
-  // القائمة المنسدلة للتذاكر
+  // ========== القائمة المنسدلة للتذاكر ==========
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_menu') {
     await interaction.deferReply({ ephemeral: true });
     const selected = interaction.values[0];
@@ -354,6 +492,12 @@ client.on('interactionCreate', async (interaction) => {
     const member = interaction.member;
     const config = getGuildConfig(guild.id);
     const banner = getBannerImage(guild, config);
+    const settings = getTicketSettings(guild.id);
+    const section = settings.sections.find(s => s.name === selected);
+
+    if (!section) {
+      return interaction.editReply({ content: '❌ القسم غير موجود.', ephemeral: true });
+    }
 
     const ticketName = `تذكرة-${member.user.username}`.slice(0, 32);
     try {
@@ -376,18 +520,26 @@ client.on('interactionCreate', async (interaction) => {
 
       if (banner) embed.setImage(banner);
 
+      // منشن الدور إن وجد
+      let mention = '';
+      if (section.roleId) {
+        const role = guild.roles.cache.get(section.roleId);
+        if (role) mention = `${role}`;
+      }
+
       const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('close_ticket').setLabel('🔒 إغلاق التذكرة').setStyle(ButtonStyle.Secondary)
       );
 
-      await channel.send({ content: `${member}`, embeds: [embed], components: [row] });
+      await channel.send({ content: `${member} ${mention}`.trim(), embeds: [embed], components: [row] });
       await interaction.editReply({ content: `✅ تم إنشاء تذكرتك: ${channel}`, ephemeral: true });
     } catch (error) {
+      console.error(error);
       await interaction.editReply({ content: '❌ حدث خطأ في إنشاء التذكرة.', ephemeral: true });
     }
   }
 
-  // أزرار
+  // ========== أزرار ==========
   if (interaction.isButton()) {
     // أزرار رتب الإشعارات
     if (['role_game', 'role_event', 'role_ajr'].includes(interaction.customId)) {
@@ -443,7 +595,7 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // مودال تغيير الاسم
+  // ========== مودال تغيير الاسم ==========
   if (interaction.isModalSubmit() && interaction.customId === 'name_change_modal') {
     const newName = interaction.fields.getTextInputValue('new_name');
     if (newName.length < 2 || newName.length > 32) {
