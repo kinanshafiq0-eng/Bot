@@ -1,0 +1,16 @@
+{
+    "name": "team-wolf-bot",
+    "version": "1.0.0",
+    "description": "بوت متكامل مع نظام إعدادات من الديسكورد",
+    "main": "index.js",
+    "scripts": {
+        "start": "node index.js"
+    },
+    "dependencies": {
+        "discord.js": "^14.15.2",
+        "express": "^4.18.2"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}
