@@ -34,7 +34,7 @@ const db = {
   config: {},
   nameCooldown: {},
   memberCount: {},
-  ticketSettings: {}, // guildId: { sections: [{ name, roleId }], text, image }
+  ticketSettings: {},
 };
 
 function saveDB() {
@@ -56,7 +56,7 @@ function getGuildConfig(guildId) {
       ticketPanelImage: null,
       rolesImage: null,
       bannerImage: null,
-      generalImage: null, // الصورة العامة لكل الإمبدات
+      generalImage: null,
     };
   }
   return db.config[guildId];
@@ -116,17 +116,20 @@ async function generateWelcomeImage(member, memberCount) {
   const canvas = createCanvas(1200, 600);
   const ctx = canvas.getContext('2d');
 
+  // خلفية سوداء مع تدرج رمادي
   const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, '#1a1a2e');
-  gradient.addColorStop(0.5, '#16213e');
-  gradient.addColorStop(1, '#0f3460');
+  gradient.addColorStop(0, '#121212');
+  gradient.addColorStop(0.5, '#1a1a1a');
+  gradient.addColorStop(1, '#0d0d0d');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.strokeStyle = '#e94560';
-  ctx.lineWidth = 10;
+  // إطار رمادي غامق
+  ctx.strokeStyle = '#333333';
+  ctx.lineWidth = 8;
   ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
 
+  // صورة المستخدم (دائرية)
   const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 256 });
   const avatar = await loadImage(avatarURL);
   const radius = 150;
@@ -140,12 +143,14 @@ async function generateWelcomeImage(member, memberCount) {
   ctx.drawImage(avatar, centerX - radius, centerY - radius, radius * 2, radius * 2);
   ctx.restore();
 
+  // إطار دائري رمادي
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = '#e94560';
-  ctx.lineWidth = 8;
+  ctx.strokeStyle = '#444444';
+  ctx.lineWidth = 6;
   ctx.stroke();
 
+  // نصوص باللون الأبيض والرمادي
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 48px Arial';
@@ -157,12 +162,12 @@ async function generateWelcomeImage(member, memberCount) {
   ctx.fillText(`#${memberCount}`, 450, 280);
 
   ctx.font = '24px Arial';
-  ctx.fillStyle = '#888888';
+  ctx.fillStyle = '#777777';
   ctx.fillText('أهلاً بك في السيرفر!', 450, 360);
 
   ctx.textAlign = 'right';
   ctx.font = '20px Arial';
-  ctx.fillStyle = '#e94560';
+  ctx.fillStyle = '#888888';
   ctx.fillText('TEAM WOLF', canvas.width - 50, canvas.height - 40);
 
   return canvas.toBuffer('image/png');
@@ -259,7 +264,6 @@ client.on('messageCreate', async (message) => {
 
     const settings = getTicketSettings(guildId);
 
-    // عرض تعليمات
     if (!sub) {
       const embed = new EmbedBuilder()
         .setTitle('⚙️ إدارة التذاكر')
@@ -277,7 +281,6 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
-    // إضافة قسم
     if (sub === 'إضافة') {
       const nameMatch = value.match(/^(.+?)\s+<@&(\d+)>$/);
       if (!nameMatch) return message.reply('⚠️ الصيغة: `!تعيين تذكرة إضافة [الاسم] @دور`');
@@ -292,7 +295,6 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
-    // حذف قسم
     if (sub === 'حذف') {
       const sectionName = value.trim();
       const index = settings.sections.findIndex(s => s.name === sectionName);
@@ -303,7 +305,6 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
-    // تغيير النص
     if (sub === 'نص') {
       if (!value) return message.reply('⚠️ أدخل النص الجديد.');
       settings.text = value;
@@ -312,7 +313,6 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
-    // تغيير الصورة
     if (sub === 'صورة') {
       if (!value) return message.reply('⚠️ أدخل رابط الصورة.');
       settings.image = value;
@@ -325,7 +325,7 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== أمر بانل (التذاكر مع الإعدادات) ==========
+  // ========== أمر بانل (التذاكر) ==========
   if (cmd === 'بانل') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
       return message.reply('❌ تحتاج صلاحية أدمن.');
@@ -363,7 +363,7 @@ client.on('messageCreate', async (message) => {
     await message.reply('✅ تم إنشاء لوحة التذاكر.');
   }
 
-  // ========== أمر رتب الإشعارات مع الصورة ==========
+  // ========== أمر رتب الإشعارات ==========
   if (cmd === 'رتب') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
       return message.reply('❌ تحتاج صلاحية أدمن.');
@@ -381,9 +381,9 @@ client.on('messageCreate', async (message) => {
     if (generalImage) embed.setThumbnail(generalImage);
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('role_game').setLabel('🎮 Game Notice').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('role_event').setLabel('📅 Event Notice').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('role_ajr').setLabel('🔊 Ajr Notice').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('role_game').setLabel('🎮 Game Notice').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('role_event').setLabel('📅 Event Notice').setStyle(ButtonStyle.Secondary),
+      new ButtonBuilder().setCustomId('role_ajr').setLabel('🔊 Ajr Notice').setStyle(ButtonStyle.Secondary),
     );
 
     await message.channel.send({ embeds: [embed], components: [row] });
@@ -411,7 +411,7 @@ client.on('messageCreate', async (message) => {
       new ButtonBuilder()
         .setCustomId('open_name_modal')
         .setLabel('✏️ تغيير الاسم')
-        .setStyle(ButtonStyle.Primary)
+        .setStyle(ButtonStyle.Secondary)
     );
 
     await message.channel.send({ embeds: [embed], components: [row] });
