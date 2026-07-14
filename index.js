@@ -37,7 +37,7 @@ const db = {
   ticketSettings: {},
   warns: {},
   autoLine: {},
-  autoReplies: {}, // guildId: [{ keyword: 'كلمة', reply: 'رد', image: 'رابط' }]
+  autoReplies: {},
 };
 
 function saveDB() {
@@ -135,10 +135,10 @@ function addAutoReply(guildId, keyword, reply, image = null) {
   if (existing) {
     existing.reply = reply;
     existing.image = image;
-    return false; // تم التحديث
+    return false;
   }
   replies.push({ keyword, reply, image });
-  return true; // تم الإضافة
+  return true;
 }
 
 function removeAutoReply(guildId, keyword) {
@@ -271,11 +271,8 @@ client.on('guildMemberAdd', async (member) => {
 // ========== نظام الأوتو لاين والردود التلقائية ==========
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
-
-  // معالجة الأوامر أولاً (لأنها تبدأ بـ !)
   if (message.content.startsWith('!')) return;
 
-  // الأوتو لاين (Auto-Line)
   const guildId = message.guild.id;
   const auto = getAutoLine(guildId);
   if (auto.enabled && auto.channelId && auto.text && message.channel.id === auto.channelId) {
@@ -293,7 +290,6 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // الردود التلقائية (Auto Replies)
   const autoReply = findAutoReply(guildId, message.content);
   if (autoReply) {
     if (autoReply.image) {
@@ -327,14 +323,14 @@ client.on('messageCreate', async (message) => {
       .setTitle('📖 قائمة الأوامر')
       .setColor(0x2b2d31)
       .addFields(
-        { name: '🛡️ الإدارة الأساسية', value: '`حظر` `طرد` `كتم` `فك_كتم` `تحذير` `ابطال_تحذيرات` `مسح` `قفل` `فتح`', inline: false },
+        { name: '🛡️ الإدارة', value: '`حظر` `طرد` `كتم` `فك_كتم` `تحذير` `ابطال_تحذيرات` `مسح` `قفل` `فتح`', inline: false },
         { name: '🎭 إدارة الرتب', value: '`اعطاء_رتبة` `سحب_رتبة` `عرض_رتب`', inline: false },
         { name: '📁 إدارة القنوات', value: '`انشاء_قناة` `حذف_قناة` `تغيير_اسم_قناة`', inline: false },
         { name: '🔊 إدارة الصوت', value: '`نقل_كل` `طرد_صوتي` `كتم_صوتي` `فك_كتم_صوتي`', inline: false },
         { name: '📌 إدارة الرسائل', value: '`تثبيت` `الغاء_تثبيت`', inline: false },
         { name: '🤖 الأوتو لاين', value: '`تعيين اوتر_لاين #روم نص` `تعيين صورة_اوترلاين رابط` `تعيين تفعيل_اوترلاين` `تعيين تعطيل_اوترلاين`', inline: false },
         { name: '💬 الردود التلقائية', value: '`رد_تلقائي كلمة رد` `رد_تلقائي_صورة كلمة رد رابط` `حذف_رد_تلقائي كلمة` `عرض_الردود`', inline: false },
-        { name: '📝 أوامر البوت', value: '`قول نص` (يكتب البوت النص)', inline: false },
+        { name: '📝 أوامر البوت', value: '`قول نص` `ايمبد [عنوان] ، [وصف]` `اعلان [نص]` `اعلان here [نص]`', inline: false },
         { name: '🎫 التذاكر', value: '`بانل` `عرض_تذكرة` `تعيين تذكرة` (للمشرفين)', inline: false },
         { name: '🔔 رتب الإشعارات', value: '`رتب` (للمشرفين)', inline: false },
         { name: '✏️ تغيير الاسم', value: '`تغيير_اسم`', inline: false },
@@ -356,8 +352,68 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== أوامر الردود التلقائية ==========
+  // ========== أمر ايمبد ==========
+  if (cmd === 'ايمبد') {
+    const fullText = args.join(' ');
+    if (!fullText) return message.reply('⚠️ الصيغة: `!ايمبد [العنوان] ، [الوصف]` (يمكن إضافة رابط صورة في نهاية الوصف)');
+    
+    const parts = fullText.split(/[،,]\s*/).map(s => s.trim());
+    let title = 'بدون عنوان';
+    let description = fullText;
+    if (parts.length >= 2) {
+      title = parts[0];
+      description = parts.slice(1).join(' ، ');
+    }
+    
+    const embed = new EmbedBuilder()
+      .setTitle(title)
+      .setDescription(description)
+      .setColor(0x2b2d31)
+      .setTimestamp();
+    
+    const imageMatch = description.match(/(https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp))/i);
+    if (imageMatch) {
+      embed.setImage(imageMatch[1]);
+      embed.setDescription(description.replace(imageMatch[1], '').trim() || 'بدون وصف');
+    }
+    
+    if (generalImage) embed.setThumbnail(generalImage);
+    await message.channel.send({ embeds: [embed] });
+    await message.delete().catch(() => {});
+    return;
+  }
 
+  // ========== أمر اعلان ==========
+  if (cmd === 'اعلان') {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+    
+    let mentionType = 'everyone';
+    let text = args.join(' ');
+    
+    if (args[0]?.toLowerCase() === 'here') {
+      mentionType = 'here';
+      text = args.slice(1).join(' ');
+    }
+    
+    if (!text) return message.reply('⚠️ اكتب نص الإعلان.');
+    
+    const embed = new EmbedBuilder()
+      .setTitle('📢 إعلان')
+      .setDescription(text)
+      .setColor(0x2b2d31)
+      .setTimestamp()
+      .setFooter({ text: `بواسطة ${message.author.tag}` });
+    
+    if (generalImage) embed.setImage(generalImage);
+    
+    const mention = mentionType === 'everyone' ? '@everyone' : '@here';
+    await message.channel.send({ content: mention, embeds: [embed] });
+    await message.delete().catch(() => {});
+    return;
+  }
+
+  // ========== أوامر الردود التلقائية ==========
   if (cmd === 'رد_تلقائي') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
       return message.reply('❌ تحتاج صلاحية أدمن.');
@@ -426,7 +482,6 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== أوامر الإدارة الأساسية ==========
-
   if (cmd === 'حظر') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers))
       return message.reply('❌ لا تملك صلاحية حظر.');
@@ -506,13 +561,28 @@ client.on('messageCreate', async (message) => {
     if (!member) return message.reply('⚠️ منشن العضو.');
     const reason = args.join(' ') || 'لا يوجد سبب';
     const count = addWarn(member.id, guildId, reason, message.author.id);
+    
+    // إرسال Embed للقناة
     const embed = new EmbedBuilder()
       .setTitle('⚠️ تحذير')
       .setColor(0x2b2d31)
       .setDescription(`${member.user.tag} تم تحذيره بسبب: ${reason}\nإجمالي التحذيرات: ${count}`);
     if (generalImage) embed.setImage(generalImage);
     await message.channel.send({ embeds: [embed] });
-    try { await member.send(`⚠️ تم تحذيرك في ${message.guild.name} بسبب: ${reason}`); } catch (e) {}
+    
+    // إرسال رسالة خاصة للعضو
+    try {
+      const dmEmbed = new EmbedBuilder()
+        .setTitle('⚠️ تم تحذيرك')
+        .setColor(0x2b2d31)
+        .setDescription(`**السيرفر:** ${message.guild.name}\n**السبب:** ${reason}\n**إجمالي تحذيراتك:** ${count}`)
+        .setTimestamp()
+        .setFooter({ text: `بواسطة ${message.author.tag}` });
+      if (generalImage) dmEmbed.setThumbnail(generalImage);
+      await member.send({ embeds: [dmEmbed] });
+    } catch (e) {
+      // تجاهل إذا كان الخاص مقفلاً
+    }
     return;
   }
 
@@ -570,7 +640,6 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== إدارة الرتب ==========
-
   if (cmd === 'اعطاء_رتبة') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles))
       return message.reply('❌ لا تملك صلاحية إدارة الرتب.');
@@ -625,7 +694,6 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== إدارة القنوات ==========
-
   if (cmd === 'انشاء_قناة') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
       return message.reply('❌ لا تملك صلاحية إنشاء قنوات.');
@@ -674,7 +742,6 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== إدارة الرسائل ==========
-
   if (cmd === 'تثبيت') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages))
       return message.reply('❌ لا تملك صلاحية تثبيت الرسائل.');
@@ -716,7 +783,6 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== إدارة الصوت ==========
-
   if (cmd === 'نقل_كل') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.MoveMembers))
       return message.reply('❌ لا تملك صلاحية نقل الأعضاء.');
@@ -788,7 +854,6 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== معلومات ==========
-
   if (cmd === 'معلومات') {
     const member = message.mentions.members.first() || message.member;
     const embed = new EmbedBuilder()
@@ -832,7 +897,6 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== نظام التذاكر ==========
-
   if (cmd === 'عرض_تذكرة') {
     const settings = getTicketSettings(guildId);
     const embed = new EmbedBuilder()
@@ -1092,7 +1156,6 @@ client.on('messageCreate', async (message) => {
 
   // ========== أوامر الإعدادات العامة ==========
   if (cmd === 'تعيين') {
-    // تجنب تعارض مع "تعيين تذكرة" و "تعيين اوتر_لاين" التي تم معالجتها أعلاه
     if (args[0]?.toLowerCase() === 'تذكرة' || args[0]?.toLowerCase() === 'اوتر_لاين' ||
         args[0]?.toLowerCase() === 'صورة_اوترلاين' || args[0]?.toLowerCase() === 'تفعيل_اوترلاين' ||
         args[0]?.toLowerCase() === 'تعطيل_اوترلاين') return;
@@ -1142,9 +1205,9 @@ client.on('messageCreate', async (message) => {
   }
 });
 
-// ========== معالج التفاعلات ==========
+// ========== معالج التفاعلات (الأزرار والقوائم المنسدلة والمودالات) ==========
 client.on('interactionCreate', async (interaction) => {
-  // القائمة المنسدلة للتذاكر
+  // ========== القائمة المنسدلة للتذاكر ==========
   if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_menu') {
     await interaction.deferReply({ ephemeral: true });
     const selected = interaction.values[0];
@@ -1198,9 +1261,9 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // أزرار
+  // ========== أزرار ==========
   if (interaction.isButton()) {
-    // أزرار رتب الإشعارات
+    // ========== أزرار رتب الإشعارات ==========
     if (['role_game', 'role_event', 'role_ajr'].includes(interaction.customId)) {
       const roleMap = {
         role_game: 'Game Notice',
@@ -1220,7 +1283,7 @@ client.on('interactionCreate', async (interaction) => {
       }
     }
 
-    // زر فتح مودال تغيير الاسم
+    // ========== زر فتح مودال تغيير الاسم ==========
     if (interaction.customId === 'open_name_modal') {
       const userId = interaction.user.id;
       const last = db.nameCooldown[userId];
@@ -1245,16 +1308,78 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.showModal(modal);
     }
 
-    // زر إغلاق التذكرة
+    // ========== زر إغلاق التذكرة (مع إرسال ملخص في الخاص) ==========
     if (interaction.customId === 'close_ticket') {
       const channel = interaction.channel;
-      if (!channel.name.startsWith('تذكرة-')) return interaction.reply({ content: '⚠️ هذه ليست قناة تذكرة.', ephemeral: true });
+      if (!channel.name.startsWith('تذكرة-')) {
+        return interaction.reply({ content: '⚠️ هذه ليست قناة تذكرة.', ephemeral: true });
+      }
+
+      // جلب معلومات التذكرة من قاعدة البيانات
+      const ticketInfo = db.prepare ? db.prepare('SELECT user_id, created_at FROM tickets WHERE channel_id = ?').get(channel.id) : null;
+      
+      // جلب صاحب التذكرة ووقت الإنشاء من القناة نفسها (طريقة احتياطية)
+      let ticketOwnerId = null;
+      let createdDate = new Date();
+      try {
+        const messages = await channel.messages.fetch({ limit: 1 });
+        const firstMsg = messages.first();
+        if (firstMsg && firstMsg.mentions.users.first()) {
+          ticketOwnerId = firstMsg.mentions.users.first().id;
+        }
+        // محاولة الحصول على وقت الإنشاء من أول رسالة في القناة
+        if (firstMsg) createdDate = firstMsg.createdAt;
+      } catch (e) {}
+
+      // إذا لم نجد المالك من الرسائل، نحاول من قاعدة البيانات
+      if (!ticketOwnerId && ticketInfo) ticketOwnerId = ticketInfo.user_id;
+
+      // جمع عدد الرسائل في القناة
+      let messageCount = 0;
+      try {
+        const msgs = await channel.messages.fetch({ limit: 100 });
+        messageCount = msgs.size;
+      } catch (e) {}
+
+      // جلب القسم من اسم القناة
+      const sectionName = channel.name.replace('تذكرة-', '').split('-')[0] || 'غير معروف';
+
+      const embed = new EmbedBuilder()
+        .setTitle('📋 ملخص التذكرة المغلقة')
+        .setColor(0x2b2d31)
+        .addFields(
+          { name: '📌 القسم', value: sectionName, inline: true },
+          { name: '👤 صاحب التذكرة', value: ticketOwnerId ? `<@${ticketOwnerId}>` : 'غير معروف', inline: true },
+          { name: '🆔 معرف القناة', value: channel.id, inline: true },
+          { name: '📅 تاريخ الإنشاء', value: createdDate.toLocaleString('ar-EG'), inline: true },
+          { name: '💬 عدد الرسائل', value: `${messageCount}`, inline: true },
+          { name: '🔒 أغلق بواسطة', value: `${interaction.user}`, inline: true }
+        )
+        .setTimestamp()
+        .setFooter({ text: 'تم إغلاق التذكرة' });
+
+      // إرسال الملخص لصاحب التذكرة في الخاص
+      if (ticketOwnerId) {
+        try {
+          const owner = await interaction.guild.members.fetch(ticketOwnerId);
+          if (owner) await owner.send({ embeds: [embed] }).catch(() => {});
+        } catch (e) {}
+      }
+
       await interaction.reply({ content: '🔒 جاري إغلاق التذكرة...', ephemeral: true });
-      setTimeout(async () => { await channel.delete(); }, 3000);
+      
+      // حذف القناة بعد 3 ثوانٍ
+      setTimeout(async () => {
+        await channel.delete().catch(() => {});
+        // تحديث حالة التذكرة في قاعدة البيانات (إن وجدت)
+        if (ticketInfo && db.prepare) {
+          db.prepare('UPDATE tickets SET status = ? WHERE channel_id = ?').run('مغلقة', channel.id);
+        }
+      }, 3000);
     }
   }
 
-  // مودال تغيير الاسم
+  // ========== مودال تغيير الاسم ==========
   if (interaction.isModalSubmit() && interaction.customId === 'name_change_modal') {
     const newName = interaction.fields.getTextInputValue('new_name');
     if (newName.length < 2 || newName.length > 32) {
