@@ -70,10 +70,10 @@ function getTicketSettings(guildId) {
   if (!db.ticketSettings[guildId]) {
     db.ticketSettings[guildId] = {
       sections: [
-        { name: 'دعم فني', roleId: null },
-        { name: 'شكوى', roleId: null },
-        { name: 'اقتراح', roleId: null },
-        { name: 'أخرى', roleId: null },
+        { name: 'دعم فني', roleId: null, emoji: '🛠️' },
+        { name: 'شكوى', roleId: null, emoji: '⚠️' },
+        { name: 'اقتراح', roleId: null, emoji: '💡' },
+        { name: 'أخرى', roleId: null, emoji: '📂' },
       ],
       text: 'مرحباً بكم جميعاً في قسم التذاكر، لفتح تذكرة أرجو ضغط على قائمة أدناه و اختيار التذكرة التي تناسبك.',
       image: 'https://i.imgur.com/GkKqN3G.png',
@@ -103,7 +103,7 @@ client.once('ready', () => {
   client.user.setActivity('!مساعدة', { type: 'WATCHING' });
 });
 
-// ========== دالة لجلب الصورة العامة ==========
+// ========== دالة لجلب الصورة العامة (الثيم الداكن) ==========
 function getGeneralImage(guild, config) {
   if (config.generalImage) return config.generalImage;
   if (config.bannerImage) return config.bannerImage;
@@ -116,20 +116,17 @@ async function generateWelcomeImage(member, memberCount) {
   const canvas = createCanvas(1200, 600);
   const ctx = canvas.getContext('2d');
 
-  // خلفية سوداء مع تدرج رمادي
   const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-  gradient.addColorStop(0, '#121212');
-  gradient.addColorStop(0.5, '#1a1a1a');
-  gradient.addColorStop(1, '#0d0d0d');
+  gradient.addColorStop(0, '#1a1a2e');
+  gradient.addColorStop(0.5, '#16213e');
+  gradient.addColorStop(1, '#0f3460');
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // إطار رمادي غامق
-  ctx.strokeStyle = '#333333';
-  ctx.lineWidth = 8;
+  ctx.strokeStyle = '#e94560';
+  ctx.lineWidth = 10;
   ctx.strokeRect(30, 30, canvas.width - 60, canvas.height - 60);
 
-  // صورة المستخدم (دائرية)
   const avatarURL = member.user.displayAvatarURL({ extension: 'png', size: 256 });
   const avatar = await loadImage(avatarURL);
   const radius = 150;
@@ -143,14 +140,12 @@ async function generateWelcomeImage(member, memberCount) {
   ctx.drawImage(avatar, centerX - radius, centerY - radius, radius * 2, radius * 2);
   ctx.restore();
 
-  // إطار دائري رمادي
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
-  ctx.strokeStyle = '#444444';
-  ctx.lineWidth = 6;
+  ctx.strokeStyle = '#e94560';
+  ctx.lineWidth = 8;
   ctx.stroke();
 
-  // نصوص باللون الأبيض والرمادي
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
   ctx.font = 'bold 48px Arial';
@@ -162,12 +157,12 @@ async function generateWelcomeImage(member, memberCount) {
   ctx.fillText(`#${memberCount}`, 450, 280);
 
   ctx.font = '24px Arial';
-  ctx.fillStyle = '#777777';
+  ctx.fillStyle = '#888888';
   ctx.fillText('أهلاً بك في السيرفر!', 450, 360);
 
   ctx.textAlign = 'right';
   ctx.font = '20px Arial';
-  ctx.fillStyle = '#888888';
+  ctx.fillStyle = '#e94560';
   ctx.fillText('TEAM WOLF', canvas.width - 50, canvas.height - 40);
 
   return canvas.toBuffer('image/png');
@@ -229,7 +224,7 @@ client.on('messageCreate', async (message) => {
         { name: '⚙️ الإعدادات', value: '`!تعيين ترحيب #قناة` `!تعيين دور_دخول @دور` `!تعيين صورة_بانل رابط` `!تعيين صورة_رتب رابط` `!تعيين صورة_بنر رابط` `!تعيين صورة_عامة رابط`', inline: false },
         { name: '🎮 عامة', value: '`!بينق` `!سيرفر`', inline: false }
       )
-      .setFooter({ text: `البادئة: !` });
+      .setFooter({ text: `البادئة: ! | الثيم: أسود ورمادي` });
     if (generalImage) embed.setImage(generalImage);
     await message.channel.send({ embeds: [embed] });
     return;
@@ -244,7 +239,7 @@ client.on('messageCreate', async (message) => {
       .setDescription(`**النص:** ${settings.text}`)
       .addFields(
         { name: '📌 الأقسام', value: settings.sections.map((s, i) => 
-          `${i+1}. **${s.name}** ${s.roleId ? `<@&${s.roleId}>` : '(بدون دور)'}`
+          `${i+1}. ${s.emoji || '📌'} **${s.name}** ${s.roleId ? `<@&${s.roleId}>` : '(بدون دور)'}`
         ).join('\n') || 'لا يوجد أقسام', inline: false },
         { name: '🖼️ الصورة', value: settings.image ? `[رابط](${settings.image})` : 'لا توجد صورة', inline: true }
       )
@@ -264,37 +259,58 @@ client.on('messageCreate', async (message) => {
 
     const settings = getTicketSettings(guildId);
 
+    // عرض تعليمات
     if (!sub) {
       const embed = new EmbedBuilder()
         .setTitle('⚙️ إدارة التذاكر')
         .setColor(0x2b2d31)
         .addFields(
-          { name: '➕ إضافة قسم', value: '`!تعيين تذكرة إضافة [الاسم] @دور`' },
+          { name: '➕ إضافة قسم', value: '`!تعيين تذكرة إضافة [الاسم] @دور :ايموجي:`' },
+          { name: '🎨 تعيين إيموجي', value: '`!تعيين تذكرة تعيين_ايموجي [الاسم] :ايموجي:`' },
           { name: '➖ حذف قسم', value: '`!تعيين تذكرة حذف [الاسم]`' },
           { name: '📝 تغيير النص', value: '`!تعيين تذكرة نص [النص]`' },
           { name: '🖼️ تغيير الصورة', value: '`!تعيين تذكرة صورة [رابط]`' },
           { name: '👀 عرض الإعدادات', value: '`!عرض_تذكرة`' }
         )
-        .setFooter({ text: 'الأقسام الحالية: ' + settings.sections.map(s => s.name).join(', ') });
+        .setFooter({ text: 'الأقسام الحالية: ' + settings.sections.map(s => `${s.emoji || '📌'} ${s.name}`).join(', ') });
       if (generalImage) embed.setImage(generalImage);
       await message.channel.send({ embeds: [embed] });
       return;
     }
 
+    // إضافة قسم
     if (sub === 'إضافة') {
-      const nameMatch = value.match(/^(.+?)\s+<@&(\d+)>$/);
-      if (!nameMatch) return message.reply('⚠️ الصيغة: `!تعيين تذكرة إضافة [الاسم] @دور`');
-      const sectionName = nameMatch[1].trim();
-      const roleId = nameMatch[2];
+      // محاولة استخراج الاسم، الرول، والإيموجي
+      const parts = value.match(/^(.+?)\s+<@&(\d+)>\s*(\S+)?$/);
+      if (!parts) return message.reply('⚠️ الصيغة: `!تعيين تذكرة إضافة [الاسم] @دور :ايموجي:` (الإيموجي اختياري)');
+      const sectionName = parts[1].trim();
+      const roleId = parts[2];
+      const emoji = parts[3] || '📌';
+      
       if (settings.sections.find(s => s.name === sectionName)) {
         return message.reply(`⚠️ قسم "${sectionName}" موجود بالفعل.`);
       }
-      settings.sections.push({ name: sectionName, roleId });
+      settings.sections.push({ name: sectionName, roleId, emoji });
       saveTicketSettings(guildId, settings);
-      await message.reply(`✅ تم إضافة قسم **${sectionName}** مع دور <@&${roleId}>.`);
+      await message.reply(`✅ تم إضافة قسم **${sectionName}** مع دور <@&${roleId}> وإيموجي ${emoji}.`);
       return;
     }
 
+    // تعيين إيموجي لقسم موجود
+    if (sub === 'تعيين_ايموجي') {
+      const parts = value.match(/^(.+?)\s+(\S+)$/);
+      if (!parts) return message.reply('⚠️ الصيغة: `!تعيين تذكرة تعيين_ايموجي [الاسم] :ايموجي:`');
+      const sectionName = parts[1].trim();
+      const emoji = parts[2];
+      const section = settings.sections.find(s => s.name === sectionName);
+      if (!section) return message.reply(`⚠️ قسم "${sectionName}" غير موجود.`);
+      section.emoji = emoji;
+      saveTicketSettings(guildId, settings);
+      await message.reply(`✅ تم تعيين الإيموجي ${emoji} لقسم **${sectionName}**.`);
+      return;
+    }
+
+    // حذف قسم
     if (sub === 'حذف') {
       const sectionName = value.trim();
       const index = settings.sections.findIndex(s => s.name === sectionName);
@@ -305,6 +321,7 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
+    // تغيير النص
     if (sub === 'نص') {
       if (!value) return message.reply('⚠️ أدخل النص الجديد.');
       settings.text = value;
@@ -313,6 +330,7 @@ client.on('messageCreate', async (message) => {
       return;
     }
 
+    // تغيير الصورة
     if (sub === 'صورة') {
       if (!value) return message.reply('⚠️ أدخل رابط الصورة.');
       settings.image = value;
@@ -345,7 +363,7 @@ client.on('messageCreate', async (message) => {
     const options = settings.sections.map(s => ({
       label: s.name,
       value: s.name,
-      emoji: '📌',
+      emoji: s.emoji || '📌',
     }));
 
     if (options.length === 0) {
@@ -543,9 +561,9 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // أزرار
+  // ========== أزرار ==========
   if (interaction.isButton()) {
-    // أزرار رتب الإشعارات
+    // أزرار رتب الإشعارات (ثيم رمادي)
     if (['role_game', 'role_event', 'role_ajr'].includes(interaction.customId)) {
       const roleMap = {
         role_game: 'Game Notice',
@@ -590,7 +608,7 @@ client.on('interactionCreate', async (interaction) => {
       await interaction.showModal(modal);
     }
 
-    // زر إغلاق التذكرة
+    // زر إغلاق التذكرة (ثيم رمادي)
     if (interaction.customId === 'close_ticket') {
       const channel = interaction.channel;
       if (!channel.name.startsWith('تذكرة-')) return interaction.reply({ content: '⚠️ هذه ليست قناة تذكرة.', ephemeral: true });
@@ -599,7 +617,7 @@ client.on('interactionCreate', async (interaction) => {
     }
   }
 
-  // مودال تغيير الاسم
+  // ========== مودال تغيير الاسم ==========
   if (interaction.isModalSubmit() && interaction.customId === 'name_change_modal') {
     const newName = interaction.fields.getTextInputValue('new_name');
     if (newName.length < 2 || newName.length > 32) {
