@@ -28,7 +28,6 @@ if (!TOKEN) {
   console.error('❌ DISCORD_TOKEN غير موجود');
   process.exit(1);
 }
-const OWNER_ID = process.env.OWNER_ID || null;
 
 // ========== قاعدة البيانات ==========
 const db = {
@@ -41,7 +40,6 @@ const db = {
   autoReplies: {},
   users: {},
   levelRoles: {},
-  controllers: {}, // guildId: [userId, ...]
 };
 
 function saveDB() {
@@ -52,19 +50,6 @@ function loadDB() {
 }
 loadDB();
 setInterval(saveDB, 60000);
-
-// ========== دوال الصلاحيات ==========
-function isController(userId, guildId) {
-  if (OWNER_ID && userId === OWNER_ID) return true;
-  if (!db.controllers[guildId]) db.controllers[guildId] = [];
-  return db.controllers[guildId].includes(userId);
-}
-
-function hasPermission(member, guildId) {
-  if (!member) return false;
-  if (OWNER_ID && member.id === OWNER_ID) return true;
-  return isController(member.id, guildId);
-}
 
 // ========== دوال الإعدادات ==========
 function getGuildConfig(guildId) {
@@ -204,31 +189,58 @@ client.once('ready', () => {
 });
 
 // ============================================================
-// ========== نظام اللوق المتكامل ==========
+// ========== نظام اللوق المتكامل (معدل) ==========
 // ============================================================
 
 async function logToChannel(guildId, data) {
+  console.log(`🔍 محاولة إرسال لوق إلى السيرفر ${guildId}`);
   const config = getGuildConfig(guildId);
-  if (!config.logChannel) return;
+  console.log(`📋 إعدادات اللوق:`, config.logChannel);
+
+  if (!config.logChannel) {
+    console.log('⚠️ لا توجد قناة لوق محددة.');
+    return;
+  }
+
   const channel = client.channels.cache.get(config.logChannel);
-  if (!channel) return;
+  if (!channel) {
+    console.log(`❌ القناة ${config.logChannel} غير موجودة أو لا يمكن رؤيتها.`);
+    return;
+  }
 
-  const embed = new EmbedBuilder()
-    .setColor(data.color || 0x2b2d31)
-    .setTitle(data.title || '📋 سجل')
-    .setDescription(data.description || '')
-    .setTimestamp()
-    .setFooter({ text: data.footer || '' });
+  console.log(`✅ تم العثور على قناة اللوق: ${channel.name}`);
 
-  if (data.fields) {
-    for (const field of data.fields) {
-      embed.addFields(field);
+  try {
+    const embed = new EmbedBuilder()
+      .setColor(data.color || 0x2b2d31)
+      .setTitle(data.title || '📋 سجل')
+      .setDescription(data.description || '')
+      .setTimestamp();
+
+    // ✅ إضافة التذييل فقط إذا كان موجوداً وغير فارغ
+    if (data.footer && typeof data.footer === 'string' && data.footer.trim().length > 0) {
+      embed.setFooter({ text: data.footer.trim() });
+    }
+
+    if (data.fields) {
+      for (const field of data.fields) {
+        embed.addFields(field);
+      }
+    }
+    if (data.thumbnail) embed.setThumbnail(data.thumbnail);
+    if (data.image) embed.setImage(data.image);
+
+    await channel.send({ embeds: [embed] });
+    console.log('✅ تم إرسال اللوق بنجاح.');
+  } catch (error) {
+    console.error('❌ فشل إرسال Embed:', error);
+    try {
+      await channel.send(`📋 **${data.title || 'سجل'}**\n${data.description || ''}`);
+      console.log('✅ تم إرسال اللوق كنص عادي.');
+    } catch (err2) {
+      console.error('❌ فشل حتى إرسال النص العادي:', err2);
     }
   }
-  if (data.thumbnail) embed.setThumbnail(data.thumbnail);
-  if (data.image) embed.setImage(data.image);
-
-  await channel.send({ embeds: [embed] }).catch(() => {});
 }
 
 // ============================================================
@@ -347,6 +359,7 @@ client.on('guildMemberAdd', async (member) => {
     description: `**${member.user.tag}** انضم إلى السيرفر.`,
     fields: [{ name: 'عدد الأعضاء', value: `${memberCount}`, inline: true }],
     thumbnail: member.user.displayAvatarURL(),
+    footer: 'نظام الترحيب',
   });
 });
 
@@ -356,6 +369,7 @@ client.on('guildMemberRemove', async (member) => {
     color: 0xffaa00,
     description: `**${member.user.tag}** غادر السيرفر.`,
     thumbnail: member.user.displayAvatarURL(),
+    footer: 'نظام الترحيب',
   });
 });
 
@@ -365,6 +379,7 @@ client.on('messageDelete', async (message) => {
     title: '🗑️ حذف رسالة',
     color: 0xff0000,
     description: `**المستخدم:** ${message.author?.tag || 'غير معروف'}\n**القناة:** ${message.channel.name}\n**المحتوى:** ${message.content || 'غير مرئي'}`,
+    footer: 'سجلات الرسائل',
   });
 });
 
@@ -379,6 +394,7 @@ client.on('messageUpdate', async (oldMessage, newMessage) => {
       { name: '📜 النص القديم', value: oldMessage.content || 'فارغ', inline: false },
       { name: '📝 النص الجديد', value: newMessage.content || 'فارغ', inline: false },
     ],
+    footer: 'سجلات الرسائل',
   });
 });
 
@@ -488,74 +504,12 @@ client.on('messageCreate', async (message) => {
   const config = getGuildConfig(guildId);
   const generalImage = getGeneralImage(message.guild, config);
 
-  // ========== إدارة المتحكمين ==========
-  if (cmd === 'متحكم') {
-    if (!hasPermission(message.member, guildId)) {
-      return message.reply('❌ ليس لديك صلاحية لتعيين متحكمين.');
-    }
-    const member = message.mentions.members.first();
-    if (!member) return message.reply('⚠️ منشن العضو الذي تريد جعله متحكماً.');
-    if (member.id === client.user.id) return message.reply('❌ لا يمكنني جعل نفسي متحكماً.');
-    if (OWNER_ID && member.id === OWNER_ID) return message.reply('❌ هذا هو مالك البوت، يملك صلاحية مطلقة مسبقاً.');
-    if (isController(member.id, guildId)) {
-      return message.reply(`⚠️ ${member} متحكم بالفعل.`);
-    }
-    if (!db.controllers[guildId]) db.controllers[guildId] = [];
-    db.controllers[guildId].push(member.id);
-    saveDB();
-    await logToChannel(guildId, {
-      title: '🛡️ تعيين متحكم',
-      color: 0x00ff00,
-      description: `**${message.author}** جعل ${member} متحكماً على البوت.`,
-    });
-    await message.reply(`✅ تم جعل ${member} متحكماً على البوت في هذا السيرفر.`);
-    return;
-  }
-
-  if (cmd === 'الغاء_متحكم') {
-    if (!hasPermission(message.member, guildId)) {
-      return message.reply('❌ ليس لديك صلاحية لإزالة متحكمين.');
-    }
-    const member = message.mentions.members.first();
-    if (!member) return message.reply('⚠️ منشن العضو الذي تريد إزالة صلاحيته.');
-    if (OWNER_ID && member.id === OWNER_ID) return message.reply('❌ لا يمكنك إزالة صلاحية مالك البوت.');
-    if (!isController(member.id, guildId)) {
-      return message.reply(`⚠️ ${member} ليس متحكماً.`);
-    }
-    if (!db.controllers[guildId]) db.controllers[guildId] = [];
-    db.controllers[guildId] = db.controllers[guildId].filter(id => id !== member.id);
-    saveDB();
-    await logToChannel(guildId, {
-      title: '🛡️ إلغاء متحكم',
-      color: 0xff0000,
-      description: `**${message.author}** ألغى صلاحية ${member}.`,
-    });
-    await message.reply(`✅ تم إلغاء صلاحية التحكم عن ${member}.`);
-    return;
-  }
-
-  if (cmd === 'قائمة_المتحكمين') {
-    if (!db.controllers[guildId] || db.controllers[guildId].length === 0) {
-      return message.reply('📋 لا يوجد متحكمون في هذا السيرفر.');
-    }
-    const list = db.controllers[guildId].map(id => `<@${id}>`).join('\n');
-    const embed = new EmbedBuilder()
-      .setTitle('🛡️ قائمة المتحكمين')
-      .setColor(0x2b2d31)
-      .setDescription(list)
-      .setTimestamp();
-    if (generalImage) embed.setImage(generalImage);
-    await message.channel.send({ embeds: [embed] });
-    return;
-  }
-
-  // ========== أمر المساعدة (محدث) ==========
+  // ========== أمر المساعدة ==========
   if (cmd === 'مساعدة') {
     const embed = new EmbedBuilder()
       .setTitle('📖 قائمة الأوامر')
       .setColor(0x2b2d31)
       .addFields(
-        { name: '👑 نظام التحكم', value: '`متحكم @شخص` `الغاء_متحكم @شخص` `قائمة_المتحكمين`', inline: false },
         { name: '🛡️ الإدارة', value: '`حظر` `طرد` `كتم` `فك_كتم` `تحذير` `ابطال_تحذيرات` `مسح` `قفل` `فتح`', inline: false },
         { name: '🎭 إدارة الرتب', value: '`اعطاء_رتبة` `سحب_رتبة` `عرض_رتب`', inline: false },
         { name: '📁 إدارة القنوات', value: '`انشاء_قناة` `حذف_قناة` `تغيير_اسم_قناة`', inline: false },
@@ -581,85 +535,125 @@ client.on('messageCreate', async (message) => {
 
   // ========== أمر اختبار اللوق ==========
   if (cmd === 'اختبار_لوق') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
-    if (!config.logChannel) return message.reply('⚠️ لم يتم تعيين قناة اللوق. استخدم `!تعيين سجلات #قناة`.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+
+    console.log('🧪 تنفيذ أمر اختبار اللوق');
+    const config = getGuildConfig(guildId);
+    console.log('📋 الإعدادات الحالية:', config);
+
+    if (!config.logChannel) {
+      console.log('⚠️ لا توجد قناة لوق محددة.');
+      return message.reply('⚠️ لم يتم تعيين قناة اللوق. استخدم `!تعيين سجلات #قناة`.');
+    }
+
     const channel = message.guild.channels.cache.get(config.logChannel);
-    if (!channel) return message.reply('❌ قناة اللوق غير موجودة.');
-    await logToChannel(guildId, {
-      title: '🧪 اختبار اللوق',
-      color: 0x00ff00,
-      description: `✅ اللوق يعمل بنجاح!\n**المنفذ:** ${message.author}`,
-    });
-    await message.reply('✅ تم إرسال رسالة اختبار إلى قناة اللوق.');
+    if (!channel) {
+      console.log(`❌ القناة ${config.logChannel} غير موجودة.`);
+      return message.reply('❌ قناة اللوق غير موجودة أو لا أملك صلاحية رؤيتها.');
+    }
+
+    console.log(`✅ تم العثور على القناة: ${channel.name}`);
+
+    try {
+      await logToChannel(guildId, {
+        title: '🧪 اختبار اللوق',
+        color: 0x00ff00,
+        description: `✅ اللوق يعمل بنجاح!\n**المنفذ:** ${message.author}`,
+        footer: 'رسالة اختبار',
+      });
+      await message.reply('✅ تم إرسال رسالة اختبار إلى قناة اللوق.');
+    } catch (error) {
+      console.error('❌ فشل اختبار اللوق:', error);
+      await message.reply('❌ حدث خطأ أثناء إرسال الاختبار. تحقق من سجلات الكونسول.');
+    }
     return;
   }
 
   // ========== أوامر الترحيب ==========
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'ترحيب') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     const channel = message.mentions.channels.first();
     if (!channel) {
       updateGuildConfig(guildId, { welcomeChannel: null });
-      await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** ألغى قناة الترحيب.` });
+      await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** ألغى قناة الترحيب.`, footer: 'الإعدادات' });
       return message.reply('✅ تم إلغاء تحديد قناة الترحيب.');
     }
     updateGuildConfig(guildId, { welcomeChannel: channel.id });
-    await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** عيّن قناة الترحيب إلى ${channel}.` });
+    await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** عيّن قناة الترحيب إلى ${channel}.`, footer: 'الإعدادات' });
     await message.reply(`✅ تم تعيين قناة الترحيب إلى ${channel}`);
     return;
   }
 
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'رسالة_ترحيب') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     const text = args.slice(1).join(' ');
     if (!text) return message.reply('⚠️ أدخل نص الترحيب الجديد.');
     updateGuildConfig(guildId, { welcomeMessage: text });
-    await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** غيّر نص الترحيب إلى:\n${text}` });
+    await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** غيّر نص الترحيب إلى:\n${text}`, footer: 'الإعدادات' });
     await message.reply(`✅ تم تعيين نص الترحيب:\n${text}`);
     return;
   }
 
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'صورة_ترحيب') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     const url = args.slice(1).join(' ');
     if (!url) {
       updateGuildConfig(guildId, { welcomeImage: null });
-      await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** ألغى صورة الترحيب.` });
+      await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** ألغى صورة الترحيب.`, footer: 'الإعدادات' });
       return message.reply('✅ تم إلغاء صورة الترحيب.');
     }
     updateGuildConfig(guildId, { welcomeImage: url });
-    await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** عيّن صورة الترحيب: ${url}` });
+    await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** عيّن صورة الترحيب: ${url}`, footer: 'الإعدادات' });
     await message.reply(`✅ تم تعيين صورة الترحيب: ${url}`);
     return;
   }
 
+  // ========== أمر تغيير عنوان الترحيب ==========
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'عنوان_ترحيب') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     const text = args.slice(1).join(' ');
     if (!text) return message.reply('⚠️ أدخل العنوان الجديد.');
     updateGuildConfig(guildId, { welcomeTitle: text });
-    await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** غيّر عنوان الترحيب إلى: "${text}"` });
+    await logToChannel(guildId, { title: '⚙️ إعدادات', color: 0x2b2d31, description: `**${message.author}** غيّر عنوان الترحيب إلى: "${text}"`, footer: 'الإعدادات' });
     await message.reply(`✅ تم تعيين عنوان الترحيب: "${text}"`);
     return;
   }
 
   // ========== أمر تعيين قناة اللوق ==========
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'سجلات') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+
     const channel = message.mentions.channels.first();
     if (!channel) {
       updateGuildConfig(guildId, { logChannel: null });
+      console.log('🗑️ تم إلغاء تعيين قناة اللوق.');
       return message.reply('✅ تم إلغاء تعيين قناة اللوق.');
     }
+
     updateGuildConfig(guildId, { logChannel: channel.id });
-    await logToChannel(guildId, { title: '📋 تم تعيين قناة اللوق', color: 0x2b2d31, description: `**${message.author}** عيّن قناة اللوق إلى ${channel}` });
+    console.log(`✅ تم تعيين قناة اللوق إلى ${channel.id} (${channel.name})`);
+
+    const updatedConfig = getGuildConfig(guildId);
+    console.log('📋 الإعدادات بعد التحديث:', updatedConfig);
+
     await message.reply(`✅ تم تعيين قناة اللوق إلى ${channel}`);
+
+    try {
+      await logToChannel(guildId, {
+        title: '📋 تم تعيين قناة اللوق',
+        color: 0x2b2d31,
+        description: `**${message.author}** عيّن هذه القناة كقناة للوق.`,
+        footer: 'الإعدادات',
+      });
+    } catch (e) {
+      console.error('❌ فشل إرسال رسالة التأكيد:', e);
+    }
     return;
   }
 
@@ -737,8 +731,8 @@ client.on('messageCreate', async (message) => {
 
   // ========== أمر اعلان ==========
   if (cmd === 'اعلان') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     let mentionType = 'everyone';
     let text = args.join(' ');
     if (args[0]?.toLowerCase() === 'here') { mentionType = 'here'; text = args.slice(1).join(' '); }
@@ -757,8 +751,8 @@ client.on('messageCreate', async (message) => {
 
   // ========== أوامر الإدارة الأساسية ==========
   if (cmd === 'حظر') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.BanMembers))
+      return message.reply('❌ لا تملك صلاحية حظر.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     const reason = args.join(' ') || 'لا يوجد سبب';
@@ -778,8 +772,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'طرد') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
+      return message.reply('❌ لا تملك صلاحية طرد.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     const reason = args.join(' ') || 'لا يوجد سبب';
@@ -799,8 +793,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'كتم') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles))
+      return message.reply('❌ لا تملك صلاحية كتم.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     const reason = args.join(' ') || 'لا يوجد سبب';
@@ -827,8 +821,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'فك_كتم') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles))
+      return message.reply('❌ لا تملك صلاحية فك الكتم.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     const muteRole = message.guild.roles.cache.find(r => r.name === 'Muted');
@@ -849,8 +843,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'تحذير') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
+      return message.reply('❌ لا تملك صلاحية تحذير.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     const reason = args.join(' ') || 'لا يوجد سبب';
@@ -880,8 +874,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'ابطال_تحذيرات') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.KickMembers))
+      return message.reply('❌ لا تملك صلاحية إبطال التحذيرات.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     clearWarns(member.id, guildId);
@@ -900,8 +894,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'مسح') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages))
+      return message.reply('❌ لا تملك صلاحية مسح.');
     let amount = parseInt(args[0]) || 5;
     if (amount > 100) amount = 100;
     const deleted = await message.channel.bulkDelete(amount, true).catch(() => {});
@@ -917,8 +911,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'قفل') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
+      return message.reply('❌ لا تملك صلاحية قفل.');
     await message.channel.permissionOverwrites.create(message.guild.id, { SendMessages: false });
     const embed = new EmbedBuilder()
       .setTitle('🔒 تم قفل القناة')
@@ -935,8 +929,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'فتح') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
+      return message.reply('❌ لا تملك صلاحية فتح.');
     await message.channel.permissionOverwrites.delete(message.guild.id);
     const embed = new EmbedBuilder()
       .setTitle('🔓 تم فتح القناة')
@@ -954,8 +948,8 @@ client.on('messageCreate', async (message) => {
 
   // ========== إدارة الرتب ==========
   if (cmd === 'اعطاء_رتبة') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles))
+      return message.reply('❌ لا تملك صلاحية إدارة الرتب.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     const role = message.mentions.roles.first();
@@ -978,8 +972,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'سحب_رتبة') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageRoles))
+      return message.reply('❌ لا تملك صلاحية إدارة الرتب.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     const role = message.mentions.roles.first();
@@ -1018,8 +1012,8 @@ client.on('messageCreate', async (message) => {
 
   // ========== إدارة القنوات ==========
   if (cmd === 'انشاء_قناة') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
+      return message.reply('❌ لا تملك صلاحية إنشاء قنوات.');
     const name = args.join(' ');
     if (!name) return message.reply('⚠️ أدخل اسم القناة.');
     const channel = await message.guild.channels.create({ name, type: ChannelType.GuildText });
@@ -1038,8 +1032,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'حذف_قناة') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
+      return message.reply('❌ لا تملك صلاحية حذف قنوات.');
     const channel = message.mentions.channels.first();
     if (!channel) return message.reply('⚠️ منشن القناة.');
     const channelName = channel.name;
@@ -1059,8 +1053,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'تغيير_اسم_قناة') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
+      return message.reply('❌ لا تملك صلاحية تغيير أسماء القنوات.');
     const channel = message.mentions.channels.first();
     if (!channel) return message.reply('⚠️ منشن القناة.');
     const oldName = channel.name;
@@ -1083,8 +1077,8 @@ client.on('messageCreate', async (message) => {
 
   // ========== إدارة الرسائل ==========
   if (cmd === 'تثبيت') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages))
+      return message.reply('❌ لا تملك صلاحية تثبيت الرسائل.');
     const msgId = args[0];
     if (!msgId) return message.reply('⚠️ أدخل معرف الرسالة.');
     try {
@@ -1108,8 +1102,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'الغاء_تثبيت') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages))
+      return message.reply('❌ لا تملك صلاحية إلغاء تثبيت الرسائل.');
     const msgId = args[0];
     if (!msgId) return message.reply('⚠️ أدخل معرف الرسالة.');
     try {
@@ -1134,8 +1128,8 @@ client.on('messageCreate', async (message) => {
 
   // ========== إدارة الصوت ==========
   if (cmd === 'نقل_كل') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.MoveMembers))
+      return message.reply('❌ لا تملك صلاحية نقل الأعضاء.');
     const from = message.mentions.channels.first();
     const to = message.mentions.channels.last();
     if (!from || !to || from.type !== ChannelType.GuildVoice || to.type !== ChannelType.GuildVoice)
@@ -1161,8 +1155,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'طرد_صوتي') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.MoveMembers))
+      return message.reply('❌ لا تملك صلاحية طرد من الروم الصوتي.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     if (!member.voice.channel) return message.reply('⚠️ هذا العضو ليس في روم صوتي.');
@@ -1182,8 +1176,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'كتم_صوتي') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.MuteMembers))
+      return message.reply('❌ لا تملك صلاحية كتم صوتي.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     if (!member.voice.channel) return message.reply('⚠️ هذا العضو ليس في روم صوتي.');
@@ -1203,8 +1197,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'فك_كتم_صوتي') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.MuteMembers))
+      return message.reply('❌ لا تملك صلاحية فك الكتم الصوتي.');
     const member = message.mentions.members.first();
     if (!member) return message.reply('⚠️ منشن العضو.');
     if (!member.voice.channel) return message.reply('⚠️ هذا العضو ليس في روم صوتي.');
@@ -1274,7 +1268,7 @@ client.on('messageCreate', async (message) => {
       .setColor(0x2b2d31)
       .setDescription(`**النص:** ${settings.text}`)
       .addFields(
-        { name: '📌 الأقسام', value: settings.sections.map((s, i) => 
+        { name: '📌 الأقسام', value: settings.sections.map((s, i) =>
           `${i+1}. ${s.emoji || '📌'} **${s.name}** ${s.roleId ? `<@&${s.roleId}>` : '(بدون دور)'}`
         ).join('\n') || 'لا يوجد أقسام', inline: false },
         { name: '🖼️ الصورة', value: settings.image ? `[رابط](${settings.image})` : 'لا توجد صورة', inline: true }
@@ -1286,8 +1280,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'تذكرة') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
 
     const sub = args[1]?.toLowerCase();
     const value = args.slice(2).join(' ');
@@ -1375,8 +1369,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'بانل') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
 
     const settings = getTicketSettings(guildId);
     const imageUrl = settings.image || 'https://i.imgur.com/GkKqN3G.png';
@@ -1415,8 +1409,8 @@ client.on('messageCreate', async (message) => {
 
   // ========== رتب الإشعارات ==========
   if (cmd === 'رتب') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
 
     const defaultImage = 'https://i.imgur.com/7dXe7tM.png';
     const imageUrl = config.rolesImage || defaultImage;
@@ -1472,8 +1466,8 @@ client.on('messageCreate', async (message) => {
 
   // ========== أوامر الأوتو لاين ==========
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'اوتر_لاين') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     const channel = message.mentions.channels.first();
     if (!channel) return message.reply('⚠️ منشن الروم.');
     const text = args.slice(2).join(' ');
@@ -1491,8 +1485,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'صورة_اوترلاين') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     const url = args.slice(1).join(' ');
     if (!url) return message.reply('⚠️ أدخل رابط الصورة.');
     setAutoLine(guildId, { image: url });
@@ -1508,8 +1502,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'تفعيل_اوترلاين') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     setAutoLine(guildId, { enabled: true });
     await logToChannel(guildId, { title: '✅ تفعيل أوتو لاين', color: 0x2b2d31, description: `**${message.author}** فعّل الأوتو لاين.` });
     const embed = new EmbedBuilder()
@@ -1522,8 +1516,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'تعطيل_اوترلاين') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     setAutoLine(guildId, { enabled: false });
     await logToChannel(guildId, { title: '⏹️ تعطيل أوتو لاين', color: 0x2b2d31, description: `**${message.author}** عطّل الأوتو لاين.` });
     const embed = new EmbedBuilder()
@@ -1537,8 +1531,8 @@ client.on('messageCreate', async (message) => {
 
   // ========== أوامر الردود التلقائية ==========
   if (cmd === 'رد_تلقائي') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     const keyword = args[0];
     const reply = args.slice(1).join(' ');
     if (!keyword || !reply) return message.reply('⚠️ الصيغة: `!رد_تلقائي [الكلمة] [الرد]`');
@@ -1555,8 +1549,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'رد_تلقائي_صورة') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     const keyword = args[0];
     const image = args[args.length - 1];
     const reply = args.slice(1, -1).join(' ');
@@ -1576,8 +1570,8 @@ client.on('messageCreate', async (message) => {
   }
 
   if (cmd === 'حذف_رد_تلقائي') {
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
     const keyword = args.join(' ');
     if (!keyword) return message.reply('⚠️ اكتب الكلمة المفتاحية التي تريد حذفها.');
     const removed = removeAutoReply(guildId, keyword);
@@ -1615,8 +1609,8 @@ client.on('messageCreate', async (message) => {
         args[0]?.toLowerCase() === 'صورة_ترحيب' || args[0]?.toLowerCase() === 'سجلات' ||
         args[0]?.toLowerCase() === 'عنوان_ترحيب') return;
 
-    if (!hasPermission(message.member, guildId))
-      return message.reply('❌ تحتاج صلاحية متحكم.');
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
 
     const sub = args[0]?.toLowerCase();
     const value = args.slice(1).join(' ');
