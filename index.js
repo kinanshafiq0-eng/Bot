@@ -11,7 +11,6 @@ const {
   ModalBuilder,
   TextInputBuilder,
   TextInputStyle,
-  Events,
 } = require('discord.js');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
 const express = require('express');
@@ -325,7 +324,6 @@ client.on('guildMemberAdd', async (member) => {
     if (role) await member.roles.add(role).catch(() => {});
   }
 
-  // لوق دخول العضو
   await logToChannel(member.guild.id, {
     title: '👤 عضو جديد',
     color: 0x00ff00,
@@ -486,7 +484,7 @@ client.on('messageCreate', async (message) => {
         { name: '📌 إدارة الرسائل', value: '`تثبيت` `الغاء_تثبيت`', inline: false },
         { name: '📊 المستويات', value: '`مستوى` `ترتيب` `تعيين روم_ليفل #قناة`', inline: false },
         { name: '👋 الترحيب', value: '`تعيين ترحيب #قناة` `تعيين رسالة_ترحيب نص` `تعيين صورة_ترحيب رابط`', inline: false },
-        { name: '📋 اللوق', value: '`تعيين سجلات #قناة`', inline: false },
+        { name: '📋 اللوق', value: '`تعيين سجلات #قناة` `اختبار_لوق`', inline: false },
         { name: '🤖 الأوتو لاين', value: '`تعيين اوتر_لاين #روم نص` `تعيين صورة_اوترلاين رابط` `تعيين تفعيل_اوترلاين` `تعيين تعطيل_اوترلاين`', inline: false },
         { name: '💬 الردود التلقائية', value: '`رد_تلقائي كلمة رد` `رد_تلقائي_صورة كلمة رد رابط` `حذف_رد_تلقائي كلمة` `عرض_الردود`', inline: false },
         { name: '📝 أوامر البوت', value: '`قول نص` `ايمبد [عنوان] ، [وصف]` `اعلان [نص]` `اعلان here [نص]`', inline: false },
@@ -499,6 +497,23 @@ client.on('messageCreate', async (message) => {
       .setFooter({ text: `البادئة: ! | الثيم: أسود ورمادي` });
     if (generalImage) embed.setImage(generalImage);
     await message.channel.send({ embeds: [embed] });
+    return;
+  }
+
+  // ========== أمر اختبار اللوق ==========
+  if (cmd === 'اختبار_لوق') {
+    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
+      return message.reply('❌ تحتاج صلاحية أدمن.');
+    const config = getGuildConfig(guildId);
+    if (!config.logChannel) return message.reply('⚠️ لم يتم تعيين قناة اللوق. استخدم `!تعيين سجلات #قناة`.');
+    const channel = message.guild.channels.cache.get(config.logChannel);
+    if (!channel) return message.reply('❌ قناة اللوق غير موجودة أو لا أملك صلاحية رؤيتها.');
+    await logToChannel(guildId, {
+      title: '🧪 اختبار اللوق',
+      color: 0x00ff00,
+      description: `✅ اللوق يعمل بنجاح!\n**المنفذ:** ${message.author}`,
+    });
+    await message.reply('✅ تم إرسال رسالة اختبار إلى قناة اللوق.');
     return;
   }
 
