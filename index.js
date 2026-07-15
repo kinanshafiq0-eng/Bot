@@ -192,27 +192,50 @@ client.once('ready', () => {
 // ============================================================
 
 async function logToChannel(guildId, data) {
+  console.log(`🔍 محاولة إرسال لوق إلى السيرفر ${guildId}`);
   const config = getGuildConfig(guildId);
-  if (!config.logChannel) return;
+  console.log(`📋 إعدادات اللوق:`, config.logChannel);
+
+  if (!config.logChannel) {
+    console.log('⚠️ لا توجد قناة لوق محددة.');
+    return;
+  }
+
   const channel = client.channels.cache.get(config.logChannel);
-  if (!channel) return;
+  if (!channel) {
+    console.log(`❌ القناة ${config.logChannel} غير موجودة أو لا يمكن رؤيتها.`);
+    return;
+  }
 
-  const embed = new EmbedBuilder()
-    .setColor(data.color || 0x2b2d31)
-    .setTitle(data.title || '📋 سجل')
-    .setDescription(data.description || '')
-    .setTimestamp()
-    .setFooter({ text: data.footer || '' });
+  console.log(`✅ تم العثور على قناة اللوق: ${channel.name}`);
 
-  if (data.fields) {
-    for (const field of data.fields) {
-      embed.addFields(field);
+  try {
+    const embed = new EmbedBuilder()
+      .setColor(data.color || 0x2b2d31)
+      .setTitle(data.title || '📋 سجل')
+      .setDescription(data.description || '')
+      .setTimestamp()
+      .setFooter({ text: data.footer || '' });
+
+    if (data.fields) {
+      for (const field of data.fields) {
+        embed.addFields(field);
+      }
+    }
+    if (data.thumbnail) embed.setThumbnail(data.thumbnail);
+    if (data.image) embed.setImage(data.image);
+
+    await channel.send({ embeds: [embed] });
+    console.log('✅ تم إرسال اللوق بنجاح.');
+  } catch (error) {
+    console.error('❌ فشل إرسال Embed:', error);
+    try {
+      await channel.send(`📋 **${data.title || 'سجل'}**\n${data.description || ''}`);
+      console.log('✅ تم إرسال اللوق كنص عادي.');
+    } catch (err2) {
+      console.error('❌ فشل حتى إرسال النص العادي:', err2);
     }
   }
-  if (data.thumbnail) embed.setThumbnail(data.thumbnail);
-  if (data.image) embed.setImage(data.image);
-
-  await channel.send({ embeds: [embed] }).catch(() => {});
 }
 
 // ============================================================
@@ -504,16 +527,35 @@ client.on('messageCreate', async (message) => {
   if (cmd === 'اختبار_لوق') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
       return message.reply('❌ تحتاج صلاحية أدمن.');
+
+    console.log('🧪 تنفيذ أمر اختبار اللوق');
     const config = getGuildConfig(guildId);
-    if (!config.logChannel) return message.reply('⚠️ لم يتم تعيين قناة اللوق. استخدم `!تعيين سجلات #قناة`.');
+    console.log('📋 الإعدادات الحالية:', config);
+
+    if (!config.logChannel) {
+      console.log('⚠️ لا توجد قناة لوق محددة.');
+      return message.reply('⚠️ لم يتم تعيين قناة اللوق. استخدم `!تعيين سجلات #قناة`.');
+    }
+
     const channel = message.guild.channels.cache.get(config.logChannel);
-    if (!channel) return message.reply('❌ قناة اللوق غير موجودة أو لا أملك صلاحية رؤيتها.');
-    await logToChannel(guildId, {
-      title: '🧪 اختبار اللوق',
-      color: 0x00ff00,
-      description: `✅ اللوق يعمل بنجاح!\n**المنفذ:** ${message.author}`,
-    });
-    await message.reply('✅ تم إرسال رسالة اختبار إلى قناة اللوق.');
+    if (!channel) {
+      console.log(`❌ القناة ${config.logChannel} غير موجودة.`);
+      return message.reply('❌ قناة اللوق غير موجودة أو لا أملك صلاحية رؤيتها.');
+    }
+
+    console.log(`✅ تم العثور على القناة: ${channel.name}`);
+
+    try {
+      await logToChannel(guildId, {
+        title: '🧪 اختبار اللوق',
+        color: 0x00ff00,
+        description: `✅ اللوق يعمل بنجاح!\n**المنفذ:** ${message.author}`,
+      });
+      await message.reply('✅ تم إرسال رسالة اختبار إلى قناة اللوق.');
+    } catch (error) {
+      console.error('❌ فشل اختبار اللوق:', error);
+      await message.reply('❌ حدث خطأ أثناء إرسال الاختبار. تحقق من سجلات الكونسول.');
+    }
     return;
   }
 
@@ -563,14 +605,31 @@ client.on('messageCreate', async (message) => {
   if (cmd === 'تعيين' && args[0]?.toLowerCase() === 'سجلات') {
     if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator))
       return message.reply('❌ تحتاج صلاحية أدمن.');
+
     const channel = message.mentions.channels.first();
     if (!channel) {
       updateGuildConfig(guildId, { logChannel: null });
+      console.log('🗑️ تم إلغاء تعيين قناة اللوق.');
       return message.reply('✅ تم إلغاء تعيين قناة اللوق.');
     }
+
     updateGuildConfig(guildId, { logChannel: channel.id });
-    await logToChannel(guildId, { title: '📋 تم تعيين قناة اللوق', color: 0x2b2d31, description: `**${message.author}** عيّن قناة اللوق إلى ${channel}` });
+    console.log(`✅ تم تعيين قناة اللوق إلى ${channel.id} (${channel.name})`);
+
+    const updatedConfig = getGuildConfig(guildId);
+    console.log('📋 الإعدادات بعد التحديث:', updatedConfig);
+
     await message.reply(`✅ تم تعيين قناة اللوق إلى ${channel}`);
+
+    try {
+      await logToChannel(guildId, {
+        title: '📋 تم تعيين قناة اللوق',
+        color: 0x2b2d31,
+        description: `**${message.author}** عيّن هذه القناة كقناة للوق.`,
+      });
+    } catch (e) {
+      console.error('❌ فشل إرسال رسالة التأكيد:', e);
+    }
     return;
   }
 
