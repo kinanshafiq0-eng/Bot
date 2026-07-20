@@ -13,20 +13,14 @@ const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 
-// دالة أوتوماتيكية لقراءة وتسجيل *جميع* ملفات الخطوط (.ttf / .otf) الموجودة في مجلد fonts تلقائياً
+// تسجيل الخطوط أوتوماتيكياً من مجلد fonts
 const fontsDir = path.join(__dirname, 'fonts');
 if (fs.existsSync(fontsDir)) {
-    const fontFiles = fs.readdirSync(fontsDir);
-    fontFiles.forEach(file => {
+    fs.readdirSync(fontsDir).forEach(file => {
         if (file.endsWith('.ttf') || file.endsWith('.otf')) {
-            const fontPath = path.join(fontsDir, file);
-            const fontName = path.parse(file).name;
-            GlobalFonts.registerFromPath(fontPath, fontName);
-            console.log(`✅ تم تسجيل الخط بنجاح: ${fontName}`);
+            GlobalFonts.registerFromPath(path.join(fontsDir, file), path.parse(file).name);
         }
     });
-} else {
-    console.log("⚠️ تنبيه: مجلد fonts غير موجود، يرجى إنشاؤه وضع ملف الخط داخله.");
 }
 
 const client = new Client({
@@ -37,8 +31,8 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة (أحمر وأسود مع توجيه السهم نحو الفائز ودعم الخطوط الشاملة)
-async function generateRouletteImage(players, winnerIndex) {
+// دالة رسم العجلة مع استقبال زاوية محددة للدوران
+async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
     const canvas = createCanvas(width, height);
@@ -48,11 +42,12 @@ async function generateRouletteImage(players, winnerIndex) {
     const centerY = height / 2;
     const radius = 250;
 
-    const colors = ['#e53935', '#212121']; // أحمر كازينو وأسود داكن
+    const colors = ['#e53935', '#212121']; 
     const sliceAngle = (2 * Math.PI) / players.length;
 
-    // حساب زاوية الدوران لكي يشير السهم تماماً على الفائز
-    const offsetAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
+    // الزاوية الأساسية للفائز مضاف لها زاوية الحركة الوهمية (الإضافية) للدوران
+    const baseAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
+    const offsetAngle = baseAngle + rotationOffset;
 
     for (let i = 0; i < players.length; i++) {
         const startAngle = i * sliceAngle + offsetAngle;
@@ -78,8 +73,7 @@ async function generateRouletteImage(players, winnerIndex) {
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 14 : 18;
-        // استخدام الخط المسجل (مثل Cairo) مع خطوط بديلة لضمان عدم ظهور مربعات
-        ctx.font = `bold ${fontSize}px "Cairo-Bold", "Cairo", sans-serif`;
+        ctx.font = `bold ${fontSize}px "Cairo", "Tajawal", sans-serif`;
         
         ctx.fillText(players[i], radius / 1.5, 0);
         ctx.restore();
@@ -121,8 +115,7 @@ client.on('messageCreate', async message => {
 
     if (message.content === '!roulette') {
         const players = new Set();
-        const MAX_PLAYERS = 20; // الحد الأقصى 20 لاعب
-        
+        const MAX_PLAYERS = 20;
         const endTime = Math.floor(Date.now() / 1000) + 30;
 
         const embed = new EmbedBuilder()
@@ -137,7 +130,6 @@ client.on('messageCreate', async message => {
         const cancelBtn = new ButtonBuilder().setCustomId('cancel').setLabel('إلغاء').setStyle(ButtonStyle.Secondary);
 
         const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn, startBtn, cancelBtn);
-
         const gameMessage = await message.reply({ embeds: [embed], components: [row] });
 
         const collector = gameMessage.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
@@ -150,23 +142,20 @@ client.on('messageCreate', async message => {
                     return interaction.reply({ content: '⚠️ عذراً، العدد مكتمل (20 لاعب)!', ephemeral: true });
                 }
                 players.add(playerName);
-                
             } else if (interaction.customId === 'leave') {
                 players.delete(playerName);
-                
             } else if (interaction.customId === 'start') {
                 if (interaction.user.id !== message.author.id) {
-                    return interaction.reply({ content: '⚠️ صاحب الأمر فقط يمكنه تخطي الوقت وبدء اللعبة!', ephemeral: true });
+                    return interaction.reply({ content: '⚠️ صاحب الأمر فقط يمكنه بدء اللعبة!', ephemeral: true });
                 }
                 if (players.size < 2) {
                     return interaction.reply({ content: '⚠️ نحتاج إلى لاعبين (2) على الأقل للبدء!', ephemeral: true });
                 }
                 collector.stop('start');
                 return;
-                
             } else if (interaction.customId === 'cancel') {
                 if (interaction.user.id !== message.author.id) {
-                    return interaction.reply({ content: '⚠️ صاحب الأمر فقط يمكنه إلغاء اللعبة!', ephemeral: true });
+                    return interaction.reply({ content: '⚠️ صاحب الأمر فقط يمكنه الإلغاء!', ephemeral: true });
                 }
                 collector.stop('cancel');
                 return;
@@ -174,34 +163,49 @@ client.on('messageCreate', async message => {
 
             const playersList = players.size > 0 ? Array.from(players).join('\n') : 'لا يوجد مشاركين حتى الآن.';
             const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `👥 المشاركون (${players.size}/${MAX_PLAYERS}):`, value: playersList });
-            
             await interaction.update({ embeds: [updatedEmbed] });
         });
 
         collector.on('end', async (collected, reason) => {
             if (reason === 'time' || reason === 'start') {
                 if (players.size < 2) {
-                    return gameMessage.edit({ content: '❌ تم إلغاء اللعبة لعدم وجود عدد كافٍ من اللاعبين (أقل من 2).', embeds: [], components: [] });
+                    return gameMessage.edit({ content: '❌ تم إلغاء اللعبة لعدم وجود عدد كافٍ من اللاعبين.', embeds: [], components: [] });
                 }
 
-                await gameMessage.edit({ content: '🔄 جاري تدوير العجلة...', embeds: [], components: [] });
-                
                 const playersArray = Array.from(players);
                 const winnerIndex = Math.floor(Math.random() * playersArray.length);
                 const winner = playersArray[winnerIndex];
 
                 try {
-                    const buffer = await generateRouletteImage(playersArray, winnerIndex);
-                    const attachment = new AttachmentBuilder(buffer, { name: 'roulette.png' });
+                    // تأثير الدوران التفاعلي عبر تحديث الصورة عدة مرات بسرعة (Animation Effect)
+                    await gameMessage.edit({ content: '🎡 **جارِ تدوير العجلة الحقيقية...**', embeds: [], components: [] });
+                    
+                    const rotations = [Math.PI * 4, Math.PI * 2, Math.PI]; // خطوات الدوران التباطئي
+                    for (let rot of rotations) {
+                        const tempBuffer = await generateRouletteImage(playersArray, winnerIndex, rot);
+                        await gameMessage.edit({
+                            content: '🎡 **العجلة تلف بسرعة...**',
+                            files: [new AttachmentBuilder(tempBuffer, { name: 'spinning.png' })]
+                        });
+                        await new Promise(res => setTimeout(res, 800)); // سرعة الانتقال بين الإطارات
+                    }
 
-                    await gameMessage.edit({ content: `🎉 الفائز هو: **${winner}**! 🎯`, files: [attachment] });
+                    // الصورة النهائية الثابتة التي تقف بالتمام على الفائز
+                    const finalBuffer = await generateRouletteImage(playersArray, winnerIndex, 0);
+                    const finalAttachment = new AttachmentBuilder(finalBuffer, { name: 'roulette.png' });
+
+                    await gameMessage.edit({ 
+                        content: `🎉 انتهت الروليت! الفائز هو: **${winner}** 🎯`, 
+                        files: [finalAttachment] 
+                    });
+
                 } catch (error) {
                     console.error(error);
-                    await gameMessage.edit({ content: "❌ حدث خطأ أثناء رسم العجلة." });
+                    await gameMessage.edit({ content: "❌ حدث خطأ أثناء تدوير العجلة." });
                 }
 
             } else if (reason === 'cancel') {
-                await gameMessage.edit({ content: '❌ تم إلغاء اللعبة من قبل صاحب الأمر.', embeds: [], components: [] });
+                await gameMessage.edit({ content: '❌ تم إلغاء اللعبة.', embeds: [], components: [] });
             }
         });
     }
