@@ -9,18 +9,7 @@ const {
     ButtonStyle, 
     ComponentType 
 } = require('discord.js');
-const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
-const path = require('path');
-const fs = require('fs');
-
-// تسجيل الخط والتأكد من وجوده
-const fontPath = path.join(__dirname, 'fonts', 'Cairo.ttf');
-if (fs.existsSync(fontPath)) {
-    GlobalFonts.registerFromPath(fontPath, 'CustomCairo');
-    console.log("✅ تم تحميل وتسجيل خط Cairo بنجاح.");
-} else {
-    console.log("⚠️ تنبيه: ملف Cairo.ttf غير موجود في مجلد fonts، يرجى التأكد من وضعه!");
-}
+const { createCanvas } = require('canvas'); // استخدام المكتبة الكلاسيكية التي تقرأ خطوط النظام مباشرة
 
 const client = new Client({
     intents: [
@@ -30,7 +19,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة مع تصحيح اتجاه وإحداثيات النصوص لتظهر بوضوح ت تام
+// دالة رسم العجلة بدون الحاجة لأي ملفات خطوط خارجية
 async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -68,14 +57,14 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
         let middleAngle = startAngle + sliceAngle / 2;
         ctx.rotate(middleAngle);
 
-        ctx.textAlign = 'right'; // محاذاة النص لليمين لضمان ظهوره بشكل صحيح داخل الشريحة
+        ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 13 : 16;
-        ctx.font = `bold ${fontSize}px "CustomCairo", sans-serif`;
+        // استخدام خط النظام الافتراضي الداعم للشاشات واللغات
+        ctx.font = `bold ${fontSize}px sans-serif`;
         
-        // رسم النص داخل الشريحة بمسافة آمنة عن المركز
         ctx.fillText(players[i], radius - 30, 0);
         ctx.restore();
     }
@@ -92,7 +81,7 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px "CustomCairo", sans-serif';
+    ctx.font = 'bold 18px sans-serif';
     ctx.fillText('ROULETTE', centerX, centerY);
 
     // السهم الجانبي
