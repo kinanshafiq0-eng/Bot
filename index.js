@@ -13,13 +13,13 @@ const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 
-// تحميل وتسجيل الخط من مجلد fonts وتثبيته باسم قياسي
+// تسجيل الخط والتأكد من وجوده
 const fontPath = path.join(__dirname, 'fonts', 'Cairo.ttf');
 if (fs.existsSync(fontPath)) {
     GlobalFonts.registerFromPath(fontPath, 'CustomCairo');
-    console.log("✅ تم تسجيل خط Cairo بنجاح.");
+    console.log("✅ تم تحميل وتسجيل خط Cairo بنجاح.");
 } else {
-    console.log("⚠️ تحذير: ملف الخط غير موجود في مجلد fonts/Cairo.ttf");
+    console.log("⚠️ تنبيه: ملف Cairo.ttf غير موجود في مجلد fonts، يرجى التأكد من وضعه!");
 }
 
 const client = new Client({
@@ -30,7 +30,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة مع التأكد من ظهور الأسماء بوضوح والدوران الحقيقي
+// دالة رسم العجلة مع تصحيح اتجاه وإحداثيات النصوص لتظهر بوضوح ت تام
 async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -65,16 +65,18 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
 
         ctx.save();
         ctx.translate(centerX, centerY);
-        ctx.rotate(startAngle + sliceAngle / 2);
-        ctx.textAlign = 'center';
+        let middleAngle = startAngle + sliceAngle / 2;
+        ctx.rotate(middleAngle);
+
+        ctx.textAlign = 'right'; // محاذاة النص لليمين لضمان ظهوره بشكل صحيح داخل الشريحة
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
         
-        const fontSize = players.length > 12 ? 14 : 18;
-        // استخدام الخط المعرف بدقة لضمان ظهور الأسماء
+        const fontSize = players.length > 12 ? 13 : 16;
         ctx.font = `bold ${fontSize}px "CustomCairo", sans-serif`;
         
-        ctx.fillText(players[i], radius / 1.5, 0);
+        // رسم النص داخل الشريحة بمسافة آمنة عن المركز
+        ctx.fillText(players[i], radius - 30, 0);
         ctx.restore();
     }
 
