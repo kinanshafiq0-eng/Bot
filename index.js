@@ -19,7 +19,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة
+// دالة رسم العجلة (أحمر وأسود مع توجيه السهم نحو الفائز)
 async function generateRouletteImage(players, winnerIndex) {
     const width = 600;
     const height = 600;
@@ -30,25 +30,21 @@ async function generateRouletteImage(players, winnerIndex) {
     const centerY = height / 2;
     const radius = 250;
 
-    // 🔴⚫ تعديل الألوان لتكون أحمر وأسود فقط
     const colors = ['#e53935', '#212121']; // أحمر كازينو وأسود داكن
     const sliceAngle = (2 * Math.PI) / players.length;
 
-    // حساب زاوية الدوران لكي يشير السهم إلى الفائز
+    // حساب زاوية الدوران لكي يشير السهم تماماً على الفائز
     const offsetAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
 
     for (let i = 0; i < players.length; i++) {
         const startAngle = i * sliceAngle + offsetAngle;
         const endAngle = (i + 1) * sliceAngle + offsetAngle;
 
-        // رسم القطعة
         ctx.beginPath();
         ctx.moveTo(centerX, centerY);
         ctx.arc(centerX, centerY, radius, startAngle, endAngle);
         ctx.closePath();
 
-        // التبديل بين الأحمر والأسود
-        // ملاحظة: إذا كان العدد فردياً، ستكون القطعة الأولى والأخيرة بنفس اللون، لتمييزها يمكن إضافة لون ثالث للصفر مستقبلاً
         ctx.fillStyle = colors[i % colors.length];
         ctx.fill();
 
@@ -56,21 +52,16 @@ async function generateRouletteImage(players, winnerIndex) {
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
 
-        // كتابة الأسماء على العجلة
         ctx.save();
         ctx.translate(centerX, centerY);
         ctx.rotate(startAngle + sliceAngle / 2);
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        
-        // لون النص أبيض ليبرز على الأحمر والأسود
         ctx.fillStyle = '#ffffff';
         
-        // تصغير الخط إذا كان العدد كبيراً حتى لا تتداخل الأسماء
-        const fontSize = players.length > 12 ? 14 : 20;
+        const fontSize = players.length > 12 ? 14 : 18;
         ctx.font = `bold ${fontSize}px Arial`;
         
-        // رسم الاسم داخل القطعة
         ctx.fillText(players[i], radius / 1.5, 0);
         ctx.restore();
     }
@@ -78,7 +69,7 @@ async function generateRouletteImage(players, winnerIndex) {
     // الدائرة الوسطى
     ctx.beginPath();
     ctx.arc(centerX, centerY, 70, 0, 2 * Math.PI);
-    ctx.fillStyle = '#121212'; // لون أسود أغمق للمنتصف
+    ctx.fillStyle = '#121212';
     ctx.fill();
     ctx.lineWidth = 3;
     ctx.strokeStyle = '#ffffff';
@@ -111,14 +102,15 @@ client.on('messageCreate', async message => {
 
     if (message.content === '!roulette') {
         const players = new Set();
-        const MAX_PLAYERS = 20;
+        const MAX_PLAYERS = 20; // الحد الأقصى 20 لاعب
         
+        // وقت الانتهاء بعد 30 ثانية
         const endTime = Math.floor(Date.now() / 1000) + 30;
 
         const embed = new EmbedBuilder()
             .setTitle('🎰 عجلة الحظ (Roulette)')
             .setDescription(`اضغط على الأزرار للانضمام!\n⏳ **تبدأ اللعبة تلقائياً:** <t:${endTime}:R>`)
-            .setColor('#e53935') // تم تغيير لون الإيمبد للأحمر
+            .setColor('#e53935')
             .addFields({ name: `👥 المشاركون (0/${MAX_PLAYERS}):`, value: 'لا يوجد مشاركين حتى الآن.' });
 
         const joinBtn = new ButtonBuilder().setCustomId('join').setLabel('انضمام').setStyle(ButtonStyle.Success);
@@ -130,6 +122,7 @@ client.on('messageCreate', async message => {
 
         const gameMessage = await message.reply({ embeds: [embed], components: [row] });
 
+        // مؤقت لمدة 30 ثانية
         const collector = gameMessage.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
         collector.on('collect', async interaction => {
