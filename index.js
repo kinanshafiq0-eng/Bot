@@ -9,7 +9,25 @@ const {
     ButtonStyle, 
     ComponentType 
 } = require('discord.js');
-const { createCanvas } = require('@napi-rs/canvas');
+const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
+const path = require('path');
+const fs = require('fs');
+
+// دالة أوتوماتيكية لقراءة وتسجيل *جميع* ملفات الخطوط (.ttf / .otf) الموجودة في مجلد fonts تلقائياً
+const fontsDir = path.join(__dirname, 'fonts');
+if (fs.existsSync(fontsDir)) {
+    const fontFiles = fs.readdirSync(fontsDir);
+    fontFiles.forEach(file => {
+        if (file.endsWith('.ttf') || file.endsWith('.otf')) {
+            const fontPath = path.join(fontsDir, file);
+            const fontName = path.parse(file).name;
+            GlobalFonts.registerFromPath(fontPath, fontName);
+            console.log(`✅ تم تسجيل الخط بنجاح: ${fontName}`);
+        }
+    });
+} else {
+    console.log("⚠️ تنبيه: مجلد fonts غير موجود، يرجى إنشاؤه وضع ملف الخط داخله.");
+}
 
 const client = new Client({
     intents: [
@@ -19,7 +37,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة مع دعم الترميز الشامل للأسماء
+// دالة رسم العجلة (أحمر وأسود مع توجيه السهم نحو الفائز ودعم الخطوط الشاملة)
 async function generateRouletteImage(players, winnerIndex) {
     const width = 600;
     const height = 600;
@@ -30,9 +48,10 @@ async function generateRouletteImage(players, winnerIndex) {
     const centerY = height / 2;
     const radius = 250;
 
-    const colors = ['#e53935', '#212121']; // أحمر وأسود
+    const colors = ['#e53935', '#212121']; // أحمر كازينو وأسود داكن
     const sliceAngle = (2 * Math.PI) / players.length;
 
+    // حساب زاوية الدوران لكي يشير السهم تماماً على الفائز
     const offsetAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
 
     for (let i = 0; i < players.length; i++) {
@@ -59,8 +78,8 @@ async function generateRouletteImage(players, winnerIndex) {
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 14 : 18;
-        // استخدام خط متوافق مع يونيكود السيرفرات السحابية
-        ctx.font = `bold ${fontSize}px sans-serif`;
+        // استخدام الخط المسجل (مثل Cairo) مع خطوط بديلة لضمان عدم ظهور مربعات
+        ctx.font = `bold ${fontSize}px "Cairo-Bold", "Cairo", sans-serif`;
         
         ctx.fillText(players[i], radius / 1.5, 0);
         ctx.restore();
@@ -78,7 +97,7 @@ async function generateRouletteImage(players, winnerIndex) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px sans-serif';
+    ctx.font = 'bold 18px "Cairo", sans-serif';
     ctx.fillText('ROULETTE', centerX, centerY);
 
     // السهم الجانبي
@@ -102,7 +121,7 @@ client.on('messageCreate', async message => {
 
     if (message.content === '!roulette') {
         const players = new Set();
-        const MAX_PLAYERS = 20;
+        const MAX_PLAYERS = 20; // الحد الأقصى 20 لاعب
         
         const endTime = Math.floor(Date.now() / 1000) + 30;
 
