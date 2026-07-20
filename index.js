@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv5' in process.env ? 'dotenv' : 'dotenv').config();
 const { 
     Client, 
     GatewayIntentBits, 
@@ -9,7 +9,14 @@ const {
     ButtonStyle, 
     ComponentType 
 } = require('discord.js');
-const { createCanvas } = require('@napi-rs/canvas');
+const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
+
+// محاولة تسجيل خط النظام الافتراضي لكي يدعم الحروف بدون اختفاء
+try {
+    GlobalFonts.registerFromPath('/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf', 'DejaVuSans');
+} catch (e) {
+    // إذا لم يتوفر هذا المسار، سيستخدم النظام خط الإحتياط التلقائي
+}
 
 const client = new Client({
     intents: [
@@ -19,8 +26,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة (تستخدم أرقام الشرائح والرموز لضمان ظهور التصميم دائماً بدون مشاكل خطوط)
-async function generateRouletteImage(playersCount, winnerIndex, rotationOffset = 0) {
+async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
     const canvas = createCanvas(width, height);
@@ -31,12 +37,12 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
     const radius = 250;
 
     const colors = ['#e53935', '#212121']; 
-    const sliceAngle = (2 * Math.PI) / playersCount;
+    const sliceAngle = (2 * Math.PI) / players.length;
 
     const baseAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
     const offsetAngle = baseAngle + rotationOffset;
 
-    for (let i = 0; i < playersCount; i++) {
+    for (let i = 0; i < players.length; i++) {
         const startAngle = i * sliceAngle + offsetAngle;
         const endAngle = (i + 1) * sliceAngle + offsetAngle;
 
@@ -60,14 +66,15 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 18px sans-serif';
         
-        // رسم رقم اللاعب داخل الشريحة لضمان ظهور التصميم ووضوحه التام
-        ctx.fillText(`#${i + 1}`, radius - 40, 0);
+        const fontSize = players.length > 12 ? 12 : 15;
+        // استخدام الخط المسجل أو خط بديل آمن يضمن ظهور النص
+        ctx.font = `bold ${fontSize}px DejaVuSans, Arial, sans-serif`;
+        
+        ctx.fillText(players[i], radius - 30, 0);
         ctx.restore();
     }
 
-    // الدائرة الوسطى
     ctx.beginPath();
     ctx.arc(centerX, centerY, 70, 0, 2 * Math.PI);
     ctx.fillStyle = '#121212';
@@ -79,10 +86,9 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px sans-serif';
+    ctx.font = 'bold 16px DejaVuSans, Arial, sans-serif';
     ctx.fillText('ROULETTE', centerX, centerY);
 
-    // السهم الجانبي لتحديد الفائز
     ctx.beginPath();
     ctx.moveTo(centerX + radius + 5, centerY);
     ctx.lineTo(centerX + radius + 35, centerY - 15);
@@ -149,12 +155,7 @@ client.on('messageCreate', async message => {
                 return;
             }
 
-            // عرض قائمة اللاعبين الحقيقية بالأسماء العربية والإنجليزية في الـ Embed بوضوح تام
-            const playersArray = Array.from(players);
-            const playersList = playersArray.length > 0 
-                ? playersArray.map((p, idx) => `**${idx + 1}.** ${p}`).join('\n') 
-                : 'لا يوجد مشاركين حتى الآن.';
-
+            const playersList = players.size > 0 ? Array.from(players).join('\n') : 'لا يوجد مشاركين حتى الآن.';
             const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `👥 المشاركون (${players.size}/${MAX_PLAYERS}):`, value: playersList });
             await interaction.update({ embeds: [updatedEmbed] });
         });
@@ -174,20 +175,19 @@ client.on('messageCreate', async message => {
                     
                     const rotations = [Math.PI * 6, Math.PI * 4, Math.PI * 2, Math.PI];
                     for (let rot of rotations) {
-                        const tempBuffer = await generateRouletteImage(playersArray.length, winnerIndex, rot);
+                        const tempBuffer = await generateRouletteImage(playersArray, winnerIndex, rot);
                         await gameMessage.edit({
                             content: '🎡 **العجلة تلف بسرعة...**',
                             files: [new AttachmentBuilder(tempBuffer, { name: 'spinning.png' })]
                         });
-                        await new RoomDelay || new Promise(res => setTimeout(res, 600));
+                        await new Promise(res => setTimeout(res, 600));
                     }
 
-                    const finalBuffer = await generateRouletteImage(playersArray.length, winnerIndex, 0);
+                    const finalBuffer = await generateRouletteImage(playersArray, winnerIndex, 0);
                     const finalAttachment = new AttachmentBuilder(finalBuffer, { name: 'roulette.png' });
 
-                    // إعلان الفائز بالاسم العربي الحقيقي بوضوح تام في نص الرسالة وربطه برقم الشريحة على العجلة
                     await gameMessage.edit({ 
-                        content: `🎉 **انتهت الروليت!**\n🏆 الفائز هو رقم **#${winnerIndex + 1}** (${winner}) 🎯`, 
+                        content: `🎉 انتهت الروليت! الفائز هو: **${winner}** 🎯`, 
                         files: [finalAttachment] 
                     });
 
