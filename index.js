@@ -21,8 +21,8 @@ if (!TOKEN) { console.error('❌ DISCORD_TOKEN غير موجود'); process.exit
 
 // ========== قاعدة البيانات ==========
 const db = {
-  users: {}, // userId: { balance, lastDaily, gamesPlayed, wins }
-  gameCooldowns: {}, // userId: { gameName: timestamp }
+  users: {},
+  gameCooldowns: {},
 };
 
 function saveDB() { try { fs.writeFileSync('./database.json', JSON.stringify(db, null, 2)); } catch (e) {} }
@@ -42,12 +42,6 @@ function getBalance(userId) {
   return getUser(userId).balance;
 }
 
-function addBalance(userId, amount) {
-  const user = getUser(userId);
-  user.balance += amount;
-  return user.balance;
-}
-
 function setBalance(userId, amount) {
   const user = getUser(userId);
   user.balance = amount;
@@ -57,8 +51,7 @@ function setBalance(userId, amount) {
 function checkCooldown(userId, game, cooldownSeconds = 10) {
   const key = `${userId}-${game}`;
   if (db.gameCooldowns[key] && Date.now() - db.gameCooldowns[key] < cooldownSeconds * 1000) {
-    const remaining = Math.ceil((cooldownSeconds * 1000 - (Date.now() - db.gameCooldowns[key])) / 1000);
-    return remaining;
+    return Math.ceil((cooldownSeconds * 1000 - (Date.now() - db.gameCooldowns[key])) / 1000);
   }
   db.gameCooldowns[key] = Date.now();
   return 0;
@@ -66,7 +59,7 @@ function checkCooldown(userId, game, cooldownSeconds = 10) {
 
 function randomColor() {
   const colors = ['🔴', '⚫', '🟢'];
-  const weights = [18, 18, 1]; // 18 أحمر، 18 أسود، 1 أخضر (صفر)
+  const weights = [18, 18, 1];
   const total = weights.reduce((a, b) => a + b, 0);
   let rand = Math.random() * total;
   for (let i = 0; i < weights.length; i++) {
@@ -77,7 +70,7 @@ function randomColor() {
 }
 
 function randomNumber() {
-  return Math.floor(Math.random() * 37); // 0-36
+  return Math.floor(Math.random() * 37);
 }
 
 // ========== العميل ==========
@@ -108,7 +101,7 @@ client.on('messageCreate', async (message) => {
   const userId = message.author.id;
   const user = getUser(userId);
 
-  // ========== أمر الرصيد ==========
+  // ========== الرصيد ==========
   if (cmd === 'رصيد') {
     const member = message.mentions.members.first() || message.member;
     const balance = getBalance(member.id);
@@ -122,7 +115,7 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== أمر يومية ==========
+  // ========== يومية ==========
   if (cmd === 'يومية') {
     const userData = getUser(userId);
     if (userData.lastDaily) {
@@ -143,22 +136,22 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== أمر قائمة الألعاب ==========
+  // ========== قائمة الألعاب ==========
   if (cmd === 'ألعاب') {
     const embed = new EmbedBuilder()
       .setTitle('🎮 قائمة الألعاب')
       .setColor(0xcc0000)
-      .setDescription(`
-        🎰 **روليت** – ` + '`!روليت [مبلغ] [لون/رقم]`\n' +
+      .setDescription(
+        `🎰 **روليت** – !روليت [مبلغ] [لون/رقم]\n` +
         `   الألوان: 🔴 أحمر، ⚫ أسود، 🟢 أخضر (صفر)\n` +
         `   الأرقام: 0-36\n` +
-        `♻️ **ريبيلكا** – ` + '`!ريبيلكا [مبلغ]`\n' +
-        `✊ **حجر ورقة مقص** – ` + '`!rps [مبلغ] [حجر/ورقة/مقص]`\n` +
-        `🎲 **رمية النرد** – ` + '`!نرد [مبلغ] [رقم]`\n` +
-        `🔢 **تخمين الرقم** – ` + '`!تخمين [مبلغ] [رقم]`\n` +
-        `🃏 **سحب بطاقة** – ` + '`!بطاقة [مبلغ]`\n` +
-        `🎰 **سلوت** – ` + '`!سلوت [مبلغ]`\n` +
-        `🃏 **بلاك جاك** – ` + '`!بلاك [مبلغ]`\n` +
+        `♻️ **ريبيلكا** – !ريبيلكا [مبلغ]\n` +
+        `✊ **حجر ورقة مقص** – !rps [مبلغ] [حجر/ورقة/مقص]\n` +
+        `🎲 **رمية النرد** – !نرد [مبلغ] [رقم 1-6]\n` +
+        `🔢 **تخمين الرقم** – !تخمين [مبلغ] [رقم 1-20]\n` +
+        `🃏 **سحب بطاقة** – !بطاقة [مبلغ]\n` +
+        `🎰 **سلوت** – !سلوت [مبلغ]\n` +
+        `🃏 **بلاك جاك** – !بلاك [مبلغ]\n` +
         `\n💰 **رصيدك:** ${user.balance} دولار`
       )
       .setTimestamp();
@@ -172,7 +165,6 @@ client.on('messageCreate', async (message) => {
     const bet = args.slice(1).join(' ');
     if (!amount || amount <= 0) return message.reply('⚠️ أدخل مبلغاً موجباً.');
     if (amount > user.balance) return message.reply(`⚠️ رصيدك غير كافٍ. لديك ${user.balance} دولار.`);
-
     const cooldown = checkCooldown(userId, 'roulette', 5);
     if (cooldown) return message.reply(`⏳ انتظر ${cooldown} ثانية قبل اللعب مرة أخرى.`);
 
@@ -181,27 +173,20 @@ client.on('messageCreate', async (message) => {
     let resultNumber = 0;
     let win = false;
 
-    // لون أو رقم
     const isNumber = !isNaN(bet) && parseInt(bet) >= 0 && parseInt(bet) <= 36;
     const isColor = ['🔴', '⚫', '🟢', 'أحمر', 'أسود', 'أخضر', 'red', 'black', 'green'].includes(bet?.toLowerCase());
 
     if (isNumber) {
       resultNumber = randomNumber();
       resultColor = resultNumber === 0 ? '🟢' : resultNumber % 2 === 0 ? '⚫' : '🔴';
-      if (parseInt(bet) === resultNumber) {
-        win = true;
-        winMultiplier = 36;
-      }
+      if (parseInt(bet) === resultNumber) { win = true; winMultiplier = 36; }
     } else if (isColor) {
       resultNumber = randomNumber();
       resultColor = resultNumber === 0 ? '🟢' : resultNumber % 2 === 0 ? '⚫' : '🔴';
       const betColor = bet.includes('أحمر') || bet.includes('red') ? '🔴'
         : bet.includes('أسود') || bet.includes('black') ? '⚫'
         : '🟢';
-      if (betColor === resultColor) {
-        win = true;
-        winMultiplier = betColor === '🟢' ? 14 : 2;
-      }
+      if (betColor === resultColor) { win = true; winMultiplier = betColor === '🟢' ? 14 : 2; }
     } else {
       return message.reply('⚠️ راهن على لون (🔴 أحمر، ⚫ أسود، 🟢 أخضر) أو رقم (0-36)');
     }
@@ -216,11 +201,11 @@ client.on('messageCreate', async (message) => {
     const embed = new EmbedBuilder()
       .setTitle('🎰 روليت')
       .setColor(win ? 0x00ff00 : 0xff0000)
-      .setDescription(`
-        **النتيجة:** ${resultColor} **${resultNumber}**
-        ${win ? `🎉 **فزت!** +${winAmount} دولار` : `😔 **خسرت!** -${amount} دولار`}
-        **الرصيد الجديد:** ${newBalance} دولار
-      `)
+      .setDescription(
+        `**النتيجة:** ${resultColor} **${resultNumber}**\n` +
+        `${win ? `🎉 **فزت!** +${winAmount} دولار` : `😔 **خسرت!** -${amount} دولار`}\n` +
+        `**الرصيد الجديد:** ${newBalance} دولار`
+      )
       .setTimestamp();
     await message.channel.send({ embeds: [embed] });
     return;
@@ -231,7 +216,6 @@ client.on('messageCreate', async (message) => {
     const amount = parseInt(args[0]);
     if (!amount || amount <= 0) return message.reply('⚠️ أدخل مبلغاً موجباً.');
     if (amount > user.balance) return message.reply(`⚠️ رصيدك غير كافٍ. لديك ${user.balance} دولار.`);
-
     const cooldown = checkCooldown(userId, 'replica', 5);
     if (cooldown) return message.reply(`⏳ انتظر ${cooldown} ثانية قبل اللعب مرة أخرى.`);
 
@@ -261,11 +245,11 @@ client.on('messageCreate', async (message) => {
     const embed = new EmbedBuilder()
       .setTitle('♻️ ريبيلكا')
       .setColor(win ? 0x00ff00 : 0xff0000)
-      .setDescription(`
-        **${reel1} | ${reel2} | ${reel3}**
-        ${win ? `🎉 **فزت!** +${winAmount} دولار (x${winMultiplier})` : `😔 **خسرت!** -${amount} دولار`}
-        **الرصيد الجديد:** ${newBalance} دولار
-      `)
+      .setDescription(
+        `**${reel1} | ${reel2} | ${reel3}**\n` +
+        `${win ? `🎉 **فزت!** +${winAmount} دولار (x${winMultiplier})` : `😔 **خسرت!** -${amount} دولار`}\n` +
+        `**الرصيد الجديد:** ${newBalance} دولار`
+      )
       .setTimestamp();
     await message.channel.send({ embeds: [embed] });
     return;
@@ -277,8 +261,7 @@ client.on('messageCreate', async (message) => {
     const choice = args[1]?.toLowerCase();
     if (!amount || amount <= 0) return message.reply('⚠️ أدخل مبلغاً موجباً.');
     if (amount > user.balance) return message.reply(`⚠️ رصيدك غير كافٍ. لديك ${user.balance} دولار.`);
-    if (!['حجر', 'ورقة', 'مقص'].includes(choice)) return message.reply('⚠️ اختر: `حجر`، `ورقة`، أو `مقص`.');
-
+    if (!['حجر', 'ورقة', 'مقص'].includes(choice)) return message.reply('⚠️ اختر: حجر، ورقة، أو مقص.');
     const cooldown = checkCooldown(userId, 'rps', 3);
     if (cooldown) return message.reply(`⏳ انتظر ${cooldown} ثانية قبل اللعب مرة أخرى.`);
 
@@ -287,15 +270,13 @@ client.on('messageCreate', async (message) => {
     let win = false;
 
     if (choice === botChoice) {
-      // تعادل
       const embed = new EmbedBuilder()
         .setTitle('✊ حجر ورقة مقص')
         .setColor(0xffaa00)
-        .setDescription(`
-          أنت: ${emojis[choice]} | البوت: ${emojis[botChoice]}
-          🤝 **تعادل!** استعد رصيدك.
-          **الرصيد:** ${user.balance} دولار
-        `)
+        .setDescription(
+          `أنت: ${emojis[choice]} | البوت: ${emojis[botChoice]}\n` +
+          `🤝 **تعادل!** استعد رصيدك.\n**الرصيد:** ${user.balance} دولار`
+        )
         .setTimestamp();
       await message.channel.send({ embeds: [embed] });
       return;
@@ -319,24 +300,23 @@ client.on('messageCreate', async (message) => {
     const embed = new EmbedBuilder()
       .setTitle('✊ حجر ورقة مقص')
       .setColor(win ? 0x00ff00 : 0xff0000)
-      .setDescription(`
-        أنت: ${emojis[choice]} | البوت: ${emojis[botChoice]}
-        ${win ? `🎉 **فزت!** +${winAmount} دولار` : `😔 **خسرت!** -${amount} دولار`}
-        **الرصيد الجديد:** ${newBalance} دولار
-      `)
+      .setDescription(
+        `أنت: ${emojis[choice]} | البوت: ${emojis[botChoice]}\n` +
+        `${win ? `🎉 **فزت!** +${winAmount} دولار` : `😔 **خسرت!** -${amount} دولار`}\n` +
+        `**الرصيد الجديد:** ${newBalance} دولار`
+      )
       .setTimestamp();
     await message.channel.send({ embeds: [embed] });
     return;
   }
 
-  // ========== رمية النرد ==========
+  // ========== نرد ==========
   if (cmd === 'نرد') {
     const amount = parseInt(args[0]);
     const guess = parseInt(args[1]);
     if (!amount || amount <= 0) return message.reply('⚠️ أدخل مبلغاً موجباً.');
     if (amount > user.balance) return message.reply(`⚠️ رصيدك غير كافٍ. لديك ${user.balance} دولار.`);
     if (!guess || guess < 1 || guess > 6) return message.reply('⚠️ خمّن رقماً بين 1 و 6.');
-
     const cooldown = checkCooldown(userId, 'dice', 3);
     if (cooldown) return message.reply(`⏳ انتظر ${cooldown} ثانية قبل اللعب مرة أخرى.`);
 
@@ -352,24 +332,23 @@ client.on('messageCreate', async (message) => {
     const embed = new EmbedBuilder()
       .setTitle('🎲 رمية النرد')
       .setColor(win ? 0x00ff00 : 0xff0000)
-      .setDescription(`
-        🎲 النتيجة: **${result}**
-        ${win ? `🎉 **فزت!** +${winAmount} دولار (x6)` : `😔 **خسرت!** -${amount} دولار`}
-        **الرصيد الجديد:** ${newBalance} دولار
-      `)
+      .setDescription(
+        `🎲 النتيجة: **${result}**\n` +
+        `${win ? `🎉 **فزت!** +${winAmount} دولار (x6)` : `😔 **خسرت!** -${amount} دولار`}\n` +
+        `**الرصيد الجديد:** ${newBalance} دولار`
+      )
       .setTimestamp();
     await message.channel.send({ embeds: [embed] });
     return;
   }
 
-  // ========== تخمين الرقم ==========
+  // ========== تخمين ==========
   if (cmd === 'تخمين') {
     const amount = parseInt(args[0]);
     const guess = parseInt(args[1]);
     if (!amount || amount <= 0) return message.reply('⚠️ أدخل مبلغاً موجباً.');
     if (amount > user.balance) return message.reply(`⚠️ رصيدك غير كافٍ. لديك ${user.balance} دولار.`);
     if (!guess || guess < 1 || guess > 20) return message.reply('⚠️ خمّن رقماً بين 1 و 20.');
-
     const cooldown = checkCooldown(userId, 'guess', 3);
     if (cooldown) return message.reply(`⏳ انتظر ${cooldown} ثانية قبل اللعب مرة أخرى.`);
 
@@ -392,22 +371,21 @@ client.on('messageCreate', async (message) => {
     const embed = new EmbedBuilder()
       .setTitle('🔢 تخمين الرقم')
       .setColor(win ? 0x00ff00 : 0xff0000)
-      .setDescription(`
-        🔢 الرقم الصحيح: **${result}**
-        ${win ? `🎉 **فزت!** +${winAmount} دولار (x${winMultiplier})` : `😔 **خسرت!** -${amount} دولار`}
-        **الرصيد الجديد:** ${newBalance} دولار
-      `)
+      .setDescription(
+        `🔢 الرقم الصحيح: **${result}**\n` +
+        `${win ? `🎉 **فزت!** +${winAmount} دولار (x${winMultiplier})` : `😔 **خسرت!** -${amount} دولار`}\n` +
+        `**الرصيد الجديد:** ${newBalance} دولار`
+      )
       .setTimestamp();
     await message.channel.send({ embeds: [embed] });
     return;
   }
 
-  // ========== سحب بطاقة ==========
+  // ========== بطاقة ==========
   if (cmd === 'بطاقة') {
     const amount = parseInt(args[0]);
     if (!amount || amount <= 0) return message.reply('⚠️ أدخل مبلغاً موجباً.');
     if (amount > user.balance) return message.reply(`⚠️ رصيدك غير كافٍ. لديك ${user.balance} دولار.`);
-
     const cooldown = checkCooldown(userId, 'card', 3);
     if (cooldown) return message.reply(`⏳ انتظر ${cooldown} ثانية قبل اللعب مرة أخرى.`);
 
@@ -415,8 +393,6 @@ client.on('messageCreate', async (message) => {
     const values = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
     const suit = suits[Math.floor(Math.random() * suits.length)];
     const value = values[Math.floor(Math.random() * values.length)];
-
-    // احتمال الفوز: 40%
     const win = Math.random() < 0.4;
     const winMultiplier = win ? 2.5 : 0;
     const winAmount = win ? Math.floor(amount * winMultiplier) : 0;
@@ -429,11 +405,11 @@ client.on('messageCreate', async (message) => {
     const embed = new EmbedBuilder()
       .setTitle('🃏 سحب بطاقة')
       .setColor(win ? 0x00ff00 : 0xff0000)
-      .setDescription(`
-        🃏 البطاقة: **${value}${suit}**
-        ${win ? `🎉 **فزت!** +${winAmount} دولار (x${winMultiplier})` : `😔 **خسرت!** -${amount} دولار`}
-        **الرصيد الجديد:** ${newBalance} دولار
-      `)
+      .setDescription(
+        `🃏 البطاقة: **${value}${suit}**\n` +
+        `${win ? `🎉 **فزت!** +${winAmount} دولار (x${winMultiplier})` : `😔 **خسرت!** -${amount} دولار`}\n` +
+        `**الرصيد الجديد:** ${newBalance} دولار`
+      )
       .setTimestamp();
     await message.channel.send({ embeds: [embed] });
     return;
@@ -444,7 +420,6 @@ client.on('messageCreate', async (message) => {
     const amount = parseInt(args[0]);
     if (!amount || amount <= 0) return message.reply('⚠️ أدخل مبلغاً موجباً.');
     if (amount > user.balance) return message.reply(`⚠️ رصيدك غير كافٍ. لديك ${user.balance} دولار.`);
-
     const cooldown = checkCooldown(userId, 'slots', 5);
     if (cooldown) return message.reply(`⏳ انتظر ${cooldown} ثانية قبل اللعب مرة أخرى.`);
 
@@ -477,11 +452,11 @@ client.on('messageCreate', async (message) => {
     const embed = new EmbedBuilder()
       .setTitle('🎰 سلوت')
       .setColor(win ? 0x00ff00 : 0xff0000)
-      .setDescription(`
-        **${reel1} | ${reel2} | ${reel3}**
-        ${win ? `🎉 **فزت!** +${winAmount} دولار (x${winMultiplier})` : `😔 **خسرت!** -${amount} دولار`}
-        **الرصيد الجديد:** ${newBalance} دولار
-      `)
+      .setDescription(
+        `**${reel1} | ${reel2} | ${reel3}**\n` +
+        `${win ? `🎉 **فزت!** +${winAmount} دولار (x${winMultiplier})` : `😔 **خسرت!** -${amount} دولار`}\n` +
+        `**الرصيد الجديد:** ${newBalance} دولار`
+      )
       .setTimestamp();
     await message.channel.send({ embeds: [embed] });
     return;
@@ -492,7 +467,6 @@ client.on('messageCreate', async (message) => {
     const amount = parseInt(args[0]);
     if (!amount || amount <= 0) return message.reply('⚠️ أدخل مبلغاً موجباً.');
     if (amount > user.balance) return message.reply(`⚠️ رصيدك غير كافٍ. لديك ${user.balance} دولار.`);
-
     const cooldown = checkCooldown(userId, 'blackjack', 10);
     if (cooldown) return message.reply(`⏳ انتظر ${cooldown} ثانية قبل اللعب مرة أخرى.`);
 
@@ -518,11 +492,9 @@ client.on('messageCreate', async (message) => {
     const playerHand = [drawCard(), drawCard()];
     const dealerHand = [drawCard(), drawCard()];
 
-    // حساب القيم
     let playerValue = handValue(playerHand);
     let dealerValue = handValue(dealerHand);
 
-    // لعبة البوت (يسحب حتى 17)
     while (dealerValue < 17) {
       dealerHand.push(drawCard());
       dealerValue = handValue(dealerHand);
@@ -549,18 +521,18 @@ client.on('messageCreate', async (message) => {
     const embed = new EmbedBuilder()
       .setTitle('🃏 بلاك جاك')
       .setColor(win ? 0x00ff00 : push ? 0xffaa00 : 0xff0000)
-      .setDescription(`
-        **أنت:** ${playerCards} (${playerValue})
-        **الموزع:** ${dealerCards} (${dealerValue})
-        ${win ? `🎉 **فزت!** +${winAmount} دولار` : push ? `🤝 **تعادل!** استعد رصيدك.` : `😔 **خسرت!** -${amount} دولار`}
-        **الرصيد الجديد:** ${newBalance} دولار
-      `)
+      .setDescription(
+        `**أنت:** ${playerCards} (${playerValue})\n` +
+        `**الموزع:** ${dealerCards} (${dealerValue})\n` +
+        `${win ? `🎉 **فزت!** +${winAmount} دولار` : push ? `🤝 **تعادل!** استعد رصيدك.` : `😔 **خسرت!** -${amount} دولار`}\n` +
+        `**الرصيد الجديد:** ${newBalance} دولار`
+      )
       .setTimestamp();
     await message.channel.send({ embeds: [embed] });
     return;
   }
 
-  // ========== أمر الترتيب ==========
+  // ========== ترتيب اللاعبين ==========
   if (cmd === 'ترتيب_العاب') {
     const sorted = Object.entries(db.users)
       .sort((a, b) => b[1].balance - a[1].balance)
@@ -581,7 +553,7 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== أمر المساعدة ==========
+  // ========== المساعدة ==========
   if (cmd === 'مساعدة_العاب') {
     const embed = new EmbedBuilder()
       .setTitle('🎮 قائمة الأوامر')
