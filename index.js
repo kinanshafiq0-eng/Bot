@@ -19,7 +19,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة مع تحسين وتكبير الأرقام لضمان ظهورها بوضوح تام
+// دالة رسم العجلة مع تصحيح مكان إظهار الأرقام بدون دوران لضمان ظهورها 100%
 async function generateRouletteImage(playersCount, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -30,13 +30,13 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
     const centerY = height / 2;
     const radius = 250;
 
-    // ألوان واضحة جداً للشرائح (تبديل بين الأحمر الداكن والرمادي الغامق)
-    const colors = ['#c62828', '#212121', '#1565c0', '#2e7d32']; 
+    const colors = ['#e53935', '#212121', '#1565c0', '#2e7d32']; 
     const sliceAngle = (2 * Math.PI) / playersCount;
 
     const baseAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
     const offsetAngle = baseAngle + rotationOffset;
 
+    // 1. رسم الشرائح والألوان
     for (let i = 0; i < playersCount; i++) {
         const startAngle = i * sliceAngle + offsetAngle;
         const endAngle = (i + 1) * sliceAngle + offsetAngle;
@@ -52,25 +52,36 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
         ctx.lineWidth = 4;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
+    }
+
+    // 2. رسم الأرقام بشكل مباشر وثابت في منتصف كل شريحة (لضمان عدم اختفائها أبداً)
+    for (let i = 0; i < playersCount; i++) {
+        const startAngle = i * sliceAngle + offsetAngle;
+        const endAngle = (i + 1) * sliceAngle + offsetAngle;
+        const middleAngle = startAngle + (sliceAngle / 2);
+
+        // حساب الإحداثيات في منتصف مسافة الشريحة
+        const textRadius = radius * 0.65; 
+        const textX = centerX + Math.cos(middleAngle) * textRadius;
+        const textY = centerY + Math.sin(middleAngle) * textRadius;
 
         ctx.save();
-        ctx.translate(centerX, centerY);
-        let middleAngle = startAngle + sliceAngle / 2;
-        ctx.rotate(middleAngle);
-
-        ctx.textAlign = 'right';
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 24px sans-serif'; // تكبير الخط ليكون واضحاً حتماً
+        ctx.font = 'bold 26px sans-serif'; // خط كبير جداً وواضح
         
-        // رسم الرقم داخل الشريحة
-        ctx.fillText(`${i + 1}`, radius - 50, 0);
+        // رسم ظل للنص ليكون بارزاً فوق أي لون خلفية
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 6;
+        
+        ctx.fillText(`${i + 1}`, textX, textY);
         ctx.restore();
     }
 
     // الدائرة الوسطى
     ctx.beginPath();
-    ctx.arc(centerX, centerY, 70, 0, 2 * Math.PI);
+    ctx.arc(centerX, centerY, 60, 0, 2 * Math.PI);
     ctx.fillStyle = '#000000';
     ctx.fill();
     ctx.lineWidth = 4;
@@ -80,7 +91,8 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 20px sans-serif';
+    ctx.font = 'bold 18px sans-serif';
+    ctx.shadowBlur = 0;
     ctx.fillText('SPIN', centerX, centerY);
 
     // السهم الجانبي لتحديد الفائز
@@ -89,7 +101,7 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
     ctx.lineTo(centerX + radius + 40, centerY - 20);
     ctx.lineTo(centerX + radius + 40, centerY + 20);
     ctx.closePath();
-    ctx.fillStyle = '#ffd700'; // سهم ذهبي بارز
+    ctx.fillStyle = '#ffd700';
     ctx.fill();
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#ffffff';
