@@ -19,7 +19,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم عجلة الروليت الحقيقية مع زاوية الدوران المتغيرة
+// دالة رسم العجلة مع ضمان ظهور النصوص بوضوح تام
 async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -30,7 +30,7 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const centerY = height / 2;
     const radius = 250;
 
-    const colors = ['#e53935', '#212121']; // ألوان الكازينو (أحمر وأسود)
+    const colors = ['#e53935', '#212121']; // أحمر وأسود
     const sliceAngle = (2 * Math.PI) / players.length;
 
     const baseAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
@@ -62,9 +62,11 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 13 : 16;
+        // استخدام خط قياسي مدعوم مباشرة من النظام
         ctx.font = `bold ${fontSize}px sans-serif`;
         
-        ctx.fillText(players[i], radius - 30, 0);
+        // رسم اسم اللاعب داخل الشريحة
+        ctx.fillText(players[i], radius - 35, 0);
         ctx.restore();
     }
 
@@ -83,7 +85,7 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     ctx.font = 'bold 18px sans-serif';
     ctx.fillText('ROULETTE', centerX, centerY);
 
-    // السهم الجانبي الذي يحدد الفائز
+    // السهم الجانبي
     ctx.beginPath();
     ctx.moveTo(centerX + radius + 5, centerY);
     ctx.lineTo(centerX + radius + 35, centerY - 15);
@@ -92,7 +94,7 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     ctx.fillStyle = '#e0e0e0';
     ctx.fill();
 
-    return canvas.to2dBuffer ? canvas.to2dBuffer('image/png') : canvas.toBuffer('image/png');
+    return canvas.toBuffer('image/png');
 }
 
 client.on('ready', () => {
@@ -168,7 +170,6 @@ client.on('messageCreate', async message => {
                 try {
                     await gameMessage.edit({ content: '🎡 **جارِ تدوير عجلة الحظ الحقيقية...**', embeds: [], components: [] });
                     
-                    // إطارات الحركة (تلف العجلة وتتدرج في السرعة لتشبه الروليت الحقيقية)
                     const rotations = [Math.PI * 6, Math.PI * 4, Math.PI * 2, Math.PI];
                     for (let rot of rotations) {
                         const tempBuffer = await generateRouletteImage(playersArray, winnerIndex, rot);
@@ -179,7 +180,6 @@ client.on('messageCreate', async message => {
                         await new Promise(res => setTimeout(res, 600));
                     }
 
-                    // الصورة النهائية التي تقف تماماً عند الفائز
                     const finalBuffer = await generateRouletteImage(playersArray, winnerIndex, 0);
                     const finalAttachment = new AttachmentBuilder(finalBuffer, { name: 'roulette.png' });
 
