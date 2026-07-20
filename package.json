@@ -1,14 +1,13 @@
 {
-  "name": "advanced-bot",
+  "name": "games-bot",
   "version": "1.0.0",
-  "description": "بوت ديسكورد شامل مع نظام صلاحيات متدرج",
+  "description": "بوت ألعاب متكامل",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
     "discord.js": "^14.15.2",
-    "@napi-rs/canvas": "^0.1.52",
     "express": "^4.18.2"
   },
   "engines": {
