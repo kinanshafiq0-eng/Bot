@@ -19,7 +19,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة بالأرقام لضمان ظهورها 100% بدون أي مشاكل
+// دالة رسم العجلة مع تحسين وتكبير الأرقام لضمان ظهورها بوضوح تام
 async function generateRouletteImage(playersCount, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -30,7 +30,8 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
     const centerY = height / 2;
     const radius = 250;
 
-    const colors = ['#e53935', '#212121']; 
+    // ألوان واضحة جداً للشرائح (تبديل بين الأحمر الداكن والرمادي الغامق)
+    const colors = ['#c62828', '#212121', '#1565c0', '#2e7d32']; 
     const sliceAngle = (2 * Math.PI) / playersCount;
 
     const baseAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
@@ -48,7 +49,7 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
         ctx.fillStyle = colors[i % colors.length];
         ctx.fill();
 
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4;
         ctx.strokeStyle = '#ffffff';
         ctx.stroke();
 
@@ -60,36 +61,39 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
         ctx.textAlign = 'right';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 20px sans-serif';
+        ctx.font = 'bold 24px sans-serif'; // تكبير الخط ليكون واضحاً حتماً
         
-        // رسم الرقم بوضوح تام داخل الشريحة
-        ctx.fillText(`#${i + 1}`, radius - 40, 0);
+        // رسم الرقم داخل الشريحة
+        ctx.fillText(`${i + 1}`, radius - 50, 0);
         ctx.restore();
     }
 
     // الدائرة الوسطى
     ctx.beginPath();
     ctx.arc(centerX, centerY, 70, 0, 2 * Math.PI);
-    ctx.fillStyle = '#121212';
+    ctx.fillStyle = '#000000';
     ctx.fill();
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 4;
     ctx.strokeStyle = '#ffffff';
     ctx.stroke();
 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px sans-serif';
-    ctx.fillText('ROULETTE', centerX, centerY);
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText('SPIN', centerX, centerY);
 
     // السهم الجانبي لتحديد الفائز
     ctx.beginPath();
     ctx.moveTo(centerX + radius + 5, centerY);
-    ctx.lineTo(centerX + radius + 35, centerY - 15);
-    ctx.lineTo(centerX + radius + 35, centerY + 15);
+    ctx.lineTo(centerX + radius + 40, centerY - 20);
+    ctx.lineTo(centerX + radius + 40, centerY + 20);
     ctx.closePath();
-    ctx.fillStyle = '#e0e0e0';
+    ctx.fillStyle = '#ffd700'; // سهم ذهبي بارز
     ctx.fill();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
 
     return canvas.toBuffer('image/png');
 }
@@ -102,13 +106,13 @@ client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === '!roulette') {
-        const playersMap = new Map(); // تخزين معرف اللاعب مع رقمه (userId -> {name, number})
+        const playersMap = new Map();
         const MAX_PLAYERS = 20;
         const endTime = Math.floor(Date.now() / 1000) + 30;
 
         const embed = new EmbedBuilder()
             .setTitle('🎰 عجلة الحظ (Roulette)')
-            .setDescription(`اضغط على **انضمام** وسيتم إرسال رقمك الخاص بك في رسالة خاصة (Ephemeral)!\n⏳ **تبدأ اللعبة تلقائياً:** <t:${endTime}:R>`)
+            .setDescription(`اضغط على **انضمام** وسيصلك رقمك الخاص في رسالة خاصة!\n⏳ **تبدأ اللعبة تلقائياً:** <t:${endTime}:R>`)
             .setColor('#e53935')
             .addFields({ name: `👥 المشاركون (0/${MAX_PLAYERS}):`, value: 'لا يوجد مشاركين حتى الآن.' });
 
@@ -137,16 +141,14 @@ client.on('messageCreate', async message => {
                 }
 
                 const playerObj = playersMap.get(userId);
-                // إرسال رقمه الخاص له هو فقط (مخفي عن البقية)
                 await interaction.reply({ 
-                    content: `✅ لقد انضممت بنجاح!\n🎟️ **رقمك على العجلة هو:** **#${playerObj.number}**`, 
+                    content: `✅ تم انضمامك بنجاح!\n🎟️ **رقمك على العجلة هو:** **#${playerObj.number}**`, 
                     ephemeral: true 
                 });
 
             } else if (interaction.customId === 'leave') {
                 if (playersMap.has(userId)) {
                     playersMap.delete(userId);
-                    // إعادة ترتيب الأرقام المتبقية تلقائياً
                     let counter = 1;
                     for (let [id, data] of playersMap.entries()) {
                         data.number = counter++;
@@ -172,7 +174,6 @@ client.on('messageCreate', async message => {
                 return;
             }
 
-            // تحديث قائمة المشاركين في الشات بالأسماء والأرقام لكي يعرف الجميع من المشارك
             const playersArray = Array.from(playersMap.values());
             const playersList = playersArray.length > 0 
                 ? playersArray.map(p => `**#${p.number}** - ${p.name}`).join('\n') 
@@ -193,7 +194,7 @@ client.on('messageCreate', async message => {
                 const winnerObj = playersArray[winnerIndex];
 
                 try {
-                    await gameMessage.edit({ content: '🎡 **جارِ تدوير عجلة الحظ الحقيقية...**', embeds: [], components: [] });
+                    await gameMessage.edit({ content: '🎡 **جارِ تدوير العجلة...**', embeds: [], components: [] });
                     
                     const rotations = [Math.PI * 6, Math.PI * 4, Math.PI * 2, Math.PI];
                     for (let rot of rotations) {
@@ -208,7 +209,6 @@ client.on('messageCreate', async message => {
                     const finalBuffer = await generateRouletteImage(playersArray.length, winnerIndex, 0);
                     const finalAttachment = new AttachmentBuilder(finalBuffer, { name: 'roulette.png' });
 
-                    // إعلان الفائز بالاسم العربي ورقم شريحته بوضوح تام
                     await gameMessage.edit({ 
                         content: `🎉 **انتهت الروليت!**\n🎯 الفائز هو صاحب الرقم **#${winnerObj.number}** وهو اللاعب: **${winnerObj.name}** 🏆`, 
                         files: [finalAttachment] 
