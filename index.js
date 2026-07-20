@@ -19,6 +19,17 @@ const client = new Client({
     ]
 });
 
+// دالة مساعدة لعكس النصوص العربية لكي تظهر متصلة وصحيحة
+function fixArabicText(text) {
+    // التحقق مما إذا كان النص يحتوي على حروف عربية
+    const arabicRegex = /[\u0600-\u06FF]/;
+    if (arabicRegex.test(text)) {
+        // قلب الكلمات العربية لتظهر بشكل صحيح في الـ Canvas
+        return text.split(' ').map(word => word.split('').reverse().join('')).reverse().join(' ');
+    }
+    return text;
+}
+
 async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -61,11 +72,12 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 13 : 16;
+        ctx.font = `bold ${fontSize}px sans-serif`;
         
-        // استخدام خط Noto Sans Arabic الذي سيتم تثبيته تلقائياً عبر ملف Aptfile
-        ctx.font = `bold ${fontSize}px "Noto Sans Arabic", sans-serif`;
+        // معالجة الاسم العربي أو الإنجليزي لضمان ظهوره بوضوح تام
+        const displayName = fixArabicText(players[i]);
         
-        ctx.fillText(players[i], radius - 30, 0);
+        ctx.fillText(displayName, radius - 30, 0);
         ctx.restore();
     }
 
@@ -80,7 +92,7 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px "Noto Sans Arabic", sans-serif';
+    ctx.font = 'bold 18px sans-serif';
     ctx.fillText('ROULETTE', centerX, centerY);
 
     ctx.beginPath();
