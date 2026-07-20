@@ -9,15 +9,7 @@ const {
     ButtonStyle, 
     ComponentType 
 } = require('discord.js');
-const { createCanvas, GlobalFonts } = require('@napi-rs/canvas'); // استخدام النسخة الحديثة من كاففاس لدعم الخطوط بسهولة
-const path = require('path');
-
-// تسجيل الخط العربي لكي يقرأه الكانفاس بدون مربعات
-try {
-    GlobalFonts.registerFromPath(path.join(__dirname, 'fonts', 'Cairo.ttf'), 'Cairo');
-} catch (e) {
-    console.log("⚠️ تنبيه: لم يتم العثور على ملف الخط في مجلد fonts، يرجى التأكد من وضعه.");
-}
+const { createCanvas } = require('@napi-rs/canvas');
 
 const client = new Client({
     intents: [
@@ -27,7 +19,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة مع دعم الخط العربي المسجل
+// دالة رسم العجلة مع دعم الترميز الشامل للأسماء
 async function generateRouletteImage(players, winnerIndex) {
     const width = 600;
     const height = 600;
@@ -67,8 +59,8 @@ async function generateRouletteImage(players, winnerIndex) {
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 14 : 18;
-        // استخدام خط Cairo المسجل خصيصاً لدعم العربية
-        ctx.font = `bold ${fontSize}px "Cairo"`;
+        // استخدام خط متوافق مع يونيكود السيرفرات السحابية
+        ctx.font = `bold ${fontSize}px sans-serif`;
         
         ctx.fillText(players[i], radius / 1.5, 0);
         ctx.restore();
@@ -86,7 +78,7 @@ async function generateRouletteImage(players, winnerIndex) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px "Cairo"';
+    ctx.font = 'bold 18px sans-serif';
     ctx.fillText('ROULETTE', centerX, centerY);
 
     // السهم الجانبي
