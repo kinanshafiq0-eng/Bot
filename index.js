@@ -9,7 +9,7 @@ const {
     ButtonStyle, 
     ComponentType 
 } = require('discord.js');
-const { createCanvas } = require('canvas'); // استخدام المكتبة الكلاسيكية التي تقرأ خطوط النظام مباشرة
+const { createCanvas } = require('canvas');
 
 const client = new Client({
     intents: [
@@ -19,7 +19,6 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة بدون الحاجة لأي ملفات خطوط خارجية
 async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -62,14 +61,14 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 13 : 16;
-        // استخدام خط النظام الافتراضي الداعم للشاشات واللغات
-        ctx.font = `bold ${fontSize}px sans-serif`;
+        
+        // استخدام خط Noto Sans Arabic الذي سيتم تثبيته تلقائياً عبر ملف Aptfile
+        ctx.font = `bold ${fontSize}px "Noto Sans Arabic", sans-serif`;
         
         ctx.fillText(players[i], radius - 30, 0);
         ctx.restore();
     }
 
-    // الدائرة الوسطى
     ctx.beginPath();
     ctx.arc(centerX, centerY, 70, 0, 2 * Math.PI);
     ctx.fillStyle = '#121212';
@@ -81,10 +80,9 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px sans-serif';
+    ctx.font = 'bold 18px "Noto Sans Arabic", sans-serif';
     ctx.fillText('ROULETTE', centerX, centerY);
 
-    // السهم الجانبي
     ctx.beginPath();
     ctx.moveTo(centerX + radius + 5, centerY);
     ctx.lineTo(centerX + radius + 35, centerY - 15);
