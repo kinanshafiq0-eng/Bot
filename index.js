@@ -19,8 +19,8 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة مع كتابة أسماء المشاركين بوضوح تام داخل صورة الروليت
-async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
+// دالة رسم العجلة مع إظهار الأرقام (1, 2, 3...) حصراً داخل الشرائح لضمان عدم ظهور المربعات
+async function generateRouletteImage(playersCount, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
     const canvas = createCanvas(width, height);
@@ -31,13 +31,13 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const radius = 250;
 
     const colors = ['#e53935', '#212121', '#1565c0', '#2e7d32', '#6a1b9a', '#f57f17', '#00838f', '#ad1457']; 
-    const sliceAngle = (2 * Math.PI) / players.length;
+    const sliceAngle = (2 * Math.PI) / playersCount;
 
     const baseAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
     const offsetAngle = baseAngle + rotationOffset;
 
     // 1. رسم الشرائح والألوان
-    for (let i = 0; i < players.length; i++) {
+    for (let i = 0; i < playersCount; i++) {
         const startAngle = i * sliceAngle + offsetAngle;
         const endAngle = (i + 1) * sliceAngle + offsetAngle;
 
@@ -54,34 +54,26 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
         ctx.stroke();
     }
 
-    // 2. كتابة أسماء المشاركين داخل الشرائح بخط واضح
-    for (let i = 0; i < players.length; i++) {
+    // 2. رسم الأرقام (1, 2, 3...) في منتصف كل شريحة لضمان ظهورها بوضوح تام
+    for (let i = 0; i < playersCount; i++) {
         const startAngle = i * sliceAngle + offsetAngle;
         const endAngle = (i + 1) * sliceAngle + offsetAngle;
         const middleAngle = startAngle + (sliceAngle / 2);
 
-        ctx.save();
-        ctx.translate(centerX, centerY);
-        ctx.rotate(middleAngle);
+        const textRadius = radius * 0.65; 
+        const textX = centerX + Math.cos(middleAngle) * textRadius;
+        const textY = centerY + Math.sin(middleAngle) * textRadius;
 
-        ctx.textAlign = 'right';
+        ctx.save();
+        ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
+        ctx.font = 'bold 24px Arial, sans-serif';
         
-        // تعديل حجم الخط بناءً على عدد اللاعبين لكي يتناسب مع المساحة
-        const fontSize = players.length > 10 ? 12 : 16;
-        ctx.font = `bold ${fontSize}px Arial, sans-serif`;
-        
-        // ظل خفيف للنص ليكون مقروءاً بوضوح تام فوق الألوان
         ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 4;
-
-        let displayName = players[i];
-        if (displayName.length > 12) {
-            displayName = displayName.substring(0, 10) + '..';
-        }
+        ctx.shadowBlur = 6;
         
-        ctx.fillText(displayName, radius - 35, 0);
+        ctx.fillText(`${i + 1}`, textX, textY);
         ctx.restore();
     }
 
@@ -99,7 +91,7 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
     ctx.font = 'bold 16px Arial, sans-serif';
-    ctx.fillText('ROULETTE', centerX, centerY);
+    ctx.fillText('SPIN', centerX, centerY);
 
     // السهم الجانبي لتحديد الفائز
     ctx.beginPath();
@@ -124,13 +116,13 @@ client.on('messageCreate', async message => {
     if (message.author.bot) return;
 
     if (message.content === '!roulette') {
-        const players = new Set();
-        const MAX_PLAYERS = 15; // حد مناسب جداً لعرض الأسماء بوضوح داخل الصورة
+        const playersMap = new Map();
+        const MAX_PLAYERS = 15;
         const endTime = Math.floor(Date.now() / 1000) + 30;
 
         const embed = new EmbedBuilder()
             .setTitle('🎰 عجلة الحظ (Roulette)')
-            .setDescription(`اضغط على زر **انضمام** ليتم إضافة اسمك مباشرة على صورة العجلة!\n⏳ **تبدأ اللعبة تلقائياً:** <t:${endTime}:R>`)
+            .setDescription(`اضغط على زر **انضمام** وسيتم إعطاؤك رقماً على العجلة!\n⏳ **تبدأ اللعبة تلقائياً:** <t:${endTime}:R>`)
             .setColor('#e53935')
             .addFields({ name: `👥 المشاركون (0/${MAX_PLAYERS}):`, value: 'لا يوجد مشاركين حتى الآن.' });
 
@@ -145,64 +137,75 @@ client.on('messageCreate', async message => {
         const collector = gameMessage.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
         collector.on('collect', async interaction => {
+            const userId = interaction.user.id;
             const playerName = interaction.user.displayName || interaction.user.username;
 
             if (interaction.customId === 'join') {
-                if (players.size >= MAX_PLAYERS && !players.has(playerName)) {
+                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
                     return interaction.reply({ content: '⚠️ عذراً، العدد مكتمل (15 لاعب كحد أقصى)!', ephemeral: true });
                 }
-                players.add(playerName);
-                await interaction.reply({ content: `✅ تم انضمامك وعرض اسمك على العجلة يا **${playerName}**!`, ephemeral: true });
+
+                if (!playersMap.has(userId)) {
+                    const assignedNumber = playersMap.size + 1;
+                    playersMap.set(userId, { name: playerName, number: assignedNumber });
+                }
+
+                const playerObj = playersMap.get(userId);
+                await interaction.reply({ content: `✅ تم انضمامك بنجاح! رقمك على العجلة هو: **#${playerObj.number}**`, ephemeral: true });
+
             } else if (interaction.customId === 'leave') {
-                if (players.has(playerName)) {
-                    players.delete(playerName);
-                    await interaction.reply({ content: '❌ لقد انسحبت من العجلة.', ephemeral: true });
+                if (playersMap.has(userId)) {
+                    playersMap.delete(userId);
+                    let counter = 1;
+                    for (let [id, data] of playersMap.entries()) {
+                        data.number = counter++;
+                    }
+                    await interaction.reply({ content: '❌ لقد انسحبت من العجلة وتم إعادة ترتيب الأرقام.', ephemeral: true });
                 } else {
                     return interaction.reply({ content: '⚠️ أنت لست منضم أصلاً!', ephemeral: true });
                 }
             } else if (interaction.customId === 'start') {
-                if (interaction.user.id !== message.author.id) {
+                if (userId !== message.author.id) {
                     return interaction.reply({ content: '⚠️ صاحب الأمر فقط يمكنه بدء اللعبة!', ephemeral: true });
                 }
-                if (players.size < 2) {
+                if (playersMap.size < 2) {
                     return interaction.reply({ content: '⚠️ نحتاج إلى لاعبين (2) على الأقل للبدء!', ephemeral: true });
                 }
                 collector.stop('start');
                 return;
             } else if (interaction.customId === 'cancel') {
-                if (interaction.user.id !== message.author.id) {
+                if (userId !== message.author.id) {
                     return interaction.reply({ content: '⚠️ صاحب الأمر فقط يمكنه الإلغاء!', ephemeral: true });
                 }
                 collector.stop('cancel');
                 return;
             }
 
-            const playersArray = Array.from(players);
+            const playersArray = Array.from(playersMap.values());
             const playersList = playersArray.length > 0 
-                ? playersArray.map((p, idx) => `**${idx + 1}.** ${p}`).join('\n') 
+                ? playersArray.map(p => `**#${p.number}** - ${p.name}`).join('\n') 
                 : 'لا يوجد مشاركين حتى الآن.';
 
-            const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `👥 المشاركون (${players.size}/${MAX_PLAYERS}):`, value: playersList });
+            const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `👥 المشاركون (${playersMap.size}/${MAX_PLAYERS}):`, value: playersList });
             await gameMessage.edit({ embeds: [updatedEmbed] });
         });
 
         collector.on('end', async (collected, reason) => {
             if (reason === 'time' || reason === 'start') {
-                if (players.size < 2) {
+                if (playersMap.size < 2) {
                     return gameMessage.edit({ content: '❌ تم إلغاء اللعبة لعدم وجود لاعبين كفاية.', embeds: [], components: [] });
                 }
 
-                const playersArray = Array.from(players);
+                const playersArray = Array.from(playersMap.values());
                 const winnerIndex = Math.floor(Math.random() * playersArray.length);
-                const winner = playersArray[winnerIndex];
+                const winnerObj = playersArray[winnerIndex];
 
                 try {
-                    await gameMessage.edit({ content: '🎡 **جارِ تدوير العجلة وأسماء المشاركين تتحرك...**', embeds: [], components: [] });
+                    await gameMessage.edit({ content: '🎡 **جارِ تدوير العجلة والأرقام تتحرك...**', embeds: [], components: [] });
                     
-                    // تأثير حركة الدوران عبر عدة صور متتالية
                     const rotations = [Math.PI * 6, Math.PI * 4, Math.PI * 2, Math.PI];
                     for (let rot of rotations) {
-                        const tempBuffer = await generateRouletteImage(playersArray, winnerIndex, rot);
+                        const tempBuffer = await generateRouletteImage(playersArray.length, winnerIndex, rot);
                         await gameMessage.edit({
                             content: '🎡 **العجلة تلف بسرعة...**',
                             files: [new AttachmentBuilder(tempBuffer, { name: 'spinning.png' })]
@@ -210,13 +213,22 @@ client.on('messageCreate', async message => {
                         await new Promise(res => setTimeout(res, 600));
                     }
 
-                    // الصورة النهائية عند توقف السهم على الفائز
-                    const finalBuffer = await generateRouletteImage(playersArray, winnerIndex, 0);
+                    const finalBuffer = await generateRouletteImage(playersArray.length, winnerIndex, 0);
                     const finalAttachment = new AttachmentBuilder(finalBuffer, { name: 'roulette.png' });
 
+                    const finalPlayersList = playersArray.map(p => p.number === winnerObj.number ? `🏆 **#${p.number} - ${p.name} (الفائز!)**` : `**#${p.number}** - ${p.name}`).join('\n');
+                    
+                    const finalEmbed = new EmbedBuilder()
+                        .setTitle('🎰 نتائج عجلة الحظ')
+                        .setDescription(`🎉 الفائز هو صاحب الرقم **#${winnerObj.number}** وهو اللاعب: **${winnerObj.name}** 🎯`)
+                        .setColor('#ffd700')
+                        .addFields({ name: `👥 قائمة المشاركين النهائية:`, value: finalPlayersList });
+
                     await gameMessage.edit({ 
-                        content: `🎉 **انتهت الروليت!**\n🎯 الفائز الذي استقر عليه السهم هو: **${winner}** 🏆 مبروك!`, 
-                        files: [finalAttachment] 
+                        content: `🎉 **انتهت الروليت!**`, 
+                        embeds: [finalEmbed],
+                        files: [finalAttachment],
+                        components: []
                     });
 
                 } catch (error) {
