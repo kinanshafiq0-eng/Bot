@@ -13,19 +13,13 @@ const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 
-// تسجيل الخطوط أوتوماتيكياً من مجلد fonts إن وجد
-const fontsDir = path.join(__dirname, 'fonts');
-if (fs.existsSync(fontsDir)) {
-    fs.readdirSync(fontsDir).forEach(file => {
-        if (file.endsWith('.ttf') || file.endsWith('.otf')) {
-            try {
-                GlobalFonts.registerFromPath(path.join(fontsDir, file), path.parse(file).name);
-                console.log(`✅ تم تسجيل الخط: ${path.parse(file).name}`);
-            } catch (err) {
-                console.log(`❌ خطأ في تسجيل الخط ${file}`);
-            }
-        }
-    });
+// تحميل وتسجيل الخط من مجلد fonts وتثبيته باسم قياسي
+const fontPath = path.join(__dirname, 'fonts', 'Cairo.ttf');
+if (fs.existsSync(fontPath)) {
+    GlobalFonts.registerFromPath(fontPath, 'CustomCairo');
+    console.log("✅ تم تسجيل خط Cairo بنجاح.");
+} else {
+    console.log("⚠️ تحذير: ملف الخط غير موجود في مجلد fonts/Cairo.ttf");
 }
 
 const client = new Client({
@@ -36,7 +30,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة مع دعم الحركة والخطوط
+// دالة رسم العجلة مع التأكد من ظهور الأسماء بوضوح والدوران الحقيقي
 async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -77,8 +71,8 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 14 : 18;
-        // استخدام الخط المسجل أو العودة للخطوط العامة لتجنب اختفاء النصوص
-        ctx.font = `bold ${fontSize}px "Cairo", "Tajawal", "Amiri", sans-serif`;
+        // استخدام الخط المعرف بدقة لضمان ظهور الأسماء
+        ctx.font = `bold ${fontSize}px "CustomCairo", sans-serif`;
         
         ctx.fillText(players[i], radius / 1.5, 0);
         ctx.restore();
@@ -96,7 +90,7 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px "Cairo", sans-serif';
+    ctx.font = 'bold 18px "CustomCairo", sans-serif';
     ctx.fillText('ROULETTE', centerX, centerY);
 
     // السهم الجانبي
