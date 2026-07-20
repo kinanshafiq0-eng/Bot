@@ -13,12 +13,17 @@ const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
 const path = require('path');
 const fs = require('fs');
 
-// تسجيل الخطوط أوتوماتيكياً من مجلد fonts
+// تسجيل الخطوط أوتوماتيكياً من مجلد fonts إن وجد
 const fontsDir = path.join(__dirname, 'fonts');
 if (fs.existsSync(fontsDir)) {
     fs.readdirSync(fontsDir).forEach(file => {
         if (file.endsWith('.ttf') || file.endsWith('.otf')) {
-            GlobalFonts.registerFromPath(path.join(fontsDir, file), path.parse(file).name);
+            try {
+                GlobalFonts.registerFromPath(path.join(fontsDir, file), path.parse(file).name);
+                console.log(`✅ تم تسجيل الخط: ${path.parse(file).name}`);
+            } catch (err) {
+                console.log(`❌ خطأ في تسجيل الخط ${file}`);
+            }
         }
     });
 }
@@ -31,7 +36,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة مع استقبال زاوية محددة للدوران
+// دالة رسم العجلة مع دعم الحركة والخطوط
 async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -45,7 +50,6 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
     const colors = ['#e53935', '#212121']; 
     const sliceAngle = (2 * Math.PI) / players.length;
 
-    // الزاوية الأساسية للفائز مضاف لها زاوية الحركة الوهمية (الإضافية) للدوران
     const baseAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
     const offsetAngle = baseAngle + rotationOffset;
 
@@ -73,7 +77,8 @@ async function generateRouletteImage(players, winnerIndex, rotationOffset = 0) {
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 14 : 18;
-        ctx.font = `bold ${fontSize}px "Cairo", "Tajawal", sans-serif`;
+        // استخدام الخط المسجل أو العودة للخطوط العامة لتجنب اختفاء النصوص
+        ctx.font = `bold ${fontSize}px "Cairo", "Tajawal", "Amiri", sans-serif`;
         
         ctx.fillText(players[i], radius / 1.5, 0);
         ctx.restore();
@@ -177,20 +182,18 @@ client.on('messageCreate', async message => {
                 const winner = playersArray[winnerIndex];
 
                 try {
-                    // تأثير الدوران التفاعلي عبر تحديث الصورة عدة مرات بسرعة (Animation Effect)
                     await gameMessage.edit({ content: '🎡 **جارِ تدوير العجلة الحقيقية...**', embeds: [], components: [] });
                     
-                    const rotations = [Math.PI * 4, Math.PI * 2, Math.PI]; // خطوات الدوران التباطئي
+                    const rotations = [Math.PI * 4, Math.PI * 2, Math.PI];
                     for (let rot of rotations) {
                         const tempBuffer = await generateRouletteImage(playersArray, winnerIndex, rot);
                         await gameMessage.edit({
                             content: '🎡 **العجلة تلف بسرعة...**',
                             files: [new AttachmentBuilder(tempBuffer, { name: 'spinning.png' })]
                         });
-                        await new Promise(res => setTimeout(res, 800)); // سرعة الانتقال بين الإطارات
+                        await new Promise(res => setTimeout(res, 800));
                     }
 
-                    // الصورة النهائية الثابتة التي تقف بالتمام على الفائز
                     const finalBuffer = await generateRouletteImage(playersArray, winnerIndex, 0);
                     const finalAttachment = new AttachmentBuilder(finalBuffer, { name: 'roulette.png' });
 
