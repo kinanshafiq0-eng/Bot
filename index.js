@@ -9,7 +9,15 @@ const {
     ButtonStyle, 
     ComponentType 
 } = require('discord.js');
-const { createCanvas } = require('canvas');
+const { createCanvas, GlobalFonts } = require('@napi-rs/canvas'); // استخدام النسخة الحديثة من كاففاس لدعم الخطوط بسهولة
+const path = require('path');
+
+// تسجيل الخط العربي لكي يقرأه الكانفاس بدون مربعات
+try {
+    GlobalFonts.registerFromPath(path.join(__dirname, 'fonts', 'Cairo.ttf'), 'Cairo');
+} catch (e) {
+    console.log("⚠️ تنبيه: لم يتم العثور على ملف الخط في مجلد fonts، يرجى التأكد من وضعه.");
+}
 
 const client = new Client({
     intents: [
@@ -19,7 +27,7 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة (أحمر وأسود مع توجيه السهم نحو الفائز)
+// دالة رسم العجلة مع دعم الخط العربي المسجل
 async function generateRouletteImage(players, winnerIndex) {
     const width = 600;
     const height = 600;
@@ -30,10 +38,9 @@ async function generateRouletteImage(players, winnerIndex) {
     const centerY = height / 2;
     const radius = 250;
 
-    const colors = ['#e53935', '#212121']; // أحمر كازينو وأسود داكن
+    const colors = ['#e53935', '#212121']; // أحمر وأسود
     const sliceAngle = (2 * Math.PI) / players.length;
 
-    // حساب زاوية الدوران لكي يشير السهم تماماً على الفائز
     const offsetAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
 
     for (let i = 0; i < players.length; i++) {
@@ -60,7 +67,8 @@ async function generateRouletteImage(players, winnerIndex) {
         ctx.fillStyle = '#ffffff';
         
         const fontSize = players.length > 12 ? 14 : 18;
-        ctx.font = `bold ${fontSize}px Arial`;
+        // استخدام خط Cairo المسجل خصيصاً لدعم العربية
+        ctx.font = `bold ${fontSize}px "Cairo"`;
         
         ctx.fillText(players[i], radius / 1.5, 0);
         ctx.restore();
@@ -78,7 +86,7 @@ async function generateRouletteImage(players, winnerIndex) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 18px Arial';
+    ctx.font = 'bold 18px "Cairo"';
     ctx.fillText('ROULETTE', centerX, centerY);
 
     // السهم الجانبي
@@ -90,7 +98,7 @@ async function generateRouletteImage(players, winnerIndex) {
     ctx.fillStyle = '#e0e0e0';
     ctx.fill();
 
-    return canvas.toBuffer();
+    return canvas.toBuffer('image/png');
 }
 
 client.on('ready', () => {
@@ -102,9 +110,8 @@ client.on('messageCreate', async message => {
 
     if (message.content === '!roulette') {
         const players = new Set();
-        const MAX_PLAYERS = 20; // الحد الأقصى 20 لاعب
+        const MAX_PLAYERS = 20;
         
-        // وقت الانتهاء بعد 30 ثانية
         const endTime = Math.floor(Date.now() / 1000) + 30;
 
         const embed = new EmbedBuilder()
@@ -122,7 +129,6 @@ client.on('messageCreate', async message => {
 
         const gameMessage = await message.reply({ embeds: [embed], components: [row] });
 
-        // مؤقت لمدة 30 ثانية
         const collector = gameMessage.createMessageComponentCollector({ componentType: ComponentType.Button, time: 30000 });
 
         collector.on('collect', async interaction => {
