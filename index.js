@@ -108,7 +108,7 @@ client.on('messageCreate', async message => {
                             
                             let btnStyle = ButtonStyle.Secondary;
                             if (status === 'hit') btnStyle = ButtonStyle.Success;  
-                            else if (status === 'safe') btnStyle = ButtonStyle.Danger;   
+                            else if (status === 'safe') btnStyle = ButtonStyle.Danger;    
 
                             rowComponents.push(
                                 new ButtonBuilder()
@@ -640,7 +640,6 @@ client.on('messageCreate', async message => {
                         chatCollector.on('collect', async m => {
                             let answerText = m.content.trim();
                             
-                            // تنظيف الحرف الأول من أل التعريف أو الهمزات للمقارنة المرنة
                             let cleanAnswerFirstChar = answerText.charAt(0)
                                 .replace('أ', 'ا')
                                 .replace('إ', 'ا')
@@ -653,79 +652,59 @@ client.on('messageCreate', async message => {
                                 .replace('آ', 'ا')
                                 .replace('ة', 'ه');
 
-                            // التحقق إذا كانت الكلمة تبدأ بالحرف المطلوب
                             if (cleanAnswerFirstChar === cleanTargetLetter) {
                                 answeredCorrectly = true;
                                 await m.react('✅').catch(() => {});
-                                await message.channel.send({ content: `✅ **إجابة صحيحة من <@${currentPlayer.id}>!** (\`${answerText}\`)` });
+                                await message.channel.send({ content: `✅ إجابة صحيحة من <@${currentPlayer.id}>!` });
                             } else {
-                                // إجابة خاطئة بحرف غير صحيح
-                                currentPlayer.alive = false;
                                 await m.react('❌').catch(() => {});
-                                await message.channel.send({ content: `❌ **خطأ!** الحرف المطلوب هو (\`${currentLetter}\`) بينما بدأت إجابتك بـ (\`${answerText.charAt(0)}\`).\n🚨 **تم إقصاء <@${currentPlayer.id}>!**` });
+                                await message.channel.send({ content: `❌ الحرف غير مطابق! تم إقصاء <@${currentPlayer.id}>.` });
+                                currentPlayer.alive = false;
                             }
                             resolve();
                         });
 
                         chatCollector.on('end', collected => {
                             if (collected.size === 0) {
-                                // انتهى الوقت ولم يجب
+                                message.channel.send({ content: `⏰ انتهى الوقت ولم يرد <@${currentPlayer.id}>! تم إقصاؤه.` });
                                 currentPlayer.alive = false;
-                                message.channel.send({ content: `⏰ **انتهى الوقت ولم يجب <@${currentPlayer.id}>! تم إقصاؤه.**` });
                                 resolve();
                             }
                         });
                     });
 
-                    promptMsg.delete().catch(() => {});
-
-                    // التحقق من عدد الناجين بعد هذه الجولة
                     let remainingAlive = playersArr.filter(p => p.alive);
                     if (remainingAlive.length <= 1) {
                         gameRunning = false;
                         break;
                     }
 
-                    // إذا أجاب بشكل صحيح، ننتقل للفئة التالية
-                    if (answeredCorrectly) {
-                        categoryIndex++;
-                        
-                        // إذا وصلنا لنهاية الفئات (بعد "بلاد")
-                        if (categoryIndex >= categories.length) {
-                            categoryIndex = 0; // العودة لفئة "اسم" من جديد
-                            currentLetterIdx = (currentLetterIdx + 1) % arabicLetters.length;
-                            currentLetter = arabicLetters[currentLetterIdx]; // حرف جديد
+                    playerIndex++;
+                    categoryIndex = (categoryIndex + 1) % categories.length;
 
-                            await message.channel.send({ content: `🔄 **أتممتم الدورة كاملة بنجاح! تم اختيار حرف جديد للتحدي:** \`${currentLetter}\`` });
-                        }
+                    // تغيير الحرف تدريجياً مع كل دورة مكتملة للفئات أو عشوائياً
+                    if (categoryIndex === 0) {
+                        currentLetterIdx = (currentLetterIdx + 1) % arabicLetters.length;
+                        currentLetter = arabicLetters[currentLetterIdx];
                     }
 
-                    playerIndex++;
-                    await new Promise(res => setTimeout(res, 1500));
+                    await new Promise(res => setTimeout(res, 1000));
                 }
 
-                // إعلان الفائزين أو الناجين
-                let finalSurvivors = playersArr.filter(p => p.alive);
-                const finalEmbed = new EmbedBuilder().setColor(THEME_COLOR).setTitle('◆ نهاية لعبة ريبيكا');
-
-                if (finalSurvivors.length === 1) {
-                    finalEmbed.setDescription(`👑 الناجي الفائز بالمركز الأول:\n<@${finalSurvivors[0].id}> ✨`);
-                    await message.channel.send({ content: `👑 مبارك الفوز بالمركز الأول <@${finalSurvivors[0].id}>!`, embeds: [finalEmbed] });
-                } else if (finalSurvivors.length > 1) {
-                    finalEmbed.setDescription(`👑 الناجون الصامدون:\n` + finalSurvivors.map(p => `<@${p.id}>`).join('\n'));
-                    await message.channel.send({ content: `👑 مبارك للناجين!`, embeds: [finalEmbed] });
+                let finalWinner = playersArr.find(p => p.alive);
+                if (finalWinner) {
+                    await message.channel.send({ content: `👑 **مبارك الفوز في تحدي ريبيكا:** <@${finalWinner.id}>! 🎉` });
                 } else {
-                    await message.channel.send({ content: `◆ انتهت اللعبة بإقصاء الجميع ولم يبقَ أحد!` });
+                    await message.channel.send({ content: `◆ انتهت اللعبة بدون فائزين.` });
                 }
-
-                activeGames.delete(guildId);
 
             } catch (error) {
                 console.error(error);
+            } finally {
                 activeGames.delete(guildId);
             }
         });
     }
 });
 
-client.login(process.env.TOKEN);
+client.login('YOUR_BOT_TOKEN');
