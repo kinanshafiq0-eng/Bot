@@ -1,6 +1,6 @@
 // ============================================================
-// index.js - البوت الكامل مع صور من Google Places API
-// (صور حقيقية من داخل الدولة)
+// index.js - البوت الكامل مع جميع الألعاب الأربعة
+// تم إضافة Wikimedia Commons للحصول على صور حقيقية للمدن في لعبة التخمين
 // ============================================================
 
 const { 
@@ -15,7 +15,6 @@ const {
 } = require('discord.js');
 
 const axios = require('axios');
-const { PlacesClient } = require('@googlemaps/places');
 
 const client = new Client({
     intents: [
@@ -156,26 +155,20 @@ const rebeccaDatabase = {
 };
 
 // ============================================================
-// قاعدة بيانات الدول الأساسية (للـ fallback)
+// قاعدة بيانات الدول مع أعلام وتلميحات
 // ============================================================
 const countryNames = rebeccaDatabase['بلاد'];
 const countryData = countryNames.map(name => {
-    const cleanName = name.replace(/\s/g, '').toLowerCase();
     return {
         name: name,
-        lat: (Math.random() * 180 - 90).toFixed(2),
-        lon: (Math.random() * 360 - 180).toFixed(2),
         hint: `بلد من دول العالم، حاول تخمينه من الصورة.`,
-        flag: `https://flagcdn.com/${cleanName.substring(0,2)}.svg`,
-        image: `https://source.unsplash.com/800x600/?${encodeURIComponent(cleanName)},landmark,city`
+        flag: `https://flagcdn.com/${name.substring(0,2)}.svg`
     };
 });
 
 const worldCountriesDatabase = countryData.map(c => ({ ...c }));
 
-// ============================================================
-// دالة تنظيف النص العربي
-// ============================================================
+// دالة تنظيف النص العربي للمقارنة
 function cleanArabic(text) {
     if (!text) return '';
     return text.trim()
@@ -186,100 +179,141 @@ function cleanArabic(text) {
 }
 
 // ============================================================
-// إعداد Google Places Client
+// دالة جلب صورة من Wikimedia Commons
 // ============================================================
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-if (!GOOGLE_API_KEY) {
-    console.warn('⚠️ GOOGLE_API_KEY غير موجودة في Secrets! سيتم استخدام Unsplash كبديل.');
-}
-
-let placesClient = null;
-if (GOOGLE_API_KEY) {
+async function getWikimediaImage(cityName) {
     try {
-        placesClient = new PlacesClient({
-            apiKey: GOOGLE_API_KEY
-        });
-        console.log('✅ Google Places Client initialized');
-    } catch (error) {
-        console.error('❌ فشل تهيئة Google Places Client:', error.message);
-    }
-}
+        // تحويل الاسم إلى الإنجليزية (مهم للبحث)
+        const englishNames = {
+            'الاردن': 'Jordan',
+            'فلسطين': 'Palestine',
+            'مصر': 'Egypt',
+            'السعودية': 'Saudi Arabia',
+            'الإمارات': 'United Arab Emirates',
+            'فرنسا': 'France',
+            'بريطانيا': 'United Kingdom',
+            'اليابان': 'Japan',
+            'تركيا': 'Turkey',
+            'ايطاليا': 'Italy',
+            'المانيا': 'Germany',
+            'اسبانيا': 'Spain',
+            'امريكا': 'United States',
+            'كندا': 'Canada',
+            'البرازيل': 'Brazil',
+            'الصين': 'China',
+            'الهند': 'India',
+            'كوريا الجنوبية': 'South Korea',
+            'الأرجنتين': 'Argentina',
+            'المكسيك': 'Mexico',
+            'إندونيسيا': 'Indonesia',
+            'هندوراس': 'Honduras',
+            'كوريا الشمالية': 'North Korea',
+            'السويد': 'Sweden',
+            'نرويج': 'Norway',
+            'الجزائر': 'Algeria',
+            'المغرب': 'Morocco',
+            'تونس': 'Tunisia',
+            'العراق': 'Iraq',
+            'سوريا': 'Syria',
+            'لبنان': 'Lebanon',
+            'الكويت': 'Kuwait',
+            'قطر': 'Qatar',
+            'البحرين': 'Bahrain',
+            'عمان': 'Oman',
+            'اليونان': 'Greece',
+            'هولندا': 'Netherlands',
+            'سويسرا': 'Switzerland',
+            'البرتغال': 'Portugal',
+            'بلجيكا': 'Belgium',
+            'روسيا': 'Russia',
+            'أوكرانيا': 'Ukraine',
+            'بولندا': 'Poland',
+            'رومانيا': 'Romania',
+            'كازاخستان': 'Kazakhstan',
+            'أوزبكستان': 'Uzbekistan',
+            'باكستان': 'Pakistan',
+            'نيجيريا': 'Nigeria',
+            'جنوب أفريقيا': 'South Africa',
+            'كينيا': 'Kenya',
+            'إثيوبيا': 'Ethiopia',
+            'تنزانيا': 'Tanzania',
+            'فيتنام': 'Vietnam',
+            'تايلاند': 'Thailand',
+            'ماليزيا': 'Malaysia',
+            'الفلبين': 'Philippines',
+            'بيرو': 'Peru',
+            'تشيلي': 'Chile',
+            'كولومبيا': 'Colombia',
+            'فنزويلا': 'Venezuela',
+            'نيوزيلندا': 'New Zealand',
+            'أستراليا': 'Australia',
+            'إيران': 'Iran',
+            'أفغانستان': 'Afghanistan',
+            'نيبال': 'Nepal',
+            'بنغلاديش': 'Bangladesh',
+            'ميانمار': 'Myanmar',
+            'سريلانكا': 'Sri Lanka',
+            'ليبيا': 'Libya',
+            'السودان': 'Sudan',
+            'اليمن': 'Yemen',
+            'الصومال': 'Somalia',
+            'جيبوتي': 'Djibouti',
+            'إريتريا': 'Eritrea',
+            'غانا': 'Ghana',
+            'السنغال': 'Senegal',
+            'مالي': 'Mali',
+            'النيجر': 'Niger',
+            'تشاد': 'Chad',
+            'الكاميرون': 'Cameroon'
+        };
 
-// ============================================================
-// دالة لجلب صورة المدينة من Google Places
-// ============================================================
-async function getCityImageFromGoogle(cityName) {
-    if (!placesClient) return null;
+        const searchTerm = englishNames[cityName] || cityName;
+        const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=images&prop=imageinfo&iiprop=url&titles=${encodeURIComponent(searchTerm)}&format=json`;
 
-    try {
-        // البحث عن المدينة
-        const response = await placesClient.searchText({
-            textQuery: cityName,
-            languageCode: 'ar'
-        });
+        const response = await axios.get(url);
+        const pages = response.data.query?.pages;
+        if (!pages) return null;
 
-        const place = response.places?.[0];
-        if (!place || !place.photos || place.photos.length === 0) {
-            console.log(`⚠️ لا توجد صور متاحة لـ ${cityName} في Google Places`);
-            return null;
+        // البحث عن أول صورة
+        for (const pageId in pages) {
+            const images = pages[pageId].imageinfo;
+            if (images && images.length > 0) {
+                const imageUrl = images[0].url;
+                if (imageUrl) return imageUrl;
+            }
         }
-
-        // الحصول على مرجع الصورة الأولى
-        const photoReference = place.photos[0].name;
-
-        // بناء رابط الصورة
-        const photoUrl = `https://places.googleapis.com/v1/${photoReference}/media?key=${GOOGLE_API_KEY}&maxHeightPx=800&maxWidthPx=600`;
-
-        // تحميل الصورة
-        const response2 = await axios.get(photoUrl, {
-            responseType: 'arraybuffer',
-            timeout: 15000
-        });
-        return Buffer.from(response2.data);
+        return null;
     } catch (error) {
-        console.error('❌ فشل جلب صورة من Google Places:', error.message);
+        console.error('❌ فشل جلب صورة من Wikimedia:', error.message);
         return null;
     }
 }
 
 // ============================================================
-// دالة تحميل الصورة الاحتياطية (Unsplash أو Picsum)
+// دالة تحميل الصورة وإرجاع Buffer مع Fallback
 // ============================================================
-async function fetchFallbackImage(url) {
+async function fetchImageBuffer(url) {
     try {
         const response = await axios.get(url, {
             responseType: 'arraybuffer',
             timeout: 15000,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             }
         });
         return Buffer.from(response.data);
     } catch (error) {
-        console.error('❌ فشل تحميل الصورة الاحتياطية:', error.message);
-        // صورة بيضاء كحل أخير
-        return Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]);
+        console.error('❌ فشل تحميل الصورة من الرابط:', url, error.message);
+        // Fallback إلى Picsum
+        const fallbackUrl = 'https://picsum.photos/seed/fallback' + Date.now() + '/800/600';
+        try {
+            const fallbackResponse = await axios.get(fallbackUrl, { responseType: 'arraybuffer' });
+            return Buffer.from(fallbackResponse.data);
+        } catch (e) {
+            console.error('❌ فشل حتى تحميل الصورة الاحتياطية:', e.message);
+            return Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]); // JPEG minimal
+        }
     }
-}
-
-// ============================================================
-// دالة رئيسية لجلب الصورة (Google أولاً، ثم Fallback)
-// ============================================================
-async function fetchCityImage(cityName) {
-    // 1. حاول جلب الصورة من Google Places
-    let imageBuffer = await getCityImageFromGoogle(cityName);
-    if (imageBuffer) return imageBuffer;
-
-    // 2. Fallback: استخدم Unsplash
-    const country = worldCountriesDatabase.find(c => c.name === cityName);
-    if (country) {
-        console.log(`🔄 استخدام Unsplash كبديل لـ ${cityName}`);
-        return await fetchFallbackImage(country.image);
-    }
-
-    // 3. Fallback نهائي: Picsum
-    console.log(`🔄 استخدام Picsum كبديل أخير لـ ${cityName}`);
-    return await fetchFallbackImage(`https://picsum.photos/seed/${cityName}/800/600`);
 }
 
 client.on('ready', () => {
@@ -958,7 +992,7 @@ client.on('messageCreate', async message => {
     }
 
     // ============================================================
-    // 4. لعبة تخمين البلد (مع Google Places API)
+    // 4. لعبة تخمين البلد (مع Wikimedia Commons)
     // ============================================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -1044,14 +1078,25 @@ client.on('messageCreate', async message => {
                 for (let round = 1; round <= 6; round++) {
                     let countryObj = gameRoundsData[round - 1];
 
-                    // جلب الصورة من Google Places (مع Fallback)
-                    let imageBuffer = await fetchCityImage(countryObj.name);
+                    // جلب الصورة من Wikimedia Commons
+                    let imageUrl = await getWikimediaImage(countryObj.name);
+                    let imageBuffer;
+
+                    if (imageUrl) {
+                        // تحميل الصورة من Wikimedia
+                        imageBuffer = await fetchImageBuffer(imageUrl);
+                    } else {
+                        // استخدام صورة احتياطية إذا فشل
+                        console.log(`⚠️ لم نجد صورة لـ ${countryObj.name}، نستخدم صورة احتياطية.`);
+                        imageBuffer = await fetchImageBuffer('https://picsum.photos/seed/fallback/800/600');
+                    }
+
                     let attachment = new AttachmentBuilder(imageBuffer, { name: 'country.jpg' });
 
                     let roundTimeSeconds = 25;
                     let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
 
-                    // إرسال الرسالة بدون إمبيد
+                    // إرسال الرسالة مع الصورة (بدون إمبيد)
                     let roundMsg = await message.channel.send({
                         content: `◆ **لعبة تخمين البلد الجغرافي (الجولة ${round}/6)**\nلديك ${roundTimeSeconds} ثانية لتخمين اسم الدولة من الصورة!\n💡 تلميح: \`${countryObj.hint}\`\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`,
                         files: [attachment]
