@@ -62,7 +62,8 @@ client.on('messageCreate', async message => {
                 { name: '🎯 `!روليت`', value: 'لعبة الإقصاء التدريجي بصور متحركة حتى يبقى فائز واحد.', inline: true },
                 { name: '❌⭕ `!بطولة_اكس_او`', value: 'بطولة تكس أو بنظام خروج المغلوب حتى تتويج البطل.', inline: true },
                 { name: '🕵️‍♂️ `!مافيا`', value: 'لعبة المافيا والقرية الممتعة (تحتاج 4 لاعبين).', inline: true },
-                { name: '🪑 `!كراسي`', value: 'لعبة الكراسي الموسيقية الحماسية وسرعة رد الفعل.', inline: true }
+                { name: '🪑 `!كراسي`', value: 'لعبة الكراسي الموسيقية الحماسية وسرعة رد الفعل.', inline: true },
+                { name: '✊ `!حجرة`', value: 'لعبة حجرة ورقة مقص التفاعلية السريعة ضد البوت.', inline: true }
             );
         return message.reply({ embeds: [embed] });
     }
@@ -722,7 +723,7 @@ client.on('messageCreate', async message => {
                     await new Promise(res => setTimeout(res, 3000));
 
                     while (activePlayers.length > 1) {
-                        let chairsCount = activePlayers.length - 1; // عدد الكراسي أقل بكرسي واحد
+                        let chairsCount = activePlayers.length - 1;
 
                         const musicEmbed = new EmbedBuilder()
                             .setTitle('🎶 توقفت الموسيقى! اسرع واجلس!')
@@ -756,7 +757,6 @@ client.on('messageCreate', async message => {
 
                         await new Promise(res => setTimeout(res, 7000));
 
-                        // تحديد الخاسر (الذي لم يجلس أو كان الأبطأ)
                         let eliminatedPlayer = null;
                         let nextActive = [];
 
@@ -765,14 +765,13 @@ client.on('messageCreate', async message => {
                                 nextActive.push(p);
                             } else {
                                 if (!eliminatedPlayer) {
-                                    eliminatedPlayer = p; // أول شخص لم يلحق الكرسي
+                                    eliminatedPlayer = p;
                                 } else {
-                                    nextActive.push(p); // الباقون إذا امتلأت الكراسي قبلهم
+                                    nextActive.push(p);
                                 }
                             }
                         }
 
-                        // في حال لم يجلس أحد اللاعبين أصلاً
                         if (!eliminatedPlayer) {
                             eliminatedPlayer = activePlayers[activePlayers.length - 1];
                             nextActive = nextActive.slice(0, chairsCount);
@@ -803,6 +802,71 @@ client.on('messageCreate', async message => {
 
             } else if (reason === 'cancel') {
                 await gameMessage.edit({ content: '❌ تم إلغاء لعبة الكراسي.', embeds: [], components: [] });
+            }
+        });
+    }
+
+    // 6. لعبة حجرة ورقة مقص (Rock Paper Scissors Game)
+    if (message.content === prefix + 'حجرة' || message.content === prefix + 'rps') {
+        const embed = new EmbedBuilder()
+            .setTitle('✊ لعبة حجرة، ورقة، مقص (Rock Paper Scissors)')
+            .setDescription('اختر إحدى الأدوات أدناه لمواجهة البوت مباشرة! (لديك 20 ثانية)')
+            .setColor('#1abc9c');
+
+        const rockBtn = new ButtonBuilder().setCustomId('rock').setLabel('حجرة 🪨').setStyle(ButtonStyle.Primary);
+        const paperBtn = new ButtonBuilder().setCustomId('paper').setLabel('ورقة 📄').setStyle(ButtonStyle.Success);
+        const scissorsBtn = new ButtonBuilder().setCustomId('scissors').setLabel('مقص ✂️').setStyle(ButtonStyle.Danger);
+
+        const row = new ActionRowBuilder().addComponents(rockBtn, paperBtn, scissorsBtn);
+        const gameMessage = await message.reply({ embeds: [embed], components: [row] });
+
+        const filter = i => i.user.id === message.author.id;
+        const collector = gameMessage.createMessageComponentCollector({ filter, time: 20000, max: 1 });
+
+        collector.on('collect', async interaction => {
+            const userChoice = interaction.customId;
+            const choices = ['rock', 'paper', 'scissors'];
+            const botChoice = choices[Math.floor(Math.random() * choices.length)];
+
+            const emojis = {
+                rock: 'حجرة 🪨',
+                paper: 'ورقة 📄',
+                scissors: 'مقص ✂️'
+            };
+
+            let resultMsg = '';
+            let color = '#3498db';
+
+            if (userChoice === botChoice) {
+                resultMsg = '🤝 **تعادل!** لقد اخترتم نفس الشيء.';
+                color = '#f1c40f';
+            } else if (
+                (userChoice === 'rock' && botChoice === 'scissors') ||
+                (userChoice === 'paper' && botChoice === 'rock') ||
+                (userChoice === 'scissors' && botChoice === 'paper')
+            ) {
+                resultMsg = '🎉 **مبروك، لقد فزت على البوت!** 🏆';
+                color = '#2ecc71';
+            } else {
+                resultMsg = '😢 **حظاً أوفر، لقد فاز البوت عليك!** 🤖';
+                color = '#e74c3c';
+            }
+
+            const resultEmbed = new EmbedBuilder()
+                .setTitle('✊ نتيجة لعبة حجرة، ورقة، مقص')
+                .setDescription(resultMsg)
+                .setColor(color)
+                .addFields(
+                    { name: '👤 اختيارك:', value: emojis[userChoice], inline: true },
+                    { name: '🤖 اختيار البوت:', value: emojis[botChoice], inline: true }
+                );
+
+            await interaction.update({ embeds: [resultEmbed], components: [] });
+        });
+
+        collector.on('end', async (collected, reason) => {
+            if (reason === 'time' && collected.size === 0) {
+                await gameMessage.edit({ content: '⏱️ انتهى الوقت ولم تقم بالخيار المطلوب!', embeds: [], components: [] }).catch(() => {});
             }
         });
     }
