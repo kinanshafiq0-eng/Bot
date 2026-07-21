@@ -1,11 +1,8 @@
 {
   "name": "games-bot",
   "version": "1.0.0",
-  "description": "Discord Games Bot",
   "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
+  "scripts": { "start": "node index.js" },
   "dependencies": {
     "discord.js": "^14.15.3",
     "@napi-rs/canvas": "^0.1.53",
