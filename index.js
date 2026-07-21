@@ -25,9 +25,8 @@ app.listen(port, () => console.log(`✅ Web server on port ${port}`));
 const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) { console.error('❌ DISCORD_TOKEN missing'); process.exit(1); }
 
-// --- تنزيل الخط العربي (إذا لم يكن موجوداً) ---
+// --- تنزيل الخط العربي (متعدد المصادر) ---
 const fontPath = path.join(__dirname, 'Cairo-Regular.ttf');
-const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Regular.ttf';
 let arabicFontLoaded = false;
 
 async function downloadFont() {
@@ -35,27 +34,38 @@ async function downloadFont() {
     console.log('✅ Font file found');
     return;
   }
-  console.log('⬇️ Downloading Arabic font...');
-  return new Promise((resolve, reject) => {
-    const file = fs.createWriteStream(fontPath);
-    https.get(fontUrl, (res) => {
-      if (res.statusCode !== 200) {
-        file.close();
-        fs.unlinkSync(fontPath);
-        reject(new Error(`Download failed: ${res.statusCode}`));
-        return;
-      }
-      res.pipe(file);
-      file.on('finish', () => {
-        file.close();
-        console.log('✅ Font downloaded successfully');
-        resolve();
+  const urls = [
+    'https://cdn.jsdelivr.net/gh/googlefonts/cairo@main/static/Cairo-Regular.ttf',
+    'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Regular.ttf',
+    'https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Regular.ttf'
+  ];
+  for (const url of urls) {
+    try {
+      console.log(`⬇️ Trying: ${url}`);
+      await new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(fontPath);
+        https.get(url, (res) => {
+          if (res.statusCode !== 200) {
+            file.close();
+            fs.unlinkSync(fontPath);
+            reject(new Error(`Status ${res.statusCode}`));
+            return;
+          }
+          res.pipe(file);
+          file.on('finish', () => {
+            file.close();
+            console.log('✅ Font downloaded');
+            resolve();
+          });
+        }).on('error', reject);
       });
-    }).on('error', (err) => {
-      fs.unlinkSync(fontPath);
-      reject(err);
-    });
-  });
+      return; // نجح
+    } catch (e) {
+      console.log(`❌ Failed: ${e.message}`);
+      if (fs.existsSync(fontPath)) fs.unlinkSync(fontPath);
+    }
+  }
+  console.log('❌ All font URLs failed. Arabic names will not display on wheel.');
 }
 
 function registerFont() {
@@ -76,7 +86,7 @@ function registerFont() {
 
 // --- تسلسل التشغيل ---
 (async () => {
-  await downloadFont().catch(() => console.log('⚠️ Font download skipped'));
+  await downloadFont();
   registerFont();
 })();
 
@@ -168,7 +178,6 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
       name = players[i]?.displayName || players[i]?.username || `لاعب ${i + 1}`;
       if (name.length > 10) name = name.substring(0, 9) + '…';
     } else {
-      // بدون الخط العربي، استخدم الأحرف الأولى من اليوزر أو المعرف
       name = players[i]?.username?.substring(0, 10) || `P${i + 1}`;
     }
     ctx.fillText(name, 0, 0);
@@ -515,7 +524,7 @@ client.on('interactionCreate', async (interaction) => {
   const config = getGuildConfig(guildId);
   const serverImg = getServerImage(interaction.guild, config);
 
-  // --- Roulette Join/Leave (same as before) ---
+  // --- Roulette ---
   if (interaction.customId === 'join_roulette') {
     const session = db.roulette[guildId];
     if (!session) return interaction.reply({ content: '⚠️ لا جلسة.', ephemeral: true });
@@ -556,7 +565,7 @@ client.on('interactionCreate', async (interaction) => {
     return interaction.reply({ content: '🚫 خرجت.', ephemeral: true });
   }
 
-  // --- Hide & Seek (same) ---
+  // --- Hide & Seek ---
   if (interaction.customId === 'join_hide') {
     const game = db.hideSeek[guildId];
     if (!game || game.phase !== 'joining') return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
