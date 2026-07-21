@@ -26,7 +26,12 @@ const client = new Client({
 });
 
 // ========== تخزين جلسات الروليت ==========
-const rouletteSessions = {}; // { guildId: { players: [], messageId: null, channelId: null } }
+const rouletteSessions = {};
+
+// ========== صور GIF للعجلة ==========
+const WHEEL_STATIC = 'https://i.imgur.com/YOUR_STATIC_WHEEL.gif'; // عجلة ثابتة
+const WHEEL_SPINNING = 'https://i.imgur.com/YOUR_SPINNING_WHEEL.gif'; // عجلة تدور
+const WHEEL_STOPPED = 'https://i.imgur.com/YOUR_STOPPED_WHEEL.gif'; // عجلة متوقفة
 
 client.once('ready', () => {
   console.log(`✅ البوت جاهز باسم ${client.user.tag}`);
@@ -63,7 +68,7 @@ client.on('messageCreate', async (message) => {
         `للإلغاء: استخدم \`!روليت_الغاء\``
       )
       .setColor(0xcc0000)
-      .setImage('https://i.imgur.com/5KKDC6M.gif') // صورة GIF لعجلة ثابتة (تستبدل عند السحب)
+      .setImage(WHEEL_STATIC)
       .setFooter({ text: '🎡 روليت | انتظر الدوران' })
       .setTimestamp();
 
@@ -80,12 +85,11 @@ client.on('messageCreate', async (message) => {
 
     const msg = await message.channel.send({ embeds: [embed], components: [row] });
     rouletteSessions[guildId].messageId = msg.id;
-
     await message.delete().catch(() => {});
     return;
   }
 
-  // ========== سحب فائز ==========
+  // ========== سحب فائز مع العجلة المتحركة ==========
   if (cmd === 'روليت_سحب') {
     const session = rouletteSessions[guildId];
     if (!session || session.players.length === 0) {
@@ -98,48 +102,67 @@ client.on('messageCreate', async (message) => {
       return message.reply('❌ رسالة الروليت غير موجودة.');
     }
 
-    // صورة العجلة وهي تدور (GIF)
-    const spinningGif = 'https://i.imgur.com/zPBF2u7.gif'; // عجلة تدور
+    // إظهار اسم اللاعبين أعلى العجلة
+    const playersText = session.players.map((p, i) => `**${i + 1}.** <@${p}>`).join('\n');
 
-    const embed = new EmbedBuilder()
-      .setTitle('🎡 جاري الدوران...')
-      .setDescription(
-        `**اللاعبون:** ${session.players.map(p => `<@${p}>`).join(', ')}\n` +
-        `**العدد:** ${session.players.length}\n\n` +
-        `🔄 العجلة تدور...`
-      )
+    // المرحلة 1: العد التنازلي
+    const countdownEmbed = new EmbedBuilder()
+      .setTitle('🎡 جاري السحب...')
+      .setDescription(`**اللاعبون:**\n${playersText}\n\n🔄 **3**...`)
       .setColor(0xffaa00)
-      .setImage(spinningGif)
-      .setFooter({ text: '🎡 جاري السحب...' })
+      .setImage(WHEEL_STATIC)
+      .setFooter({ text: '🎡 استعد...' })
       .setTimestamp();
+    await msg.edit({ embeds: [countdownEmbed], components: [] });
+    await new Promise(r => setTimeout(r, 1000));
 
-    await msg.edit({ embeds: [embed], components: [] });
+    // 2...
+    countdownEmbed.setDescription(`**اللاعبون:**\n${playersText}\n\n🔄 **2**...`);
+    await msg.edit({ embeds: [countdownEmbed] });
+    await new Promise(r => setTimeout(r, 1000));
 
-    // انتظار 5 ثوانٍ لمشاهدة الدوران
-    await new Promise(resolve => setTimeout(resolve, 5000));
+    // 1...
+    countdownEmbed.setDescription(`**اللاعبون:**\n${playersText}\n\n🔄 **1**...`);
+    await msg.edit({ embeds: [countdownEmbed] });
+    await new Promise(r => setTimeout(r, 1000));
 
-    // اختيار فائز عشوائي
+    // المرحلة 2: العجلة تدور (GIF)
+    const spinningEmbed = new EmbedBuilder()
+      .setTitle('🎡 العجلة تدور!')
+      .setDescription(`**اللاعبون:**\n${playersText}\n\n🔄 العجلة تدور...`)
+      .setColor(0xffaa00)
+      .setImage(WHEEL_SPINNING)
+      .setFooter({ text: '🎡 جاري الدوران...' })
+      .setTimestamp();
+    await msg.edit({ embeds: [spinningEmbed] });
+
+    // انتظار 5 ثواني (مدة دوران الـ GIF)
+    await new Promise(r => setTimeout(r, 5000));
+
+    // المرحلة 3: اختيار فائز عشوائي وتوقف العجلة
     const winnerIndex = Math.floor(Math.random() * session.players.length);
     const winnerId = session.players[winnerIndex];
 
-    // صورة العجلة بعد التوقف (ثابتة)
-    const stoppedGif = 'https://i.imgur.com/HJy3W8x.gif'; // عجلة متوقفة
-
-    const embedWinner = new EmbedBuilder()
-      .setTitle('🎉 فاز!')
+    const winnerEmbed = new EmbedBuilder()
+      .setTitle('🏆 لدينا فائز!')
       .setDescription(
-        `**المشاركون:** ${session.players.map(p => `<@${p}>`).join(', ')}\n\n` +
-        `🏆 **الفائز:** <@${winnerId}>`
+        `**اللاعبون:**\n${playersText}\n\n` +
+        `🎉 **الفائز:** <@${winnerId}>`
       )
       .setColor(0x00ff00)
-      .setImage(stoppedGif)
+      .setImage(WHEEL_STOPPED)
       .setFooter({ text: '🎡 انتهى السحب' })
       .setTimestamp();
+    await msg.edit({ embeds: [winnerEmbed] });
 
-    await msg.edit({ embeds: [embedWinner] });
-    await message.channel.send(`🏆 **مبروك** <@${winnerId}>! أنت الفائز!`);
+    // رسالة تهنئة
+    const congratsEmbed = new EmbedBuilder()
+      .setTitle('🎉 مبروك!')
+      .setDescription(`🏆 **<@${winnerId}>** هو الفائز!\n\n🎊 تهانينا للفائز وحظ أوفر للبقية.`)
+      .setColor(0x00ff00)
+      .setTimestamp();
+    await message.channel.send({ embeds: [congratsEmbed] });
 
-    // تنظيف الجلسة
     delete rouletteSessions[guildId];
     return;
   }
@@ -151,11 +174,10 @@ client.on('messageCreate', async (message) => {
 
     const msg = await message.channel.messages.fetch(session.messageId).catch(() => null);
     if (msg) {
-      const embed = new EmbedBuilder()
+      const embed = EmbedBuilder.from(msg.embeds[0])
         .setTitle('🚫 ألغيت')
         .setDescription('تم إلغاء جلسة الروليت.')
-        .setColor(0xff0000)
-        .setTimestamp();
+        .setColor(0xff0000);
       await msg.edit({ embeds: [embed], components: [] }).catch(() => {});
     }
 
