@@ -1,7 +1,7 @@
 // ============================================================
 // index.js - البوت الكامل مع جميع الألعاب الأربعة
 // (اختباء، كراسي، ريبيكا، تخمين البلد)
-// مع صور من Wikipedia (مضمونة الظهور، بدون مفتاح API)
+// مع صور معالم حقيقية من Wikipedia (بحث متقدم)
 // ============================================================
 
 const { 
@@ -156,8 +156,7 @@ const rebeccaDatabase = {
 };
 
 // ============================================================
-// توليد قاعدة بيانات الدول مع معلومات أساسية
-// (بدون صور، سيتم جلب الصور من Wikipedia أثناء اللعب)
+// توليد قاعدة بيانات الدول
 // ============================================================
 const countryNames = rebeccaDatabase['بلاد'];
 const countryData = countryNames.map(name => {
@@ -186,7 +185,7 @@ function cleanArabic(text) {
 }
 
 // ============================================================
-// دالة جلب صورة من Wikipedia (بدون مفتاح API)
+// دالة جلب صورة معلم من Wikipedia (بحث متقدم)
 // ============================================================
 const englishNames = {
     'الاردن': 'Jordan',
@@ -271,17 +270,74 @@ const englishNames = {
     'الكاميرون': 'Cameroon'
 };
 
+// قائمة المعالم الشهيرة لكل دولة (للبحث الدقيق)
+const landmarks = {
+    'مصر': 'Pyramids',
+    'فرنسا': 'Eiffel Tower',
+    'بريطانيا': 'Big Ben',
+    'ايطاليا': 'Colosseum',
+    'الصين': 'Great Wall',
+    'الهند': 'Taj Mahal',
+    'امريكا': 'Statue of Liberty',
+    'اليابان': 'Mount Fuji',
+    'تركيا': 'Hagia Sophia',
+    'المانيا': 'Brandenburg Gate',
+    'اسبانيا': 'Sagrada Familia',
+    'البرازيل': 'Christ the Redeemer',
+    'الأرجنتين': 'Casa Rosada',
+    'المكسيك': 'Chichen Itza',
+    'كندا': 'Niagara Falls',
+    'أستراليا': 'Sydney Opera House',
+    'نيوزيلندا': 'Auckland Sky Tower',
+    'اليونان': 'Parthenon',
+    'هولندا': 'Amsterdam Canals',
+    'سويسرا': 'Matterhorn',
+    'البرتغال': 'Lisbon Tower',
+    'بلجيكا': 'Atomium',
+    'الاردن': 'Petra',
+    'فلسطين': 'Dome of the Rock',
+    'السعودية': 'Kaaba',
+    'الإمارات': 'Burj Khalifa',
+    'العراق': 'Babylon',
+    'سوريا': 'Damascus',
+    'لبنان': 'Beirut',
+    'الكويت': 'Kuwait Towers',
+    'قطر': 'Doha Skyline',
+    'البحرين': 'Manama',
+    'عمان': 'Muscat',
+    'المغرب': 'Marrakech',
+    'تونس': 'Tunis',
+    'الجزائر': 'Algiers',
+    'السودان': 'Khartoum',
+    'اليمن': 'Sanaa',
+    'ليبيا': 'Leptis Magna'
+};
+
 async function getWikipediaImage(cityName) {
     try {
         const searchTerm = englishNames[cityName] || cityName;
-        const url = `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&titles=${encodeURIComponent(searchTerm)}&origin=*`;
-        const response = await axios.get(url, { timeout: 10000 });
-        const pages = response.data.query?.pages;
-        if (!pages) return null;
-        for (const pageId in pages) {
-            const page = pages[pageId];
-            if (page.original && page.original.source) {
-                return page.original.source;
+        const landmark = landmarks[cityName] || '';
+        
+        // محاولات متعددة للبحث
+        const queries = [
+            `${landmark} ${searchTerm}`,
+            `${searchTerm} landmark`,
+            `${searchTerm} city`,
+            `${searchTerm} architecture`,
+            searchTerm
+        ];
+
+        for (const query of queries) {
+            if (!query.trim()) continue;
+            const url = `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&titles=${encodeURIComponent(query)}&origin=*`;
+            const response = await axios.get(url, { timeout: 10000 });
+            const pages = response.data.query?.pages;
+            if (!pages) continue;
+            for (const pageId in pages) {
+                const page = pages[pageId];
+                if (page.original && page.original.source) {
+                    return page.original.source;
+                }
             }
         }
         return null;
@@ -994,7 +1050,7 @@ client.on('messageCreate', async message => {
     }
 
     // ============================================================
-    // 4. لعبة تخمين البلد (مع صور من Wikipedia)
+    // 4. لعبة تخمين البلد (مع صور معالم من Wikipedia)
     // ============================================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -1080,13 +1136,13 @@ client.on('messageCreate', async message => {
                 for (let round = 1; round <= 6; round++) {
                     let countryObj = gameRoundsData[round - 1];
 
-                    // جلب الصورة من Wikipedia
+                    // جلب الصورة من Wikipedia (معلم)
                     let imageUrl = await getWikipediaImage(countryObj.name);
                     let imageBuffer;
                     if (imageUrl) {
                         imageBuffer = await fetchImageBuffer(imageUrl);
                     } else {
-                        // إذا فشل Wikipedia، استخدم صورة احتياطية
+                        // إذا فشل، استخدم صورة احتياطية
                         imageBuffer = await fetchImageBuffer('https://picsum.photos/seed/fallback' + Date.now() + '/800/600');
                     }
 
