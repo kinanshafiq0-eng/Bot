@@ -63,7 +63,8 @@ client.on('messageCreate', async message => {
                 { name: '❌⭕ `!بطولة_اكس_او`', value: 'بطولة تكس أو بنظام خروج المغلوب حتى تتويج البطل.', inline: true },
                 { name: '🕵️‍♂️ `!مافيا`', value: 'لعبة المافيا والقرية الممتعة (تحتاج 4 لاعبين).', inline: true },
                 { name: '🪑 `!كراسي`', value: 'لعبة الكراسي الموسيقية الحماسية وسرعة رد الفعل.', inline: true },
-                { name: '✊ `!حجرة`', value: 'لعبة حجرة ورقة مقص التفاعلية السريعة ضد البوت.', inline: true }
+                { name: '✊ `!حجرة`', value: 'لعبة حجرة ورقة مقص التفاعلية السريعة ضد البوت.', inline: true },
+                { name: '🫣 `!اختباء`', value: 'لعبة الاختباء وتفجير الصناديق الـ 25 (تحتاج لاعبين اثنين على الأقل).', inline: true }
             );
         return message.reply({ embeds: [embed] });
     }
@@ -867,6 +868,221 @@ client.on('messageCreate', async message => {
         collector.on('end', async (collected, reason) => {
             if (reason === 'time' && collected.size === 0) {
                 await gameMessage.edit({ content: '⏱️ انتهى الوقت ولم تقم بالخيار المطلوب!', embeds: [], components: [] }).catch(() => {});
+            }
+        });
+    }
+
+    // 7. لعبة الاختباء وتفجير الصناديق الـ 25 (Hide and Seek Game)
+    if (message.content === prefix + 'اختباء' || message.content === prefix + 'hide') {
+        const playersMap = new Map();
+        const MAX_PLAYERS = 15;
+        const durationSeconds = 30;
+        const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+
+        const embed = new EmbedBuilder()
+            .setTitle('🫣 لعبة الاختباء وتفجير الصناديق (25 صندوقاً)')
+            .setDescription(`اضغط على زر **انضمام** للمشاركة!\nكل لاعب سيختار صندوقاً سرياً من بين 25 صندوقاً للاختباء فيه.\nالبوت سيبدأ بتفجير الصناديق عشوائياً، ومن يختبئ في صندوق يتم تفجيره سيخرج من اللعبة!\n\n⏳ **تبدأ اللعبة تلقائياً بعد:** <t:${endTime}:R>`)
+            .setColor('#8e44ad')
+            .addFields({ name: `👥 المشاركون (0/${MAX_PLAYERS}):`, value: 'لا يوجد مشاركين حتى الآن.' });
+
+        const joinBtn = new ButtonBuilder().setCustomId('join').setLabel('انضمام 🟢').setStyle(ButtonStyle.Success);
+        const leaveBtn = new ButtonBuilder().setCustomId('leave').setLabel('انسحاب 🔴').setStyle(ButtonStyle.Danger);
+        const startBtn = new ButtonBuilder().setCustomId('start').setLabel('بدء الآن 🚀').setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn, startBtn);
+        const gameMessage = await message.reply({ embeds: [embed], components: [row] });
+
+        const collector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+
+        collector.on('collect', async interaction => {
+            const userId = interaction.user.id;
+            const playerName = interaction.user.displayName || interaction.user.username;
+
+            if (interaction.customId === 'join') {
+                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
+                    return interaction.reply({ content: '⚠️ عذراً، العدد مكتمل!', ephemeral: true });
+                }
+                if (!playersMap.has(userId)) {
+                    playersMap.set(userId, { id: userId, name: playerName, alive: true, hidingSpot: null });
+                }
+                await interaction.reply({ content: `✅ تم انضمامك للعبة الاختباء بنجاح!`, ephemeral: true });
+            } else if (interaction.customId === 'leave') {
+                if (playersMap.has(userId)) {
+                    playersMap.delete(userId);
+                    await interaction.reply({ content: '❌ لقد انسحبت من اللعبة.', ephemeral: true });
+                } else {
+                    return interaction.reply({ content: '⚠️ أنت لست منضم أصلاً!', ephemeral: true });
+                }
+            } else if (interaction.customId === 'start') {
+                if (userId !== message.author.id) {
+                    return interaction.reply({ content: '⚠️ صاحب الأمر فقط يمكنه بدء اللعبة!', ephemeral: true });
+                }
+                if (playersMap.size < 2) {
+                    return interaction.reply({ content: '⚠️ نحتاج إلى لاعبين (2) على الأقل لبدء اللعبة!', ephemeral: true });
+                }
+                collector.stop('start');
+                return;
+            }
+
+            const playersArray = Array.from(playersMap.values());
+            const playersList = playersArray.length > 0 
+                ? playersArray.map(p => `• ${p.name}`).join('\n') 
+                : 'لا يوجد مشاركين حتى الآن.';
+
+            const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `👥 المشاركون (${playersMap.size}/${MAX_PLAYERS}):`, value: playersList });
+            await gameMessage.edit({ embeds: [updatedEmbed] });
+        });
+
+        collector.on('end', async (collected, reason) => {
+            if (reason === 'time' || reason === 'start') {
+                let playersArr = Array.from(playersMap.values());
+
+                if (playersArr.length < 2) {
+                    return gameMessage.edit({ content: '❌ تم إلغاء اللعبة لعدم وجود لاعبين كفاية (الحد الأدنى 2).', embeds: [], components: [] });
+                }
+
+                try {
+                    const startEmbed = new EmbedBuilder()
+                        .setTitle('🫣 مرحلة الاختباء (25 صندوقاً)')
+                        .setDescription(`📦 تم تجهيز 25 صندوقاً سرياً في الخريطة!\nتفقد رسائلك الخاصة (الـ DM) لاختيار رقم الصندوق الذي ستختبئ فيه (من 1 إلى 25).\n\n⏳ **لديك 25 ثانية للاختيار!**`)
+                        .setColor('#9b59b6');
+
+                    await gameMessage.edit({ content: `🎮 **انطلقت مرحلة الاختباء!**`, embeds: [startEmbed], components: [] });
+
+                    // توليد صفوف أزرار الصناديق الـ 25 (5 أزرار في كل صف إجمالاً 5 صفوف)
+                    const renderBoxesRows = (disabledBoxes = []) => {
+                        let rows = [];
+                        for (let r = 0; r < 5; r++) {
+                            let rowComponents = [];
+                            for (let c = 0; c < 5; c++) {
+                                let boxNum = r * 5 + c + 1;
+                                let isExploded = disabledBoxes.includes(boxNum);
+                                rowComponents.push(
+                                    new ButtonBuilder()
+                                        .setCustomId(`box_${boxNum}`)
+                                        .setLabel(isExploded ? '💥' : `${boxNum}`)
+                                        .setStyle(isExploded ? ButtonStyle.Danger : ButtonStyle.Secondary)
+                                        .setDisabled(isExploded)
+                                );
+                            }
+                            rows.push(new ActionRowBuilder().addComponents(rowComponents));
+                        }
+                        return rows;
+                    };
+
+                    // إرسال رسائل خاصة للمشاركين لاختيار صناديقهم
+                    for (let player of playersArr) {
+                        try {
+                            let userObj = await client.users.fetch(player.id);
+                            let boxMsg = await userObj.send({ 
+                                content: '🫣 **اختر صندوقاً رقمياً من 1 إلى 25 لتختبئ فيه بداخل الـ 25 صندوقاً:**', 
+                                components: renderBoxesRows() 
+                            });
+
+                            let choiceCollector = boxMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 25000 });
+                            let chosen = false;
+
+                            choiceCollector.on('collect', async i => {
+                                let boxNum = parseInt(i.customId.split('_')[1]);
+                                player.hidingSpot = boxNum;
+                                chosen = true;
+                                await i.update({ content: `✅ ممتاز! لقد اختبأت في الصندوق رقم **${boxNum}** 🤫`, components: [] });
+                                choiceCollector.stop('chosen');
+                            });
+
+                            choiceCollector.on('end', async (_, res) => {
+                                if (!chosen) {
+                                    player.hidingSpot = Math.floor(Math.random() * 25) + 1;
+                                    await userObj.send({ content: `⚠️ انتهى الوقت! تم اختيار صندوق عشوائي لك: **${player.hidingSpot}**` }).catch(() => {});
+                                }
+                            });
+                        } catch (err) {
+                            player.hidingSpot = Math.floor(Math.random() * 25) + 1;
+                        }
+                    }
+
+                    await new Promise(res => setTimeout(res, 27000));
+
+                    await message.channel.send(`💣 **انتهت مرحلة الاختباء!** أغلق الجميع أبواب صناديقهم.. ويبدأ البوت الآن بتفجير الصناديق عشوائياً! 🧨`);
+                    await new Promise(res => setTimeout(res, 3000));
+
+                    let explodedBoxes = [];
+                    let activeGameMsg = await message.channel.send({ 
+                        embeds: [new EmbedBuilder().setTitle('🧨 خريطة الصناديق الحالية (25 صندوقاً)').setDescription('جاري تفجير الصناديق تباعاً...').setColor('#e74c3c')],
+                        components: renderBoxesRows(explodedBoxes) 
+                    });
+
+                    let gameActive = true;
+                    let roundNum = 1;
+
+                    while (gameActive) {
+                        let alivePlayers = playersArr.filter(p => p.alive);
+                        if (alivePlayers.length <= 1) {
+                            break;
+                        }
+
+                        // اختيار صندوق عشوائي لم يتم تفجيره بعد
+                        let availableBoxes = [];
+                        for (let i = 1; i <= 25; i++) {
+                            if (!explodedBoxes.includes(i)) availableBoxes.push(i);
+                        }
+
+                        if (availableBoxes.length === 0) break;
+
+                        let targetBox = availableBoxes[Math.floor(Math.random() * availableBoxes.length)];
+                        explodedBoxes.push(targetBox);
+
+                        await activeGameMsg.edit({
+                            embeds: [new EmbedBuilder().setTitle(`🧨 الجولة ${roundNum}: تفجير صندوق جديد!`).setDescription(`💥 البوت يختار عشوائياً لتفجير الصندوق رقم: **${targetBox}**!`).setColor('#e74c3c')],
+                            components: renderBoxesRows(explodedBoxes)
+                        }).catch(() => {});
+
+                        await new Promise(res => setTimeout(res, 3000));
+
+                        // فحص من كان مختبئاً في هذا الصندوق
+                        let caughtPlayers = playersArr.filter(p => p.alive && p.hidingSpot === targetBox);
+                        if (caughtPlayers.length > 0) {
+                            for (let cp of caughtPlayers) {
+                                cp.alive = false;
+                                await message.channel.send(`💥 **بووووم!** تم تفجير الصندوق رقم **${targetBox}** وكان مختبئاً بداخله اللاعب **${cp.name}**! لقد خرج من اللعبة ❌`);
+                            }
+                        } else {
+                            await message.channel.send(`💨 تم تفجير الصندوق رقم **${targetBox}**.. ولكنه كان فارغاً! صمد اللاعبون الآخرون.`);
+                        }
+
+                        let remainingAlive = playersArr.filter(p => p.alive);
+                        if (remainingAlive.length <= 1) {
+                            gameActive = false;
+                            break;
+                        }
+
+                        roundNum++;
+                        await new Promise(res => setTimeout(res, 3000));
+                    }
+
+                    let survivingPlayers = playersArr.filter(p => p.alive);
+                    const finalEmbed = new EmbedBuilder();
+
+                    if (survivingPlayers.length === 1) {
+                        finalEmbed.setTitle('🏆 بطل لعبة الاختباء والصناديق!')
+                        .setDescription(`👑 الناجي الوحيد الذي صمد حتى النهاية ولم يتم تفجير صندوقه هو:\n\n✨ **${survivingPlayers[0].name}** ✨\n\nمبروك الفوز بالمركز الأول! 🥇🎉`)
+                        .setColor('#ffd700');
+                    } else if (survivingPlayers.length > 1) {
+                        finalEmbed.setTitle('🤝 انتهاء اللعبة بتعادل الناجين!')
+                        .setDescription(`✨ الصامدون الأخيرون الذين نجوا من التفجيرات:\n\n` + survivingPlayers.map(p => `👑 **${p.name}** (صندوق رقم: ${p.hidingSpot})`).join('\n') + `\n\nمبارك لكم الفوز! 🏆`)
+                        .setColor('#f1c40f');
+                    } else {
+                        finalEmbed.setTitle('💀 خسارة جماعية!')
+                        .setDescription(`💥 تم تفجير صناديق الجميع وخسر كل اللاعبين في هذه الجولة!`)
+                        .setColor('#e74c3c');
+                    }
+
+                    await message.channel.send({ embeds: [finalEmbed] });
+
+                } catch (error) {
+                    console.error(error);
+                    await message.channel.send("❌ حدث خطأ أثناء تشغيل لعبة الاختباء.").catch(() => {});
+                }
             }
         });
     }
