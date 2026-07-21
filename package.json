@@ -1,12 +1,13 @@
 {
   "name": "discord-bot",
   "version": "1.0.0",
-  "description": "بوت ديسكورد متكامل مع ألعاب متعددة وصور من Unsplash",
+  "description": "بوت ديسكورد متكامل مع ألعاب متعددة (بدون إمبيد في التخمين)",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
   },
   "dependencies": {
-    "discord.js": "^14.14.1"
+    "discord.js": "^14.14.1",
+    "axios": "^1.6.0"
   }
 }
