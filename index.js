@@ -55,13 +55,14 @@ client.on('messageCreate', async message => {
     // 1. قائمة الألعاب
     if (message.content === prefix + 'ألعاب' || message.content === prefix + 'games') {
         const embed = new EmbedBuilder()
-            .setTitle('🎮 قائمة ألعاب البطولات والإقصاء')
+            .setTitle('🎮 قائمة ألعاب البطولات والإقصاء الشاملة')
             .setDescription('أهلاً بك! إليك الألعاب المتاحة حالياً:')
             .setColor('#5865F2')
             .addFields(
                 { name: '🎯 `!روليت`', value: 'لعبة الإقصاء التدريجي بصور متحركة حتى يبقى فائز واحد.', inline: true },
                 { name: '❌⭕ `!بطولة_اكس_او`', value: 'بطولة تكس أو بنظام خروج المغلوب حتى تتويج البطل.', inline: true },
-                { name: '🕵️‍♂️ `!مافيا`', value: 'لعبة المافيا والقرية الممتعة (تحتاج 4 لاعبين على الأقل).', inline: true }
+                { name: '🕵️‍♂️ `!مافيا`', value: 'لعبة المافيا والقرية الممتعة (تحتاج 4 لاعبين).', inline: true },
+                { name: '🪑 `!كراسي`', value: 'لعبة الكراسي الموسيقية الحماسية وسرعة رد الفعل.', inline: true }
             );
         return message.reply({ embeds: [embed] });
     }
@@ -460,10 +461,9 @@ client.on('messageCreate', async message => {
                     return gameMessage.edit({ content: '❌ تم إلغاء لعبة المافيا لعدم وجود لاعبين كفاية (الحد الأدنى 4).', embeds: [], components: [] });
                 }
 
-                // توزيع الأدوار عشوائياً
                 shuffle(playersArr);
-                playersArr[0].role = 'مافيا'; // الشخص الأول مافيا
-                if (playersArr.length >= 6) playersArr[1].role = 'مافيا'; // لو أكثر من 6 لاعبين نضيف مافيا ثانٍ
+                playersArr[0].role = 'مافيا';
+                if (playersArr.length >= 6) playersArr[1].role = 'مافيا';
                 
                 let copAssigned = false;
                 let doctorAssigned = false;
@@ -476,7 +476,6 @@ client.on('messageCreate', async message => {
                     }
                 });
 
-                // إرسال الأدوار بالخاص (DM)
                 for (let p of playersArr) {
                     try {
                         let userObj = await client.users.fetch(p.id);
@@ -496,7 +495,6 @@ client.on('messageCreate', async message => {
                 let roundCount = 1;
 
                 while (gameRunning) {
-                    // فحص شروط الفوز قبل بدء الجولة
                     let aliveMafia = playersArr.filter(p => p.alive && p.role === 'مافيا');
                     let aliveVillagers = playersArr.filter(p => p.alive && p.role !== 'مافيا');
 
@@ -509,27 +507,25 @@ client.on('messageCreate', async message => {
                         break;
                     }
 
-                    // ------------------ مرحلة الليل 🌙 ------------------
                     const nightEmbed = new EmbedBuilder()
                         .setTitle(`🌙 الليلة رقم ${roundCount}`)
-                        .setDescription('القرية نائمة الآن... المافيا والطبيب والشرطي يقومون بمهامهم.')
+                        .setDescription('القرية نائمة الآن... المافيا والطبيب يقومون بمهامهم.')
                         .setColor('#000000');
                     await message.channel.send({ embeds: [nightEmbed] });
 
                     let mafiaTarget = null;
                     let doctorSave = null;
 
-                    // تصويت المافيا بالخاص
                     for (let mPlayer of aliveMafia) {
                         try {
                             let mUser = await client.users.fetch(mPlayer.id);
                             let aliveTargets = playersArr.filter(p => p.alive && p.role !== 'مافيا');
                             if (aliveTargets.length === 0) break;
 
-                            let buttons = aliveTargets.map((t, idx) => 
+                            let buttons = aliveTargets.map((t) => 
                                 new ButtonBuilder().setCustomId(`kill_${t.id}`).setLabel(t.name).setStyle(ButtonStyle.Danger)
                             );
-                            let row = new ActionRowBuilder().addComponents(buttons.slice(0, 5)); // حد أقصى 5 أزرار في الصف
+                            let row = new ActionRowBuilder().addComponents(buttons.slice(0, 5));
 
                             let msg = await mUser.send({ content: '🦹‍♂️ **اختر شخصاً لقتله هذه الليلة:**', components: [row] });
                             let collectedVote = await msg.awaitMessageComponent({ componentType: ComponentType.Button, time: 20000 }).catch(() => null);
@@ -544,13 +540,12 @@ client.on('messageCreate', async message => {
                         }
                     }
 
-                    // حماية الطبيب
                     let doctor = playersArr.find(p => p.alive && p.role === 'طبيب');
                     if (doctor) {
                         try {
                             let dUser = await client.users.fetch(doctor.id);
                             let aliveAll = playersArr.filter(p => p.alive);
-                            let buttons = aliveAll.map((t, idx) => 
+                            let buttons = aliveAll.map((t) => 
                                 new ButtonBuilder().setCustomId(`save_${t.id}`).setLabel(t.name).setStyle(ButtonStyle.Success)
                             );
                             let row = new ActionRowBuilder().addComponents(buttons.slice(0, 5));
@@ -570,7 +565,6 @@ client.on('messageCreate', async message => {
 
                     await new Promise(res => setTimeout(res, 3000));
 
-                    // نتيجة الليل
                     let killedPlayer = null;
                     if (mafiaTarget) {
                         if (!doctorSave || doctorSave.id !== mafiaTarget.id) {
@@ -579,16 +573,14 @@ client.on('messageCreate', async message => {
                         }
                     }
 
-                    // ------------------ مرحلة النهار ☀️ ------------------
                     const dayEmbed = new EmbedBuilder()
                         .setTitle(`☀️ شروق الشمس - اليوم ${roundCount}`)
-                        .setDescription(killedPlayer ? `💥 استيقظت القرية على خبر شؤم! لقد تم العثور على جثة **${killedPlayer.name}** قتيلاً الليلة الماضية!` : `✨ ليلة هادئة! لم يتم تسجيل أي جرائم قتل الليلة الماضية بفضل الحماية الإلهية أو خطأ المافيا.`)
+                        .setDescription(killedPlayer ? `💥 استيقظت القرية على خبر شؤم! لقد تم العثور على جثة **${killedPlayer.name}** قتيلاً الليلة الماضية!` : `✨ ليلة هادئة! لم يتم تسجيل أي جرائم قتل الليلة الماضية.`)
                         .setColor('#f1c40f')
                         .addFields({ name: '👥 الناجون في القرية:', value: playersArr.filter(p => p.alive).map(p => `• ${p.name}`).join('\n') });
 
                     await message.channel.send({ embeds: [dayEmbed] });
 
-                    // فحص الفوز مجدداً بعد الليل
                     aliveMafia = playersArr.filter(p => p.alive && p.role === 'مافيا');
                     aliveVillagers = playersArr.filter(p => p.alive && p.role !== 'مافيا');
 
@@ -601,7 +593,6 @@ client.on('messageCreate', async message => {
                         break;
                     }
 
-                    // التصويت الجماعي لطرد مشتبه به في النهار
                     let aliveList = playersArr.filter(p => p.alive);
                     let voteButtons = aliveList.map(p => new ButtonBuilder().setCustomId(`vote_${p.id}`).setLabel(p.name).setStyle(ButtonStyle.Primary));
                     let voteRow = new ActionRowBuilder().addComponents(voteButtons.slice(0, 5));
@@ -625,7 +616,6 @@ client.on('messageCreate', async message => {
 
                     await new Promise(res => setTimeout(res, 30000));
 
-                    // حساب الأصوات
                     let countVotes = {};
                     votesMap.forEach(targetId => {
                         countVotes[targetId] = (countVotes[targetId] || 0) + 1;
@@ -643,9 +633,9 @@ client.on('messageCreate', async message => {
                     if (mostVotedId) {
                         let executedPlayer = playersArr.find(p => p.id === mostVotedId);
                         executedPlayer.alive = false;
-                        await message.channel.send(`⚖️ **انتهى وقت التصويت!** قررت القرية إعدام **${executedPlayer.name}** بالشنق.\nوهو كان: \` ${executedPlayer.role.toUpperCase()} \``);
+                        await message.channel.send(`⚖️ **انتهت وقت التصويت!** قررت القرية إعدام **${executedPlayer.name}** بالشنق.\nوهو كان: \` ${executedPlayer.role.toUpperCase()} \``);
                     } else {
-                        await message.channel.send(`⚖️ **انتهى وقت التصويت!** لم يتفق أحد على إعدام أي شخص اليوم.`);
+                        await message.channel.send(`⚖️ **انتهت وقت التصويت!** لم يتفق أحد على إعدام أي شخص اليوم.`);
                     }
 
                     roundCount++;
@@ -654,6 +644,165 @@ client.on('messageCreate', async message => {
 
             } else {
                 await gameMessage.edit({ content: '❌ تم إلغاء لعبة المافيا.', embeds: [], components: [] });
+            }
+        });
+    }
+
+    // 5. لعبة الكراسي الموسيقية (Musical Chairs Game)
+    if (message.content === prefix + 'كراسي' || message.content === prefix + 'chairs') {
+        const playersMap = new Map();
+        const MAX_PLAYERS = 15;
+        const durationSeconds = 30;
+        const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+
+        const embed = new EmbedBuilder()
+            .setTitle('🪑 لعبة الكراسي الموسيقية الحماسية')
+            .setDescription(`اضغط على زر **انضمام** للمشاركة!\nعند توقف الموسيقى، أسرع بالجلوس على الكرسي وإلا ستخسر.\n\n⏳ **تبدأ اللعبة تلقائياً بعد:** <t:${endTime}:R>`)
+            .setColor('#e67e22')
+            .addFields({ name: `👥 المشاركون (0/${MAX_PLAYERS}):`, value: 'لا يوجد مشاركين حتى الآن.' });
+
+        const joinBtn = new ButtonBuilder().setCustomId('join').setLabel('انضمام 🟢').setStyle(ButtonStyle.Success);
+        const leaveBtn = new ButtonBuilder().setCustomId('leave').setLabel('انسحاب 🔴').setStyle(ButtonStyle.Danger);
+        const startBtn = new ButtonBuilder().setCustomId('start').setLabel('بدء الآن 🚀').setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn, startBtn);
+        const gameMessage = await message.reply({ embeds: [embed], components: [row] });
+
+        const collector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+
+        collector.on('collect', async interaction => {
+            const userId = interaction.user.id;
+            const playerName = interaction.user.displayName || interaction.user.username;
+
+            if (interaction.customId === 'join') {
+                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
+                    return interaction.reply({ content: '⚠️ عذراً، العدد مكتمل!', ephemeral: true });
+                }
+                if (!playersMap.has(userId)) {
+                    playersMap.set(userId, { id: userId, name: playerName });
+                }
+                await interaction.reply({ content: `✅ تم انضمامك للعبة الكراسي بنجاح!`, ephemeral: true });
+            } else if (interaction.customId === 'leave') {
+                if (playersMap.has(userId)) {
+                    playersMap.delete(userId);
+                    await interaction.reply({ content: '❌ لقد انسحبت من اللعبة.', ephemeral: true });
+                } else {
+                    return interaction.reply({ content: '⚠️ أنت لست منضم أصلاً!', ephemeral: true });
+                }
+            } else if (interaction.customId === 'start') {
+                if (userId !== message.author.id) {
+                    return interaction.reply({ content: '⚠️ صاحب الأمر فقط يمكنه بدء اللعبة!', ephemeral: true });
+                }
+                if (playersMap.size < 3) {
+                    return interaction.reply({ content: '⚠️ نحتاج إلى 3 لاعبين على الأقل لبدء لعبة الكراسي!', ephemeral: true });
+                }
+                collector.stop('start');
+                return;
+            }
+
+            const playersArray = Array.from(playersMap.values());
+            const playersList = playersArray.length > 0 
+                ? playersArray.map(p => `• ${p.name}`).join('\n') 
+                : 'لا يوجد مشاركين حتى الآن.';
+
+            const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `👥 المشاركون (${playersMap.size}/${MAX_PLAYERS}):`, value: playersList });
+            await gameMessage.edit({ embeds: [updatedEmbed] });
+        });
+
+        collector.on('end', async (collected, reason) => {
+            if (reason === 'time' || reason === 'start') {
+                let activePlayers = Array.from(playersMap.values());
+
+                if (activePlayers.length < 3) {
+                    return gameMessage.edit({ content: '❌ تم إلغاء لعبة الكراسي لعدم وجود لاعبين كفاية (الحد الأدنى 3).', embeds: [], components: [] });
+                }
+
+                try {
+                    await gameMessage.edit({ content: '🎶 **بدأت الموسيقى تعمل... الكل يرقص حول الكراسي!** 💃🕺', embeds: [], components: [] });
+                    await new Promise(res => setTimeout(res, 3000));
+
+                    while (activePlayers.length > 1) {
+                        let chairsCount = activePlayers.length - 1; // عدد الكراسي أقل بكرسي واحد
+
+                        const musicEmbed = new EmbedBuilder()
+                            .setTitle('🎶 توقفت الموسيقى! اسرع واجلس!')
+                            .setDescription(`🪑 الكراسي المتاحة في هذه الجولة: **${chairsCount}** فقط!\nاضغط على الزر أدناه بأسرع ما يمكن لتضمن مقعدك!`)
+                            .setColor('#e67e22')
+                            .addFields({ name: `👥 المتنافسون (${activePlayers.length}):`, value: activePlayers.map(p => `• ${p.name}`).join('\n') });
+
+                        const sitBtn = new ButtonBuilder().setCustomId('sit').setLabel('اجلس بسرعة! 🪑').setStyle(ButtonStyle.Success);
+                        const sitRow = new ActionRowBuilder().addComponents(sitBtn);
+
+                        let roundMsg = await message.channel.send({ embeds: [musicEmbed], components: [sitRow] });
+
+                        let seatedPlayers = new Set();
+                        let sitCollector = roundMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 7000 });
+
+                        sitCollector.on('collect', async i => {
+                            if (!activePlayers.some(p => p.id === i.user.id)) {
+                                return i.reply({ content: '⚠️ أنت لست مشاركاً في هذه الجولة!', ephemeral: true });
+                            }
+                            if (seatedPlayers.has(i.user.id)) {
+                                return i.reply({ content: '⚠️ لقد جلست مسبقاً!', ephemeral: true });
+                            }
+
+                            if (seatedPlayers.size < chairsCount) {
+                                seatedPlayers.add(i.user.id);
+                                await i.reply({ content: '✅ ممتاز! لقد حصلت على كرسي وتأهلت للجولة القادمة.', ephemeral: true });
+                            } else {
+                                await i.reply({ content: '❌ للأسف! اكتمل عدد الكراسي ولم تجد مقعداً!', ephemeral: true });
+                            }
+                        });
+
+                        await new Promise(res => setTimeout(res, 7000));
+
+                        // تحديد الخاسر (الذي لم يجلس أو كان الأبطأ)
+                        let eliminatedPlayer = null;
+                        let nextActive = [];
+
+                        for (let p of activePlayers) {
+                            if (seatedPlayers.has(p.id) && nextActive.length < chairsCount) {
+                                nextActive.push(p);
+                            } else {
+                                if (!eliminatedPlayer) {
+                                    eliminatedPlayer = p; // أول شخص لم يلحق الكرسي
+                                } else {
+                                    nextActive.push(p); // الباقون إذا امتلأت الكراسي قبلهم
+                                }
+                            }
+                        }
+
+                        // في حال لم يجلس أحد اللاعبين أصلاً
+                        if (!eliminatedPlayer) {
+                            eliminatedPlayer = activePlayers[activePlayers.length - 1];
+                            nextActive = nextActive.slice(0, chairsCount);
+                        }
+
+                        activePlayers = nextActive;
+
+                        await roundMsg.edit({
+                            content: `💥 **انتهت الجولة!** لم يجد **${eliminatedPlayer.name}** كرسياً وتم إقصاؤه! ❌`,
+                            components: []
+                        }).catch(() => {});
+
+                        await new Promise(res => setTimeout(res, 4000));
+                    }
+
+                    const winner = activePlayers[0];
+                    const finalEmbed = new EmbedBuilder()
+                        .setTitle('👑 بطل لعبة الكراسي الموسيقية!')
+                        .setDescription(`🎉 الفائز الأخير الذي حصل على الكرسي الأخير هو:\n\n✨ **${winner.name}** ✨\n\nمبروك الفوز بالمركز الأول! 🥇🪑`)
+                        .setColor('#ffd700');
+
+                    await gameMessage.edit({ content: `🎉 **انتهت اللعبة بنجاح!**`, embeds: [finalEmbed], components: [] });
+
+                } catch (error) {
+                    console.error(error);
+                    await gameMessage.edit({ content: "❌ حدث خطأ أثناء تشغيل لعبة الكراسي." });
+                }
+
+            } else if (reason === 'cancel') {
+                await gameMessage.edit({ content: '❌ تم إلغاء لعبة الكراسي.', embeds: [], components: [] });
             }
         });
     }
