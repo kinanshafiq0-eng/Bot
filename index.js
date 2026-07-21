@@ -5,10 +5,7 @@ const {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
-    ComponentType,
-    ModalBuilder,
-    TextInputBuilder,
-    TextInputStyle
+    ComponentType
 } = require('discord.js');
 
 const client = new Client({
@@ -538,7 +535,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 3. لعبة ريبيكا (Rebecca) - اسم، حيوان، نبات، جماد، بلاد
+    // 3. لعبة ريبيكا (Rebecca) - المتسلسلة بالشات العادي
     // ==========================================
     if (message.content === prefix + 'ريبيكا' || message.content === prefix + 'rebecca') {
         if (activeGames.has(guildId)) {
@@ -574,7 +571,7 @@ client.on('messageCreate', async message => {
                     return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
                 }
                 if (!playersMap.has(userId)) {
-                    playersMap.set(userId, { id: userId, name: playerName });
+                    playersMap.set(userId, { id: userId, name: playerName, alive: true });
                 }
                 await interaction.reply({ content: 'تم انضمامك.', ephemeral: true });
             } else if (interaction.customId === 'rebecca_leave') {
@@ -604,7 +601,7 @@ client.on('messageCreate', async message => {
             }
 
             try {
-                const arabicLetters = ['أ', 'b', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي'];
+                const arabicLetters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي'];
                 let currentLetterIdx = Math.floor(Math.random() * arabicLetters.length);
                 let currentLetter = arabicLetters[currentLetterIdx];
 
@@ -621,98 +618,104 @@ client.on('messageCreate', async message => {
                 let gameRunning = true;
 
                 while (gameRunning) {
-                    let currentPlayer = playersArr[playerIndex % playersArr.length];
+                    let alivePlayers = playersArr.filter(p => p.alive);
+                    if (alivePlayers.length <= 0) break;
+
+                    let currentPlayer = alivePlayers[playerIndex % alivePlayers.length];
                     let currentCategory = categories[categoryIndex];
 
-                    const announceEmbed = new EmbedBuilder()
+                    const turnEmbed = new EmbedBuilder()
                         .setTitle('◆ تحدي ريبيكا المتسلسل')
-                        .setDescription(`🎯 **الحرف الحالي:** \`${currentLetter}\`\n📋 **الفئة المطلوبة:** \`${currentCategory.name}\`\n👤 **دور اللاعب:** <@${currentPlayer.id}>\n\n⏳ **لديك 20 ثانية للإجابة عبر الزر أدناه!**`)
+                        .setDescription(`🎯 **الحرف المطلوب:** \`${currentLetter}\`\n📋 **الفئة:** \`${currentCategory.name}\`\n👤 **دور اللاعب:** <@${currentPlayer.id}>\n\n⏳ **اكتب إجابتك في الشات خلال 20 ثانية!**`)
                         .setColor(THEME_COLOR);
 
-                    const modalId = `rebecca_modal_${currentPlayer.id}_${Date.now()}`;
-                    const modal = new ModalBuilder()
-                        .setCustomId(modalId)
-                        .setTitle(`لعبة ريبيكا - الحرف: ${currentLetter} (${currentCategory.name})`);
+                    let promptMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك! اكتب **${currentCategory.name}** بحرف **${currentLetter}** في الشات:`, embeds: [turnEmbed] });
 
-                    const textInput = new TextInputBuilder()
-                        .setCustomId(currentCategory.id)
-                        .setLabel(`أدخل ${currentCategory.name} بحرف ${currentLetter}`)
-                        .setStyle(TextInputStyle.Short)
-                        .setRequired(true);
+                    const filter = m => m.author.id === currentPlayer.id;
+                    const chatCollector = message.channel.createMessageCollector({ filter, time: 20000, max: 1 });
 
-                    modal.addComponents(new ActionRowBuilder().addComponents(textInput));
-
-                    const btnRow = new ActionRowBuilder().addComponents(
-                        new ButtonBuilder()
-                            .setCustomId(`open_modal_${currentPlayer.id}`)
-                            .setLabel(`اضغط للإجابة (${currentCategory.name})`)
-                            .setStyle(ButtonStyle.Primary)
-                    );
-
-                    let promptMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك الآن!`, embeds: [announceEmbed], components: [btnRow] });
-
-                    const filter = i => i.user.id === currentPlayer.id;
-                    const modalCollector = promptMsg.createMessageComponentCollector({ filter, time: 20000 });
-
-                    let answeredSuccessfully = false;
+                    let answeredCorrectly = false;
 
                     await new Promise((resolve) => {
-                        modalCollector.on('collect', async i => {
-                            if (i.customId === `open_modal_${currentPlayer.id}`) {
-                                await i.showModal(modal);
+                        chatCollector.on('collect', async m => {
+                            let answerText = m.content.trim();
+                            
+                            // تنظيف الحرف الأول من أل التعريف أو الهمزات للمقارنة المرنة
+                            let cleanAnswerFirstChar = answerText.charAt(0)
+                                .replace('أ', 'ا')
+                                .replace('إ', 'ا')
+                                .replace('آ', 'ا')
+                                .replace('ة', 'ه');
 
-                                try {
-                                    const modalSubmit = await i.awaitModalSubmit({
-                                        filter: mi => mi.customId === modalId && mi.user.id === currentPlayer.id,
-                                        time: 25000
-                                    });
+                            let cleanTargetLetter = currentLetter
+                                .replace('أ', 'ا')
+                                .replace('إ', 'ا')
+                                .replace('آ', 'ا')
+                                .replace('ة', 'ه');
 
-                                    answeredSuccessfully = true;
-                                    modalCollector.stop();
-
-                                    const answerValue = modalSubmit.fields.getTextInputValue(currentCategory.id);
-
-                                    const resultEmbed = new EmbedBuilder()
-                                        .setTitle('◆ إجابة صحيحة')
-                                        .setDescription(`أبدع اللاعب <@${currentPlayer.id}> وأجاب بنجاح!\n📌 **${currentCategory.name}:** \`${answerValue}\` (\`${currentLetter}\`)`)
-                                        .setColor(THEME_COLOR);
-
-                                    await modalSubmit.reply({ embeds: [resultEmbed] });
-                                    promptMsg.delete().catch(() => {});
-                                    resolve();
-                                } catch (err) {
-                                    // انتهى وقت إدخال الـ Modal
-                                }
+                            // التحقق إذا كانت الكلمة تبدأ بالحرف المطلوب
+                            if (cleanAnswerFirstChar === cleanTargetLetter) {
+                                answeredCorrectly = true;
+                                await m.react('✅').catch(() => {});
+                                await message.channel.send({ content: `✅ **إجابة صحيحة من <@${currentPlayer.id}>!** (\`${answerText}\`)` });
+                            } else {
+                                // إجابة خاطئة بحرف غير صحيح
+                                currentPlayer.alive = false;
+                                await m.react('❌').catch(() => {});
+                                await message.channel.send({ content: `❌ **خطأ!** الحرف المطلوب هو (\`${currentLetter}\`) بينما بدأت إجابتك بـ (\`${answerText.charAt(0)}\`).\n🚨 **تم إقصاء <@${currentPlayer.id}>!**` });
                             }
+                            resolve();
                         });
 
-                        modalCollector.on('end', async () => {
-                            if (!answeredSuccessfully) {
-                                promptMsg.edit({ content: `⏰ انتهى الوقت ولم يقم <@${currentPlayer.id}> بالإجابة!`, components: [] }).catch(() => {});
+                        chatCollector.on('end', collected => {
+                            if (collected.size === 0) {
+                                // انتهى الوقت ولم يجب
+                                currentPlayer.alive = false;
+                                message.channel.send({ content: `⏰ **انتهى الوقت ولم يجب <@${currentPlayer.id}>! تم إقصاؤه.**` });
                                 resolve();
                             }
                         });
                     });
 
-                    if (!answeredSuccessfully) {
-                        // إذا لم يجب اللاعب، تنتهي اللعبة أو يمكن جعله يخرج، هنا سننهي الجولة لحماس أكبر
+                    promptMsg.delete().catch(() => {});
+
+                    // التحقق من عدد الناجين بعد هذه الجولة
+                    let remainingAlive = playersArr.filter(p => p.alive);
+                    if (remainingAlive.length <= 1) {
+                        gameRunning = false;
                         break;
                     }
 
-                    // الانتقال للفئة أو اللاعب التالي
-                    categoryIndex++;
-                    
-                    // إذا وصلنا لنهاية الفئات (بعد "بلاد")
-                    if (categoryIndex >= categories.length) {
-                        categoryIndex = 0; // إعادة تعليق الفئات من البداية (اسم)
-                        currentLetterIdx = (currentLetterIdx + 1) % arabicLetters.length;
-                        currentLetter = arabicLetters[currentLetterIdx]; // اختيار حرف جديد
+                    // إذا أجاب بشكل صحيح، ننتقل للفئة التالية
+                    if (answeredCorrectly) {
+                        categoryIndex++;
+                        
+                        // إذا وصلنا لنهاية الفئات (بعد "بلاد")
+                        if (categoryIndex >= categories.length) {
+                            categoryIndex = 0; // العودة لفئة "اسم" من جديد
+                            currentLetterIdx = (currentLetterIdx + 1) % arabicLetters.length;
+                            currentLetter = arabicLetters[currentLetterIdx]; // حرف جديد
 
-                        await message.channel.send({ content: `🔄 **انتهت دورة الفئات كاملة! تم الانتقال إلى حرف جديد:** \`${currentLetter}\`` });
+                            await message.channel.send({ content: `🔄 **أتممتم الدورة كاملة بنجاح! تم اختيار حرف جديد للتحدي:** \`${currentLetter}\`` });
+                        }
                     }
 
                     playerIndex++;
                     await new Promise(res => setTimeout(res, 1500));
+                }
+
+                // إعلان الفائزين أو الناجين
+                let finalSurvivors = playersArr.filter(p => p.alive);
+                const finalEmbed = new EmbedBuilder().setColor(THEME_COLOR).setTitle('◆ نهاية لعبة ريبيكا');
+
+                if (finalSurvivors.length === 1) {
+                    finalEmbed.setDescription(`👑 الناجي الفائز بالمركز الأول:\n<@${finalSurvivors[0].id}> ✨`);
+                    await message.channel.send({ content: `👑 مبارك الفوز بالمركز الأول <@${finalSurvivors[0].id}>!`, embeds: [finalEmbed] });
+                } else if (finalSurvivors.length > 1) {
+                    finalEmbed.setDescription(`👑 الناجون الصامدون:\n` + finalSurvivors.map(p => `<@${p.id}>`).join('\n'));
+                    await message.channel.send({ content: `👑 مبارك للناجين!`, embeds: [finalEmbed] });
+                } else {
+                    await message.channel.send({ content: `◆ انتهت اللعبة بإقصاء الجميع ولم يبقَ أحد!` });
                 }
 
                 activeGames.delete(guildId);
