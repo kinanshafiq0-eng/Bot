@@ -270,7 +270,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 2. لعبة الكراسي الموسيقية (بالشروط الجديدة)
+    // 2. لعبة الكراسي الموسيقية (عدد الكراسي = عدد المشاركين - 1)
     // ==========================================
     if (message.content === prefix + 'كراسي' || message.content === prefix + 'chairs') {
         const playersMap = new Map();
@@ -336,61 +336,64 @@ client.on('messageCreate', async message => {
                     let alivePlayers = playersArr.filter(p => p.alive);
                     if (alivePlayers.length <= 1) break;
 
-                    // عدد الكراسي أقل من عدد المشاركين الباقين بواحد بالضبط
+                    // عدد الكراسي دائماً أقل من عدد المشاركين الباقين بواحد بالضبط
                     let chairCount = alivePlayers.length - 1;
                     if (chairCount < 1) chairCount = 1;
 
-                    let totalBoxes = 9; // لوحة 3x3
+                    // إجمالي المربعات المعروضة يجب أن يكفي (مثلاً لو الباقين 10 الكراسي 9، نضع إجمالي مربعات قريبة مثل 9 أو 16 حسب الحاجة، وهنا سنبنيها بحيث يكون عدد الكراسي الفعلية المتاحة = chairCount)
+                    let totalBoxes = chairCount + 1; // إجمالي الأزرار هو عدد الكراسي المطلوبة + زر واحد فارغ أو إضافي (أو نحدد الأزرار النشطة بعدد الكراسي)
+                    if (totalBoxes > 25) totalBoxes = 25;
+
                     let chairIndices = [];
                     while(chairIndices.length < chairCount) {
                         let rand = Math.floor(Math.random() * totalBoxes) + 1;
                         if(!chairIndices.includes(rand)) chairIndices.push(rand);
                     }
 
-                    let roundState = {}; // لتسجيل من جلس في أي كرسي
-                    let redRoundLosers = []; // لتسجيل من ضغط في الجولة الحمراء
-
-                    // تحديد لون الجولة عشوائياً: 70% أزرق (مسموح) و 30% أحمر (فخ)
-                    let isRoundRed = Math.random() < 0.3;
+                    let roundState = {}; 
+                    let redRoundLosers = []; 
+                    let isRoundRed = Math.random() < 0.3; // 30% فرصة أن تكون الجولة حمراء بالكامل
 
                     const renderChairRows = (disabled = false) => {
                         let rows = [];
-                        for (let r = 0; r < 3; r++) {
-                            let rowComponents = [];
-                            for (let c = 0; c < 3; c++) {
-                                let boxNum = r * 3 + c + 1;
-                                let isTaken = Object.values(roundState).includes(boxNum);
-                                
-                                let btnStyle = ButtonStyle.Primary; // أزرق افتراضي
-                                let btnLabel = `كرسي ${boxNum}`;
-                                let isDisabled = disabled;
+                        let currentRow = new ActionRowBuilder();
+                        
+                        for (let i = 1; i <= totalBoxes; i++) {
+                            let isTaken = Object.values(roundState).includes(i);
+                            let btnStyle = ButtonStyle.Primary;
+                            let btnLabel = `كرسي ${i}`;
+                            let isDisabled = disabled;
 
-                                if (isRoundRed) {
-                                    btnStyle = ButtonStyle.Danger; // أحمر بالكامل (فخ)
-                                    btnLabel = `✕ ${boxNum}`;
-                                } else if (isTaken) {
-                                    btnStyle = ButtonStyle.Success; // أخضر لمن حجز بنجاح
-                                    btnLabel = `✓ ${boxNum}`;
-                                } else if (!chairIndices.includes(boxNum)) {
-                                    btnStyle = ButtonStyle.Secondary; // مكان فارغ
-                                }
-
-                                rowComponents.push(
-                                    new ButtonBuilder()
-                                        .setCustomId(`chair_${boxNum}`)
-                                        .setLabel(btnLabel)
-                                        .setStyle(btnStyle)
-                                        .setDisabled(isDisabled || (!isRoundRed && isTaken))
-                                );
+                            if (isRoundRed) {
+                                btnStyle = ButtonStyle.Danger; // أحمر (فخ)
+                                btnLabel = `✕ ${i}`;
+                            } else if (isTaken) {
+                                btnStyle = ButtonStyle.Success; // أخضر عند الحجز
+                                btnLabel = `✓ ${i}`;
+                            } else if (!chairIndices.includes(i)) {
+                                btnStyle = ButtonStyle.Secondary;
                             }
-                            rows.push(new ActionRowBuilder().addComponents(rowComponents));
+
+                            currentRow.addComponents(
+                                new ButtonBuilder()
+                                    .setCustomId(`chair_${i}`)
+                                    .setLabel(btnLabel)
+                                    .setStyle(btnStyle)
+                                    .setDisabled(isDisabled || (!isRoundRed && isTaken))
+                            );
+
+                            // ديسكورد يسمح بحد أقصى 5 أزرار في الصف الواحد
+                            if (currentRow.components.length === 5 || i === totalBoxes) {
+                                rows.push(currentRow);
+                                currentRow = new ActionRowBuilder();
+                            }
                         }
                         return rows;
                     };
 
                     let roundDescText = isRoundRed 
                         ? `⚠️ **تحذير:** الجولة حمراء بالكامل! أي شخص يضغط على أي زر سيتم إقصاؤه فوراً!` 
-                        : `الباقون: **${alivePlayers.length}** | الكراسي المتاحة: **${chairCount}**\nاسرع بالجلوس على الكراسي الزرقاء!`;
+                        : `الباقون: **${alivePlayers.length}** | الكراسي المطلوبة: **${chairCount}**\nاسرع بالجلوس على الكراسي الزرقاء!`;
 
                     let roundEmbed = new EmbedBuilder()
                         .setTitle(`◇ جولة الكراسي رقم ${roundNumber}`)
@@ -398,7 +401,7 @@ client.on('messageCreate', async message => {
                         .setColor(THEME_COLOR);
 
                     let roundMsg = await message.channel.send({ 
-                        content: `🎵 **بدأت الموسيقى.. اسرعوا!**`, 
+                        content: `🎵 **بدأت الموسيقى.. الكراسي (${chairCount}) لـ (${alivePlayers.length}) مشارك!**`, 
                         embeds: [roundEmbed], 
                         components: renderChairRows(false) 
                     });
@@ -413,10 +416,8 @@ client.on('messageCreate', async message => {
 
                         let targetBox = parseInt(i.customId.split('_')[1]);
 
-                        // إذا كانت الجولة حمراء، أي ضغطة تعتبر خسارة فورية
                         if (isRoundRed) {
                             if (!redRoundLosers.includes(player.id)) {
-                                redRoundLosers.id = player.id; // تسجيله كخاسر
                                 redRoundLosers.push(player.id);
                                 player.alive = false;
                             }
@@ -431,7 +432,7 @@ client.on('messageCreate', async message => {
                             return i.reply({ content: 'هذا الكرسي محجوز مسبقاً!', ephemeral: true });
                         }
                         if (!chairIndices.includes(targetBox)) {
-                            return i.reply({ content: 'هذا المكان ليس كرسياً متاحاً!', ephemeral: true });
+                            return i.reply({ content: 'هذا ليس كرسياً متاحاً للحجز!', ephemeral: true });
                         }
 
                         roundState[i.user.id] = targetBox;
@@ -444,7 +445,6 @@ client.on('messageCreate', async message => {
                     let eliminatedInRound = [];
                     
                     if (!isRoundRed) {
-                        // الجولة الزرقاء: من لم يحجز كرسياً يخسر
                         for (let player of alivePlayers) {
                             if (roundState[player.id] === undefined) {
                                 player.alive = false;
@@ -452,7 +452,6 @@ client.on('messageCreate', async message => {
                             }
                         }
                     } else {
-                        // الجولة الحمراء: من ضغط يتم إقصاؤه
                         for (let playerId of redRoundLosers) {
                             let player = playersMap.get(playerId);
                             if (player && !eliminatedInRound.includes(player)) {
