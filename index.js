@@ -84,19 +84,25 @@ client.on('messageCreate', async message => {
             }
 
             try {
-                const renderBoxesRows = (disabled = false, exploded = []) => {
+                // دالة رسم الأزرار مع تلوين الصناديق المفجرة (أحمر إذا وجد شخص، أخضر إذا كان فارغاً)
+                const renderBoxesRows = (disabled = false, boxStatusMap = {}) => {
                     let rows = [];
                     for (let r = 0; r < 5; r++) {
                         let rowComponents = [];
                         for (let c = 0; c < 5; c++) {
                             let boxNum = r * 5 + c + 1;
-                            let isExploded = exploded.includes(boxNum);
+                            let status = boxStatusMap[boxNum]; // 'hit' (أحمر) أو 'safe' (أخضر)
+                            
+                            let btnStyle = ButtonStyle.Secondary;
+                            if (status === 'hit') btnStyle = ButtonStyle.Danger;      // أحمر
+                            else if (status === 'safe') btnStyle = ButtonStyle.Success;  // أخضر
+
                             rowComponents.push(
                                 new ButtonBuilder()
                                     .setCustomId(`box_${boxNum}`)
-                                    .setLabel(isExploded ? `✕ ${boxNum}` : `${boxNum}`)
-                                    .setStyle(isExploded ? ButtonStyle.Danger : ButtonStyle.Secondary)
-                                    .setDisabled(disabled || isExploded)
+                                    .setLabel(`${boxNum}`)
+                                    .setStyle(btnStyle)
+                                    .setDisabled(disabled || status !== undefined)
                             );
                         }
                         rows.push(new ActionRowBuilder().addComponents(rowComponents));
@@ -108,7 +114,7 @@ client.on('messageCreate', async message => {
                     .setTitle('◇ مرحلة التخفي')
                     .setDescription(`اختر صندوقاً (1-25) لتختبئ فيه بسرعة.\n⏳ **الوقت:** 12 ثانية`);
 
-                let hideMsg = await message.channel.send({ content: `🔹 **اختر مكان اختبائك الآن:**`, embeds: [hideEmbed], components: renderBoxesRows() });
+                let hideMsg = await message.channel.send({ content: `🔹 **اختر مكان اختبائك الآن:**`, embeds: [hideEmbed], components: renderBoxesRows(false, {}) });
 
                 let hideCollector = hideMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 12000 });
 
@@ -133,7 +139,7 @@ client.on('messageCreate', async message => {
                 await new Promise(res => setTimeout(res, 13000));
                 await hideMsg.edit({ content: `🔒 **بدأت مرحلة التدمير..**`, components: [] }).catch(() => {});
 
-                let explodedBoxes = [];
+                let boxStatusMap = {}; // يحفظ حالة كل صندوق تم فتحه ('hit' أو 'safe')
                 let turnIndex = 0;
                 let gameActive = true;
 
@@ -148,7 +154,7 @@ client.on('messageCreate', async message => {
                         .setDescription(`دور البطل: <@${currentPlayer.id}>\nاختر صندوقاً لتفجيره.\n⏳ **الوقت:** 10 ثوانٍ`)
                         .setColor(THEME_COLOR);
 
-                    let turnMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك:`, embeds: [turnEmbed], components: renderBoxesRows(false, explodedBoxes) });
+                    let turnMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك:`, embeds: [turnEmbed], components: renderBoxesRows(false, boxStatusMap) });
 
                     let turnCollector = turnMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 10000 });
                     let actionTaken = false;
@@ -159,48 +165,59 @@ client.on('messageCreate', async message => {
                         }
 
                         let targetBox = parseInt(i.customId.split('_')[1]);
-                        if (explodedBoxes.includes(targetBox)) {
+                        if (boxStatusMap[targetBox] !== undefined) {
                             return i.reply({ content: 'مفجر مسبقاً.', ephemeral: true });
                         }
 
                         actionTaken = true;
                         turnCollector.stop();
-                        explodedBoxes.push(targetBox);
 
                         let caughtPlayers = playersArr.filter(p => p.alive && p.hidingSpot === targetBox);
+                        
+                        if (caughtPlayers.length > 0) {
+                            boxStatusMap[targetBox] = 'hit'; // أحمر لوجود شخص
+                        } else {
+                            boxStatusMap[targetBox] = 'safe'; // أخضر لو كان فارغاً
+                        }
+
                         let resultText = `💥 تم تفجير الصندوق **[${targetBox}]** بواسطة <@${currentPlayer.id}>\n`;
 
                         if (caughtPlayers.length > 0) {
                             for (let cp of caughtPlayers) {
                                 cp.alive = false;
-                                resultText += `❌ خروج وخسارة اللاعب: <@${cp.id}> 💀\n`;
+                                resultText += `خروج وخسارة اللاعب: <@${cp.id}>\n`;
                             }
                         } else {
-                            resultText += `🛡️ الصندوق كان فارغاً.`;
+                            resultText += `الصندوق كان فارغاً وصامداً.`;
                         }
 
-                        await i.update({ embeds: [new EmbedBuilder().setDescription(resultText).setColor(THEME_COLOR)], components: renderBoxesRows(true, explodedBoxes) });
+                        await i.update({ embeds: [new EmbedBuilder().setDescription(resultText).setColor(THEME_COLOR)], components: renderBoxesRows(true, boxStatusMap) });
                     });
 
                     turnCollector.on('end', async () => {
                         if (!actionTaken) {
                             let available = [];
-                            for(let i=1; i<=25; i++) if(!explodedBoxes.includes(i)) available.push(i);
+                            for(let i=1; i<=25; i++) if(boxStatusMap[i] === undefined) available.push(i);
                             if (available.length > 0) {
                                 let randomBox = available[Math.floor(Math.random() * available.length)];
-                                explodedBoxes.push(randomBox);
+                                
                                 let caught = playersArr.filter(p => p.alive && p.hidingSpot === randomBox);
+                                if (caught.length > 0) {
+                                    boxStatusMap[randomBox] = 'hit';
+                                } else {
+                                    boxStatusMap[randomBox] = 'safe';
+                                }
+
                                 let text = `⏳ انتهى وقت <@${currentPlayer.id}>.. تم تفجير [${randomBox}] تلقائياً.\n`;
                                 for (let cp of caught) {
                                     cp.alive = false;
-                                    text += `❌ خروج اللاعب: <@${cp.id}> 💀\n`;
+                                    text += `خروج اللاعب: <@${cp.id}>\n`;
                                 }
-                                await turnMsg.edit({ embeds: [new EmbedBuilder().setDescription(text).setColor(THEME_COLOR)], components: renderBoxesRows(true, explodedBoxes) }).catch(()=>{});
+                                await turnMsg.edit({ embeds: [new EmbedBuilder().setDescription(text).setColor(THEME_COLOR)], components: renderBoxesRows(true, boxStatusMap) }).catch(()=>{});
                             }
                         }
                     });
 
-                    // تقليل وقت الانتظار بين الأدوار لتكون سريعة وفورية
                     await new Promise(res => setTimeout(res, 11000));
 
                     let remainingAlive = playersArr.filter(p => p.alive);
