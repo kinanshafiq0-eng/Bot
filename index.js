@@ -13,6 +13,7 @@ const { createCanvas, registerFont } = require('@napi-rs/canvas');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -24,11 +25,43 @@ app.listen(port, () => console.log(`✅ Web server on port ${port}`));
 const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) { console.error('❌ DISCORD_TOKEN missing'); process.exit(1); }
 
-// تسجيل الخط العربي
-try {
-  registerFont(path.join(__dirname, 'Cairo-Regular.ttf'), { family: 'Cairo' });
-  console.log('✅ Arabic font registered');
-} catch (e) { console.error('⚠️ Font registration failed:', e.message); }
+// --- تنزيل الخط تلقائياً إذا لم يكن موجوداً ---
+const fontPath = path.join(__dirname, 'Cairo-Regular.ttf');
+const fontUrl = 'https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Regular.ttf';
+
+async function ensureFont() {
+  if (fs.existsSync(fontPath)) {
+    console.log('✅ Font file exists');
+    return;
+  }
+  console.log('⬇️ Downloading Arabic font...');
+  return new Promise((resolve, reject) => {
+    const file = fs.createWriteStream(fontPath);
+    https.get(fontUrl, (response) => {
+      if (response.statusCode !== 200) {
+        reject(new Error(`Font download failed: ${response.statusCode}`));
+        return;
+      }
+      response.pipe(file);
+      file.on('finish', () => {
+        file.close();
+        console.log('✅ Font downloaded successfully');
+        resolve();
+      });
+    }).on('error', reject);
+  });
+}
+
+// تسجيل الخط بعد التأكد من وجوده
+(async () => {
+  await ensureFont();
+  try {
+    registerFont(fontPath, { family: 'Cairo' });
+    console.log('✅ Arabic font registered');
+  } catch (e) {
+    console.error('⚠️ Font registration failed:', e.message);
+  }
+})();
 
 const client = new Client({
   intents: [
@@ -41,7 +74,7 @@ const client = new Client({
 
 // ================== [ Database ] ==================
 const db = {
-  config: {},        // per-guild settings (generalImage, etc)
+  config: {},
   roulette: {},
   hideSeek: {},
   musicalChairs: {},
@@ -49,8 +82,8 @@ const db = {
   mafia: {},
 };
 
-function saveDB() { fs.writeFileSync('./db.json', JSON.stringify(db)); }
-function loadDB() { try { Object.assign(db, JSON.parse(fs.readFileSync('./db.json', 'utf8'))); } catch(e){} }
+function saveDB() { try { fs.writeFileSync('./db.json', JSON.stringify(db)); } catch(e){} }
+function loadDB() { try { if (fs.existsSync('./db.json')) Object.assign(db, JSON.parse(fs.readFileSync('./db.json', 'utf8'))); } catch(e){} }
 loadDB();
 setInterval(saveDB, 300000);
 
@@ -58,7 +91,6 @@ setInterval(saveDB, 300000);
 const MAIN_COLOR = 0xcc0000;
 const DARK_BG = '#1a1a1a';
 
-// ================== [ Helper: Server Image ] ==================
 function getServerImage(guild, config = {}) {
   if (config.generalImage) return config.generalImage;
   if (guild.bannerURL({ size: 1024 })) return guild.bannerURL({ size: 1024 });
@@ -67,9 +99,7 @@ function getServerImage(guild, config = {}) {
 }
 
 function getGuildConfig(guildId) {
-  if (!db.config[guildId]) {
-    db.config[guildId] = { generalImage: null };
-  }
+  if (!db.config[guildId]) db.config[guildId] = { generalImage: null };
   return db.config[guildId];
 }
 
@@ -80,7 +110,6 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   const ctx = canvas.getContext('2d');
   const centerX = size / 2, centerY = size / 2, radius = 240;
 
-  // خلفية داكنة
   ctx.fillStyle = DARK_BG;
   ctx.fillRect(0, 0, size, size);
 
@@ -102,7 +131,6 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // اسم اللاعب
     const textAngle = startAngle + anglePerSlice / 2;
     const textX = centerX + Math.cos(textAngle) * radius * 0.65;
     const textY = centerY + Math.sin(textAngle) * radius * 0.65;
@@ -120,7 +148,6 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.restore();
   }
 
-  // مركز
   ctx.beginPath();
   ctx.arc(centerX, centerY, 55, 0, 2*Math.PI);
   ctx.fillStyle = '#2c3e50';
@@ -134,7 +161,6 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.textBaseline = 'middle';
   ctx.fillText('🎡', centerX, centerY);
 
-  // مؤشر أحمر
   ctx.beginPath();
   ctx.moveTo(centerX, centerY - radius -5);
   ctx.lineTo(centerX-25, centerY - radius -40);
@@ -146,7 +172,6 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // إطار أحمر
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius+18, 0, 2*Math.PI);
   ctx.strokeStyle = '#cc0000';
@@ -163,6 +188,34 @@ async function fetchPlayers(guild, ids) {
     arr.push(m ? { displayName: m.displayName } : { displayName: 'غير معروف' });
   }
   return arr;
+}
+
+function createTTTButtons(board) {
+  const rows = [];
+  for (let i=0; i<3; i++) {
+    const row = new ActionRowBuilder();
+    for (let j=0; j<3; j++) {
+      const idx = i*3+j;
+      const label = board[idx] || '⬛';
+      row.addComponents(
+        new ButtonBuilder()
+          .setCustomId(`ttt_${idx}`)
+          .setLabel(label)
+          .setStyle(board[idx] ? ButtonStyle.Danger : ButtonStyle.Secondary)
+          .setDisabled(!!board[idx])
+      );
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
 }
 
 // ================== [ Ready ] ==================
@@ -182,7 +235,7 @@ client.on('messageCreate', async (message) => {
   const serverImg = getServerImage(message.guild, config);
 
   // ========== [ قائمة الألعاب ] ==========
-  if (cmd === 'ألعاب' || cmd === 'العاب') {
+  if (cmd === 'ألعاب' || cmd === 'العاب' || cmd === 'games') {
     const embed = new EmbedBuilder()
       .setTitle('🎮 قائمة الألعاب')
       .setColor(MAIN_COLOR)
@@ -193,10 +246,10 @@ client.on('messageCreate', async (message) => {
         `🪑 **كراسي** \`!كراسي\`\n`+
         `❌⭕ **اكس او** \`!اكس_او @خصم\`\n`+
         `🕵️ **مافيا** \`!مافيا\`\n\n`+
-        `⚙️ **للمشرفين:** \`!تعيين صورة_عامة <رابط>\` لتعيين صورة عامة للبوت`
+        `⚙️ **للمشرفين:** \`!تعيين صورة_عامة <رابط>\` لتعيين صورة عامة`
       )
       .setFooter({ text: 'جميع الألعاب بثيم الأسود والأحمر الداكن' });
-    if (serverImg) embed.setImage(serverImg);
+    if (serverImg) embed.setThumbnail(serverImg);
     return message.channel.send({ embeds: [embed] });
   }
 
@@ -217,7 +270,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== [ ROULETTE ] ==========
-  if (cmd === 'روليت') {
+  if (cmd === 'روليت' || cmd === 'roulette') {
     if (db.roulette[guildId]) return message.reply('⚠️ هناك جلسة روليت نشطة.');
     db.roulette[guildId] = { players: [], messageId: null, channelId: message.channel.id };
 
@@ -232,8 +285,8 @@ client.on('messageCreate', async (message) => {
     if (serverImg) embed.setThumbnail(serverImg);
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('join_roulette').setLabel('🎯 انضم').setStyle(ButtonStyle.Primary),
-      new ButtonBuilder().setCustomId('leave_roulette').setLabel('🚫 خروج').setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('join_roulette').setLabel('🎯 انضم').setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId('leave_roulette').setLabel('🚫 خروج').setStyle(ButtonStyle.Secondary)
     );
     const msg = await message.channel.send({ embeds: [embed], components: [row], files: [att] });
     db.roulette[guildId].messageId = msg.id;
@@ -241,7 +294,7 @@ client.on('messageCreate', async (message) => {
     return message.delete().catch(()=>{});
   }
 
-  if (cmd === 'سحب') {
+  if (cmd === 'سحب' || cmd === 'spin') {
     const session = db.roulette[guildId];
     if (!session || session.players.length < 2) return message.reply('⚠️ جلسة غير متاحة أو تحتاج لاعبَين على الأقل.');
     const msg = await message.channel.messages.fetch(session.messageId).catch(()=>null);
@@ -291,7 +344,7 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  if (cmd === 'إلغاء') {
+  if (cmd === 'إلغاء' || cmd === 'cancel') {
     const session = db.roulette[guildId];
     if (!session) return message.reply('⚠️ لا جلسة.');
     const msg = await message.channel.messages.fetch(session.messageId).catch(()=>null);
@@ -306,7 +359,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== [ ريبيكا (سلوتس) ] ==========
-  if (cmd === 'ريبيكا') {
+  if (cmd === 'ريبيكا' || cmd === 'replica') {
     const symbols = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣', '⭐'];
     const slot1 = symbols[Math.floor(Math.random() * symbols.length)];
     const slot2 = symbols[Math.floor(Math.random() * symbols.length)];
@@ -333,7 +386,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== [ اختباء ] ==========
-  if (cmd === 'اختباء') {
+  if (cmd === 'اختباء' || cmd === 'hide') {
     if (db.hideSeek[guildId]) return message.reply('⚠️ لعبة اختباء جارية.');
     db.hideSeek[guildId] = { players: [], phase: 'joining', hiderId: null, votes: {}, messageId: null };
 
@@ -344,7 +397,7 @@ client.on('messageCreate', async (message) => {
     if (serverImg) embed.setThumbnail(serverImg);
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('join_hide').setLabel('🙈 انضم').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('join_hide').setLabel('🙈 انضم').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('start_hide').setLabel('▶️ ابدأ').setStyle(ButtonStyle.Success)
     );
     const msg = await message.channel.send({ embeds: [embed], components: [row] });
@@ -353,7 +406,7 @@ client.on('messageCreate', async (message) => {
     return message.delete().catch(()=>{});
   }
 
-  if (cmd === 'تصويت') {
+  if (cmd === 'تصويت' || cmd === 'vote') {
     const game = db.hideSeek[guildId];
     if (!game || game.phase !== 'voting') return message.reply('⚠️ لا تصويت الآن.');
     const target = message.mentions.members.first();
@@ -380,7 +433,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== [ كراسي ] ==========
-  if (cmd === 'كراسي') {
+  if (cmd === 'كراسي' || cmd === 'chairs') {
     if (db.musicalChairs[guildId]) return message.reply('⚠️ لعبة كراسي جارية.');
     db.musicalChairs[guildId] = { players: [], messageId: null, active: false };
 
@@ -391,7 +444,7 @@ client.on('messageCreate', async (message) => {
     if (serverImg) embed.setThumbnail(serverImg);
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('join_chairs').setLabel('🪑 انضم').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('join_chairs').setLabel('🪑 انضم').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('start_chairs').setLabel('▶️ ابدأ').setStyle(ButtonStyle.Success)
     );
     const msg = await message.channel.send({ embeds: [embed], components: [row] });
@@ -401,7 +454,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== [ اكس او ] ==========
-  if (cmd === 'اكس_او') {
+  if (cmd === 'اكس_او' || cmd === 'xo') {
     const opponent = message.mentions.members.first();
     if (!opponent || opponent.id === message.author.id) return message.reply('⚠️ منشن خصمك.');
     if (db.ticTacToe[guildId]) return message.reply('⚠️ لعبة XO جارية.');
@@ -428,7 +481,7 @@ client.on('messageCreate', async (message) => {
   }
 
   // ========== [ مافيا ] ==========
-  if (cmd === 'مافيا') {
+  if (cmd === 'مافيا' || cmd === 'mafia') {
     if (db.mafia[guildId]) return message.reply('⚠️ لعبة مافيا جارية.');
     db.mafia[guildId] = { players: [], phase: 'joining', roles: {}, nightKill: null, detectiveCheck: null, doctorSave: null, votes: {}, messageId: null };
 
@@ -439,7 +492,7 @@ client.on('messageCreate', async (message) => {
     if (serverImg) embed.setThumbnail(serverImg);
 
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('join_mafia').setLabel('🕵️ انضم').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('join_mafia').setLabel('🕵️ انضم').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('start_mafia').setLabel('▶️ ابدأ').setStyle(ButtonStyle.Success)
     );
     const msg = await message.channel.send({ embeds: [embed], components: [row] });
@@ -456,7 +509,7 @@ client.on('interactionCreate', async (interaction) => {
   const config = getGuildConfig(guildId);
   const serverImg = getServerImage(interaction.guild, config);
 
-  // ---- Roulette Join/Leave ----
+  // ---- Roulette ----
   if (interaction.customId === 'join_roulette') {
     const session = db.roulette[guildId];
     if (!session) return interaction.reply({ content: '⚠️ لا جلسة.', ephemeral: true });
@@ -644,35 +697,6 @@ client.on('interactionCreate', async (interaction) => {
     saveDB();
   }
 });
-
-// ================== [ Helpers ] ==================
-function createTTTButtons(board) {
-  const rows = [];
-  for (let i=0; i<3; i++) {
-    const row = new ActionRowBuilder();
-    for (let j=0; j<3; j++) {
-      const idx = i*3+j;
-      const label = board[idx] || '⬛';
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`ttt_${idx}`)
-          .setLabel(label)
-          .setStyle(ButtonStyle.Secondary)
-          .setDisabled(!!board[idx])
-      );
-    }
-    rows.push(row);
-  }
-  return rows;
-}
-
-function shuffle(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-}
 
 // ================== [ Login ] ==================
 client.login(TOKEN).catch(e => { console.error('❌ Login failed:', e); process.exit(1); });
