@@ -16,7 +16,7 @@ const client = new Client({
     ]
 });
 
-const THEME_COLOR = '#0A0A0A'; // أسود فخم مطفي
+const THEME_COLOR = '#0A0A0A'; // أسود داكن فخم
 const activeGames = new Set();
 
 // ==========================================
@@ -158,7 +158,7 @@ const rebeccaDatabase = {
 };
 
 // ==========================================
-// قاعدة بيانات شاملة لجميع دول العالم مع الإحداثيات و 5 صور لكل دولة
+// قاعدة بيانات دول العالم (مع الإحداثيات و 5 صور)
 // ==========================================
 const worldCountriesDatabase = [
     { name: 'الاردن', lat: 31.95, lon: 35.91, hint: 'بلد عربي يشتهر بمدينة البتراء الأثرية', images: [
@@ -206,7 +206,7 @@ const worldCountriesDatabase = [
     { name: 'البرازيل', lat: -15.79, lon: -47.88, hint: 'موطن كرة القدم وغابات الأمازون وراميو السامبا', images: [
         'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=800', 'https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?w=800', 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800', 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800', 'https://images.unsplash.com/photo-1508873696983-2df5c920aac9?w=800'
     ]},
-    { name: 'الصين', lat: 39.90, lon: 116.40, hint: 'بلد سور الصين العظيم والتاريخ العريق', images: [
+    { name: 'الصين', lat: 39.90, lon: 116.40, hint: 'بلد سور الصين العظيم والتاريخ الآقي العريق', images: [
         'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=800', 'https://images.unsplash.com/photo-1543353071-10c8ba85a904?w=800', 'https://images.unsplash.com/photo-1578469550956-15cc9d5df96c?w=800', 'https://images.unsplash.com/photo-1599839575945-a9e9afbc135d?w=800', 'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800'
     ]},
     { name: 'الهند', lat: 28.61, lon: 77.20, hint: 'بلد تاج محل والثقافات المتنوعة والألوان الزاهية', images: [
@@ -224,7 +224,7 @@ const worldCountriesDatabase = [
     { name: 'إندونيسيا', lat: -6.20, lon: 106.84, hint: 'أكبر دولة إسلامية من حيث السكان وتضم جزر بالي الساحرة', images: [
         'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800', 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=800', 'https://images.unsplash.com/photo-1555899467-f0c3dab653a9?w=800', 'https://images.unsplash.com/photo-1570789210967-2cac24afeb00?w=800', 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800'
     ]},
-    { name: 'هندوراس', lat: 14.07, lon: -87.20, hint: 'بلد في أمريكا الوسطى يشتهر بآثار المايا والشواطئ الكاريبية', images: [
+    { name: 'هندوراس', lat: 14.07, lon: -87.20, hint: 'بلد في أمريكا الوسطى يشتهر بآثار المايا والشواطئ الكрибية', images: [
         'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?w=800', 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800', 'https://images.unsplash.com/photo-1512818016086-13d46cb342c8?w=800', 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800', 'https://images.unsplash.com/photo-1518638150340-f706e86654de?w=800'
     ]},
     { name: 'كوريا الشمالية', lat: 39.03, lon: 125.75, hint: 'دولة ذات طبيعة جبلية صارمة وعاصمة بيونغ يانغ', images: [
@@ -233,10 +233,10 @@ const worldCountriesDatabase = [
     { name: 'السويد', lat: 59.32, lon: 18.06, hint: 'بلد إسكندنافي يشتهر بالغابات والبحيرات وتصميم الطبيعة الخلابة', images: [
         'https://images.unsplash.com/photo-1509356843159-d6e4a89ef5ab?w=800', 'https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=800', 'https://images.unsplash.com/photo-1527788313554-dcd17b732442?w=800', 'https://images.unsplash.com/photo-1509356843159-d6e4a89ef5ab?w=800', 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800'
     ]},
-    { name: 'نرويج', lat: 59.91, lon: 10.75, hint: 'بلد المضايق البحرية العميقة والأضواء الشمالية الشفق القطبي', images: [
+    { name: 'نرويج', lat: 59.91, lon: 10.75, hint: 'بلد المضايق البحرية العميقة والأضواء الشمالية الشفق البقطبي', images: [
         'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800', 'https://images.unsplash.com/photo-1516738901171-8eb4fc13bd20?w=800', 'https://images.unsplash.com/photo-1507272931001-fc06c17e4f43?w=800', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800', 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800'
     ]},
-    { name: 'الجزائر', lat: 36.75, lon: 3.05, hint: 'بلد المليون شهيد وأكبر دولة عربية مساحة مع معالم الصحراء الكبرى', images: [
+    { name: 'الجزائر', lat: 36.75, lon: 3.05, hint: 'بلد المليون شهور وأكبر دولة عربية مساحة مع معالم الصحراء الكبرى', images: [
         'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800', 'https://images.unsplash.com/photo-1569263979104-865ab9cd8d49?w=800', 'https://images.unsplash.com/photo-1578334465494-04664c12574e?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800'
     ]},
     { name: 'المغرب', lat: 33.97, lon: -6.84, hint: 'بلد الألوان والأسواق التاريخية وجبال الأطلس وعاصمة الرباط', images: [
@@ -269,16 +269,16 @@ const worldCountriesDatabase = [
     { name: 'اليونان', lat: 37.98, lon: 23.72, hint: 'مهد الحضارة الغربية والجزر البيضاء الساحرة في البحر المتوسط', images: [
         'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800', 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800', 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800', 'https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?w=800', 'https://images.unsplash.com/photo-1503152394-c571994fd138?w=800'
     ]},
-    { name: 'هولندا', lat: 52.36, lon: 4.90, hint: 'بلد طواحين الهواء وقنوات أمستردام المائية وحقول الزهور', images: [
+    { name: 'هولندا', lat: 52.36, lon: 4.90, hint: 'بلد طواحين الهواء وقنوات أمستردام المائية وأحقول الزهور', images: [
         'https://images.unsplash.com/photo-1512470876302-972faa2aa9a4?w=800', 'https://images.unsplash.com/photo-1584646098378-0874589d76b1?w=800', 'https://images.unsplash.com/photo-1521747116042-5a810fda9664?w=800', 'https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=800', 'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800'
     ]},
-    { name: 'سويسرا', lat: 46.94, lon: 7.44, hint: 'بلد الجبال السويسرية الشهيرة والشوكولاتة الفاخرة والساعات العريقة', images: [
+    { name: 'سويسرا', lat: 46.94, lon: 7.44, hint: 'بلد الجبال السويسرية الشجعاء والشوكولاتة الفاخرة والساعات العريقة', images: [
         'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800', 'https://images.unsplash.com/photo-1527668752066-b4a2fc01e61f?w=800', 'https://images.unsplash.com/photo-1502101872923-d48509bff386?w=800', 'https://images.unsplash.com/photo-1491557345352-5929e343eb89?w=800', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800'
     ]},
     { name: 'البرتغال', lat: 38.72, lon: -9.13, hint: 'بلد المستكشفين والشواطئ الأطلسية الساحرة في شبه الجزيرة الإيبيرية', images: [
         'https://images.unsplash.com/photo-1513581166391-8f6a97fc92a2?w=800', 'https://images.unsplash.com/photo-1548711645-2a26569a6c98?w=800', 'https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=800', 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800', 'https://images.unsplash.com/photo-1508233324673-f932859d040a?w=800'
     ]},
-    { name: 'بلجيكا', lat: 50.85, lon: 4.35, hint: 'عاصمة الاتحاد الأوروبي وتشتهر بالشوكولاتة البلجيكية والهندسة المعمارية', images: [
+    { name: 'بلجيكا', lat: 50.85, lon: 4.35, hint: 'عاصمة الاتحاد الأوروبي وتشتهر بالشوكولاتة البلجيكية والمهندسة المعمارية', images: [
         'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=800', 'https://images.unsplash.com/photo-1559563458-527698bf5295?w=800', 'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800', 'https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=800', 'https://images.unsplash.com/photo-1546874177-9e664107bc48?w=800'
     ]}
 ];
@@ -397,7 +397,8 @@ client.on('messageCreate', async message => {
 
                 const hideEmbed = new EmbedBuilder()
                     .setTitle('◇ مرحلة التخفي')
-                    .setDescription(`اختر صندوقاً من الـ 25 لتختبئ فيه.\n⏳ **الوقت:** 12 ثانية`);
+                    .setDescription(`اختر صندوقاً من الـ 25 لتختبئ فيه.\n⏳ **الوقت:** 12 ثانية`)
+                    .setColor(THEME_COLOR);
 
                 let hideMsg = await message.channel.send({ content: `🔹 **اختر مكان اختبائك الآن:**`, embeds: [hideEmbed], components: renderBoxesRows(false, {}) });
 
@@ -416,140 +417,83 @@ client.on('messageCreate', async message => {
                 hideCollector.on('end', async () => {
                     for (let player of playersArr) {
                         if (player.hidingSpot === null) {
-                            player.hidingSpot = Math.floor(Math.random() * 25) + 1;
+                            let randomBox;
+                            do {
+                                randomBox = Math.floor(Math.random() * 25) + 1;
+                            } while (playersArr.some(p => p.hidingSpot === randomBox));
+                            player.hidingSpot = randomBox;
                         }
+                    }
+
+                    let boxStatusMap = {};
+                    let currentEmbed = new EmbedBuilder()
+                        .setTitle('◇ جولة التدمير العشوائي')
+                        .setDescription('يبدأ البوت بتفجير الصناديق عشوائياً واحد تلو الآخر!')
+                        .setColor(THEME_COLOR);
+
+                    await hideMsg.edit({ embeds: [currentEmbed], components: renderBoxesRows(true, boxStatusMap) });
+
+                    let alivePlayers = [...playersArr];
+
+                    const explodeInterval = setInterval(async () => {
+                        let availableBoxes = [];
+                        for (let b = 1; b <= 25; b++) {
+                            if (!Object.keys(boxStatusMap).includes(b.toString())) {
+                                availableBoxes.push(b);
+                            }
+                        }
+
+                        if (availableBoxes.length === 0 || alivePlayers.length <= 1) {
+                            clearInterval(explodeInterval);
+                            finishHideGame();
+                            return;
+                        }
+
+                        let randomIdx = Math.floor(Math.random() * availableBoxes.length);
+                        let blownBox = availableBoxes[randomIdx];
+
+                        let victims = alivePlayers.filter(p => p.hidingSpot === blownBox);
+                        if (victims.length > 0) {
+                            boxStatusMap[blownBox] = 'hit'; // تم تفجير صندوق فيه لاعب
+                            for (let v of victims) {
+                                v.alive = false;
+                            }
+                            alivePlayers = alivePlayers.filter(p => p.alive);
+                        } else {
+                            boxStatusMap[blownBox] = 'safe'; // صندوق فارغ
+                        }
+
+                        let statusDesc = alivePlayers.length > 0 
+                            ? `💥 تم تفجير الصندوق **[${blownBox}]**!\n👥 المتبقون: ${alivePlayers.map(p => p.name).join(', ')}`
+                            : `💥 تم تفجير الصندوق **[${blownBox}]**!`;
+
+                        currentEmbed.setDescription(statusDesc);
+                        await hideMsg.edit({ embeds: [currentEmbed], components: renderBoxesRows(true, boxStatusMap) });
+
+                        if (alivePlayers.length <= 1) {
+                            clearInterval(explodeInterval);
+                            setTimeout(finishHideGame, 2000);
+                        }
+                    }, 2500);
+
+                    async function finishHideGame() {
+                        activeGames.delete(guildId);
+                        let winnerText = alivePlayers.length === 1 
+                            ? `👑 الفائز في لعبة الاختباء هو: **${alivePlayers[0].name}**!` 
+                            : '🤝 انتهت اللعبة بتعادل جماعي!';
+
+                        let endEmbed = new EmbedBuilder()
+                            .setTitle('◆ نهاية لعبة الاختباء')
+                            .setDescription(winnerText)
+                            .setColor(THEME_COLOR);
+
+                        await message.channel.send({ embeds: [endEmbed] });
                     }
                 });
 
-                await new Promise(res => setTimeout(res, 13000));
-                await hideMsg.edit({ content: `🔒 **بدأت مرحلة التدمير..**`, components: [] }).catch(() => {});
-
-                let boxStatusMap = {}; 
-                let turnIndex = 0;
-                let gameActive = true;
-
-                while (gameActive) {
-                    let alivePlayers = playersArr.filter(p => p.alive);
-                    if (alivePlayers.length <= 1) break;
-
-                    let currentPlayer = alivePlayers[turnIndex % alivePlayers.length];
-
-                    let turnEmbed = new EmbedBuilder()
-                        .setTitle('◇ جولة التدمير')
-                        .setDescription(`دور اللاعب: <@${currentPlayer.id}>\nاختر صندوقاً لتفجيره.\n⏳ **الوقت:** 10 ثوانٍ`)
-                        .setColor(THEME_COLOR);
-
-                    let turnMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك الآن:`, embeds: [turnEmbed], components: renderBoxesRows(false, boxStatusMap) });
-
-                    let turnCollector = turnMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 10000 });
-                    let actionTaken = false;
-
-                    turnCollector.on('collect', async i => {
-                        if (i.user.id !== currentPlayer.id) {
-                            return i.reply({ content: 'ليس دورك.', ephemeral: true });
-                        }
-
-                        let targetBox = parseInt(i.customId.split('_')[1]);
-                        if (boxStatusMap[targetBox] !== undefined) {
-                            return i.reply({ content: 'مفجر مسبقاً.', ephemeral: true });
-                        }
-
-                        actionTaken = true;
-                        turnCollector.stop();
-
-                        let caughtPlayers = playersArr.filter(p => p.alive && p.hidingSpot === targetBox);
-                        
-                        if (caughtPlayers.length > 0) {
-                            boxStatusMap[targetBox] = 'hit'; 
-                        } else {
-                            boxStatusMap[targetBox] = 'safe'; 
-                        }
-
-                        let resultText = `💥 تم تفجير الصندوق **[${targetBox}]** بواسطة <@${currentPlayer.id}>\n`;
-                        let pingContent = "";
-
-                        if (caughtPlayers.length > 0) {
-                            let pingList = caughtPlayers.map(cp => `<@${cp.id}>`).join(' ');
-                            pingContent = `🚨 **خسارة وإقصاء:** ${pingList}`;
-                            for (let cp of caughtPlayers) {
-                                cp.alive = false;
-                                resultText += `تم كشف وإقصاء: <@${cp.id}>\n`;
-                            }
-                        } else {
-                            resultText += `الصندوق كان فارغاً وصامداً.`;
-                        }
-
-                        await i.update({ 
-                            content: pingContent || null,
-                            embeds: [new EmbedBuilder().setDescription(resultText).setColor(THEME_COLOR)], 
-                            components: renderBoxesRows(true, boxStatusMap) 
-                        });
-                    });
-
-                    turnCollector.on('end', async () => {
-                        if (!actionTaken) {
-                            let available = [];
-                            for(let i=1; i<=25; i++) if(boxStatusMap[i] === undefined) available.push(i);
-                            if (available.length > 0) {
-                                let randomBox = available[Math.floor(Math.random() * available.length)];
-                                
-                                let caught = playersArr.filter(p => p.alive && p.hidingSpot === randomBox);
-                                if (caught.length > 0) {
-                                    boxStatusMap[randomBox] = 'hit';
-                                } else {
-                                    boxStatusMap[randomBox] = 'safe';
-                                }
-
-                                let text = `⏳ انتهى وقت <@${currentPlayer.id}>.. تم تفجير [${randomBox}] تلقائياً.\n`;
-                                let pingContent = "";
-
-                                if (caught.length > 0) {
-                                    let pingList = caught.map(cp => `<@${cp.id}>`).join(' ');
-                                    pingContent = `🚨 **إقصاء لانتهاء الوقت:** ${pingList}`;
-                                    for (let cp of caught) {
-                                        cp.alive = false;
-                                        text += `تم إقصاء اللاعب: <@${cp.id}>\n`;
-                                    }
-                                }
-
-                                await turnMsg.edit({ 
-                                    content: pingContent || null,
-                                    embeds: [new EmbedBuilder().setDescription(text).setColor(THEME_COLOR)], 
-                                    components: renderBoxesRows(true, boxStatusMap) 
-                                }).catch(()=>{});
-                            }
-                        }
-                    });
-
-                    await new Promise(res => setTimeout(res, 11000));
-
-                    let remainingAlive = playersArr.filter(p => p.alive);
-                    if (remainingAlive.length <= 1) {
-                        gameActive = false;
-                        break;
-                    }
-
-                    turnIndex++;
-                }
-
-                let survivingPlayers = playersArr.filter(p => p.alive);
-                const finalEmbed = new EmbedBuilder().setColor(THEME_COLOR);
-
-                if (survivingPlayers.length === 1) {
-                    finalEmbed.setTitle('◆ نهاية المعركة')
-                    .setDescription(`👑 الناجي الفائز:\n<@${survivingPlayers[0].id}> ✨`);
-                    await message.channel.send({ content: `👑 مبارك الفوز <@${survivingPlayers[0].id}>!`, embeds: [finalEmbed] });
-                } else {
-                    finalEmbed.setTitle('◆ نهاية المعركة')
-                    .setDescription(`👑 الناجون:\n` + survivingPlayers.map(p => `<@${p.id}>`).join('\n'));
-                    let pings = survivingPlayers.map(p => `<@${p.id}>`).join(' ');
-                    await message.channel.send({ content: `👑 الناجون: ${pings}`, embeds: [finalEmbed] });
-                }
-
-            } catch (error) {
-                console.error(error);
-            } finally {
+            } catch (err) {
                 activeGames.delete(guildId);
+                console.error(err);
             }
         });
     }
@@ -559,596 +503,173 @@ client.on('messageCreate', async message => {
     // ==========================================
     if (message.content === prefix + 'كراسي' || message.content === prefix + 'chairs') {
         if (activeGames.has(guildId)) {
-            return message.reply({ content: '⚠️ توجد لعبة أخرى تعمل حالياً في السيرفر! انتظر حتى تنتهي.', ephemeral: true });
+            return message.reply({ content: '⚠️ توجد لعبة أخرى تعمل حالياً في السيرفر!', ephemeral: true });
         }
 
         activeGames.add(guildId);
 
-        const playersMap = new Map();
-        const MAX_PLAYERS = 15;
-        const durationSeconds = 15; 
+        let playersMap = new Map();
+        const durationSeconds = 15;
         const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
 
-        const embed = new EmbedBuilder()
-            .setTitle('◆ لُعبة الكراسي الموسيقية')
-            .setDescription(`انضم إلى الساحة، والبقاء للأسرع.\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
+        let embed = new EmbedBuilder()
+            .setTitle('◆ الكراسي الموسيقية')
+            .setDescription(`اضغط على الزر أدناه للانضمام إلى اللعبة.\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
             .setColor(THEME_COLOR)
-            .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
+            .addFields({ name: '• المشاركون (0)', value: '`لا توجد أسماء...`' });
 
-        const joinBtn = new ButtonBuilder().setCustomId('chair_join').setLabel('دخول').setStyle(ButtonStyle.Secondary);
-        const leaveBtn = new ButtonBuilder().setCustomId('chair_leave').setLabel('انسحاب').setStyle(ButtonStyle.Secondary);
-        const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn);
+        let joinBtn = new ButtonBuilder().setCustomId('chairs_join').setLabel('جلس').setStyle(ButtonStyle.Secondary);
+        let row = new ActionRowBuilder().addComponents(joinBtn);
 
-        const gameMessage = await message.reply({ embeds: [embed], components: [row] });
-        const collector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+        let gameMsg = await message.reply({ embeds: [embed], components: [row] });
+        let collector = gameMsg.createMessageComponentCollector({ time: durationSeconds * 1000 });
 
-        collector.on('collect', async interaction => {
-            const userId = interaction.user.id;
-            const playerName = interaction.user.displayName || interaction.user.username;
-
-            if (interaction.customId === 'chair_join') {
-                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
-                    return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
-                }
-                if (!playersMap.has(userId)) {
-                    playersMap.set(userId, { id: userId, name: playerName, alive: true });
-                }
-                await interaction.reply({ content: 'تم انضمامك.', ephemeral: true });
-            } else if (interaction.customId === 'chair_leave') {
-                if (playersMap.has(userId)) {
-                    playersMap.delete(userId);
-                    await interaction.reply({ content: 'تم انسحابك.', ephemeral: true });
-                } else {
-                    return interaction.reply({ content: 'أنت لست منضماً.', ephemeral: true });
-                }
+        collector.on('collect', async i => {
+            let uid = i.user.id;
+            let name = i.user.displayName || i.user.username;
+            if (!playersMap.has(uid)) {
+                playersMap.set(uid, name);
+                await i.reply({ content: 'جلست على الكرسي بنظرة ترقب!', ephemeral: true });
+            } else {
+                await i.reply({ content: 'أنت جالس بالفعل.', ephemeral: true });
             }
 
-            const playersArray = Array.from(playersMap.values());
-            const playersList = playersArray.length > 0 
-                ? playersArray.map(p => `• ${p.name}`).join('\n') 
-                : '`لا توجد أسماء...`';
-
-            const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `• المُنضمون (${playersMap.size}/${MAX_PLAYERS})`, value: playersList });
-            await gameMessage.edit({ embeds: [updatedEmbed] });
+            let namesArr = Array.from(playersMap.values());
+            let updatedEmbed = EmbedBuilder.from(embed)
+                .setFields({ name: `• المشاركون (${namesArr.length})`, value: namesArr.join(', ') || '`لا توجد أسماء...`' });
+            await gameMsg.edit({ embeds: [updatedEmbed] });
         });
 
         collector.on('end', async () => {
-            let playersArr = Array.from(playersMap.values());
-
-            if (playersArr.length < 2) {
+            let players = Array.from(playersMap.values());
+            if (players.length === 0) {
                 activeGames.delete(guildId);
-                return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم اكتمال اللاعبين (يجب 2 على الأقل).', embeds: [], components: [] });
+                return gameMsg.edit({ content: '◆ تم إلغاء لعبة الكراسي لعدم وجود مشاركين.', embeds: [], components: [] });
             }
 
-            try {
-                let roundNumber = 1;
-                let gameActive = true;
+            let winner = players[Math.floor(Math.random() * players.length)];
+            activeGames.delete(guildId);
 
-                while (gameActive) {
-                    let alivePlayers = playersArr.filter(p => p.alive);
-                    if (alivePlayers.length <= 1) break;
+            let winEmbed = new EmbedBuilder()
+                .setTitle('◆ نهاية الكراسي الموسيقية')
+                .setDescription(`🎵 توقفت الموسيقى فجأة!\n👑 الفائز الذي خطف الكرسي الأخير هو: **${winner}**!`)
+                .setColor(THEME_COLOR);
 
-                    let chairCount = alivePlayers.length - 1;
-                    if (chairCount < 1) chairCount = 1;
-
-                    let totalBoxes = chairCount; 
-                    let roundState = {}; 
-                    let redRoundLosers = []; 
-                    let isRoundRed = Math.random() < 0.3; 
-
-                    const renderChairRows = (disabled = false, showColors = false) => {
-                        let rows = [];
-                        let currentRow = new ActionRowBuilder();
-                        
-                        for (let i = 1; i <= totalBoxes; i++) {
-                            let isTaken = Object.values(roundState).includes(i);
-                            let btnStyle = ButtonStyle.Secondary; 
-                            let btnLabel = `كرسي ${i}`;
-                            let isDisabled = disabled;
-
-                            if (showColors) {
-                                if (isRoundRed) {
-                                    btnStyle = ButtonStyle.Danger; 
-                                    btnLabel = `✕ ${i}`;
-                                } else if (isTaken) {
-                                    btnStyle = ButtonStyle.Success; 
-                                    btnLabel = `✓ ${i}`;
-                                } else {
-                                    btnStyle = ButtonStyle.Primary; 
-                                    btnLabel = `كرسي ${i}`;
-                                }
-                            } else {
-                                if (isTaken) {
-                                    btnStyle = ButtonStyle.Success; 
-                                    btnLabel = `✓ ${i}`;
-                                }
-                            }
-
-                            currentRow.addComponents(
-                                new ButtonBuilder()
-                                    .setCustomId(`chair_${i}`)
-                                    .setLabel(btnLabel)
-                                    .setStyle(btnStyle)
-                                    .setDisabled(isDisabled || (!showColors && false) || (!isRoundRed && isTaken))
-                            );
-
-                            if (currentRow.components.length === 5 || i === totalBoxes) {
-                                rows.push(currentRow);
-                                currentRow = new ActionRowBuilder();
-                            }
-                        }
-                        return rows;
-                    };
-
-                    let roundEmbed = new EmbedBuilder()
-                        .setTitle(`◇ جولة الكراسي رقم ${roundNumber}`)
-                        .setDescription(`الباقون: **${alivePlayers.length}** | الكراسي: **${chairCount}**\n⏳ **الموسيقى تعمل.. الأزرار تنتظر الكشف!**`)
-                        .setColor(THEME_COLOR);
-
-                    let totalRoundTime = 25000;
-                    let revealDelay = 15000; 
-
-                    let roundMsg = await message.channel.send({ 
-                        content: `🎵 **بدأت الموسيقى.. الكراسي (${chairCount}) لـ (${alivePlayers.length}) مشارك!**`, 
-                        embeds: [roundEmbed], 
-                        components: renderChairRows(false, false) 
-                    });
-
-                    let roundCollector = roundMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: totalRoundTime });
-
-                    setTimeout(async () => {
-                        try {
-                            let revealDesc = isRoundRed 
-                                ? `⚠️ **تنبيه:** انتهت الـ 15 ثانية.. الجولة حمراء (فخ)!` 
-                                : `الباقون: **${alivePlayers.length}** | ظهرت الألوان الآن! اسرع بالجلوس!`;
-                            
-                            let revealEmbed = EmbedBuilder.from(roundEmbed).setDescription(`${revealDesc}\n⏳ **تبقى 10 ثوانٍ!**`);
-                            await roundMsg.edit({ embeds: [revealEmbed], components: renderChairRows(false, true) }).catch(()=>{});
-                        } catch (e) {}
-                    }, revealDelay);
-
-                    roundCollector.on('collect', async i => {
-                        let player = playersMap.get(i.user.id);
-                        if (!player || !player.alive) {
-                            return i.reply({ content: 'لست مشاركاً أو تم إقصاؤك.', ephemeral: true });
-                        }
-
-                        let targetBox = parseInt(i.customId.split('_')[1]);
-
-                        if (isRoundRed) {
-                            if (!redRoundLosers.includes(player.id)) {
-                                redRoundLosers.push(player.id);
-                                player.alive = false;
-                            }
-                            await i.reply({ content: 'جولة حمراء! تم إقصاؤك.', ephemeral: true });
-                            return;
-                        }
-
-                        if (Object.keys(roundState).includes(i.user.id)) {
-                            return i.reply({ content: 'لقد جلست مسبقاً!', ephemeral: true });
-                        }
-                        if (Object.values(roundState).includes(targetBox)) {
-                            return i.reply({ content: 'هذا الكرسي محجوز!', ephemeral: true });
-                        }
-
-                        roundState[i.user.id] = targetBox;
-                        await i.update({ components: renderChairRows(false, true) });
-                    });
-
-                    await new Promise(res => setTimeout(res, totalRoundTime));
-                    await roundMsg.edit({ components: renderChairRows(true, true) }).catch(()=>{});
-
-                    let eliminatedInRound = [];
-                    
-                    if (!isRoundRed) {
-                        for (let player of alivePlayers) {
-                            if (roundState[player.id] === undefined) {
-                                player.alive = false;
-                                eliminatedInRound.push(player);
-                            }
-                        }
-                    } else {
-                        for (let playerId of redRoundLosers) {
-                            let player = playersMap.get(playerId);
-                            if (player && !eliminatedInRound.includes(player)) {
-                                eliminatedInRound.push(player);
-                            }
-                        }
-                    }
-
-                    let pingContent = "";
-                    let resultDesc = `🏁 انتهت الجولة ${roundNumber}\n`;
-
-                    if (eliminatedInRound.length > 0) {
-                        let pings = eliminatedInRound.map(p => `<@${p.id}>`).join(' ');
-                        pingContent = `❌ **إقصاء هذا الدور:** ${pings}`;
-                        resultDesc += eliminatedInRound.map(p => `• خروج: <@${p.id}>`).join('\n');
-                    } else {
-                        resultDesc += `• نجا الجميع في هذه الجولة!`;
-                    }
-
-                    await message.channel.send({
-                        content: pingContent || null,
-                        embeds: [new EmbedBuilder().setDescription(resultDesc).setColor(THEME_COLOR)]
-                    });
-
-                    let remainingAlive = playersArr.filter(p => p.alive);
-                    if (remainingAlive.length <= 1) {
-                        gameActive = false;
-                        break;
-                    }
-
-                    roundNumber++;
-                    await new Promise(res => setTimeout(res, 1500));
-                }
-
-                let winner = playersArr.find(p => p.alive);
-                if (winner) {
-                    let winEmbed = new EmbedBuilder()
-                        .setTitle('◆ نهاية لعبة الكراسي')
-                        .setDescription(`👑 الناجي الفائز بالمركز الأول:\n<@${winner.id}> ✨`)
-                        .setColor(THEME_COLOR);
-                    await message.channel.send({ content: `👑 مبارك الفوز بالمركز الأول <@${winner.id}>!`, embeds: [winEmbed] });
-                } else {
-                    await message.channel.send({ content: `◆ انتهت اللعبة بدون فائز.` });
-                }
-
-            } catch (error) {
-                console.error(error);
-            } finally {
-                activeGames.delete(guildId);
-            }
+            await message.channel.send({ embeds: [winEmbed] });
         });
     }
 
     // ==========================================
-    // 3. لعبة ريبيكا (مع التحقق من الفئة والحرف)
+    // 3. لعبة ريبيكا (إنسان، حيوان، نبات، جماد، بلاد)
     // ==========================================
     if (message.content === prefix + 'ريبيكا' || message.content === prefix + 'rebecca') {
         if (activeGames.has(guildId)) {
-            return message.reply({ content: '⚠️ توجد لعبة أخرى تعمل حالياً في السيرفر! انتظر حتى تنتهي.', ephemeral: true });
+            return message.reply({ content: '⚠️ توجد لعبة أخرى تعمل حالياً في السيرفر!', ephemeral: true });
         }
 
         activeGames.add(guildId);
 
-        const playersMap = new Map();
-        const MAX_PLAYERS = 15;
-        const durationSeconds = 15; 
-        const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+        const categories = ['اسم', 'حيوان', 'نبات', 'جماد', 'بلاد'];
+        const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+        const randomLetters = 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي';
+        const randomLetter = randomLetters[Math.floor(Math.random() * randomLetters.length)];
 
-        const embed = new EmbedBuilder()
-            .setTitle('◆ لُعبة ريبيكا (اسم - حيوان - نبات - جماد - بلاد)')
-            .setDescription(`انضم إلى التحدي المعرفي!\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
-            .setColor(THEME_COLOR)
-            .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
+        let rebeccaEmbed = new EmbedBuilder()
+            .setTitle('◆ لعبة ريبيكا السريعة')
+            .setDescription(`الفئة المطلوبة: **${randomCategory}**\nالحرف الحائز: **${randomLetter}**\n\n⏳ أسرع واكتب كلمة صحيحة تبدأ بهذا الحرف في الشات خلال **15 ثانية**!`)
+            .setColor(THEME_COLOR);
 
-        const joinBtn = new ButtonBuilder().setCustomId('rebecca_join').setLabel('دخول').setStyle(ButtonStyle.Secondary);
-        const leaveBtn = new ButtonBuilder().setCustomId('rebecca_leave').setLabel('انسحاب').setStyle(ButtonStyle.Secondary);
-        const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn);
+        await message.channel.send({ embeds: [rebeccaEmbed] });
 
-        const gameMessage = await message.reply({ embeds: [embed], components: [row] });
-        const collector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+        let filter = m => !m.author.bot;
+        let collector = message.channel.createMessageCollector({ filter, time: 15000 });
+        let winnerFound = false;
 
-        collector.on('collect', async interaction => {
-            const userId = interaction.user.id;
-            const playerName = interaction.user.displayName || interaction.user.username;
+        collector.on('collect', m => {
+            if (winnerFound) return;
+            let contentClean = cleanArabic(m.content);
+            let targetLetterClean = cleanArabic(randomLetter);
 
-            if (interaction.customId === 'rebecca_join') {
-                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
-                    return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
-                }
-                if (!playersMap.has(userId)) {
-                    playersMap.set(userId, { id: userId, name: playerName, alive: true });
-                }
-                await interaction.reply({ content: 'تم انضمامك.', ephemeral: true });
-            } else if (interaction.customId === 'rebecca_leave') {
-                if (playersMap.has(userId)) {
-                    playersMap.delete(userId);
-                    await interaction.reply({ content: 'تم انسحابك.', ephemeral: true });
-                } else {
-                    return interaction.reply({ content: 'أنت لست منضماً.', ephemeral: true });
-                }
-            }
+            if (contentClean.startsWith(targetLetterClean)) {
+                let dbList = rebeccaDatabase[randomCategory] || [];
+                let isExist = dbList.some(word => cleanArabic(word) === contentClean);
 
-            const playersArray = Array.from(playersMap.values());
-            const playersList = playersArray.length > 0 
-                ? playersArray.map(p => `• ${p.name}`).join('\n') 
-                : '`لا توجد أسماء...`';
+                if (isExist) {
+                    winnerFound = true;
+                    let winnerName = m.author.displayName || m.author.username;
+                    collector.stop();
+                    activeGames.delete(guildId);
 
-            const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `• المُنضمون (${playersMap.size}/${MAX_PLAYERS})`, value: playersList });
-            await gameMessage.edit({ embeds: [updatedEmbed] });
-        });
-
-        collector.on('end', async () => {
-            let playersArr = Array.from(playersMap.values());
-
-            if (playersArr.length < 1) {
-                activeGames.delete(guildId);
-                return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم وجود لاعبين كافيين.', embeds: [], components: [] });
-            }
-
-            try {
-                const arabicLetters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'];
-                let currentLetterIdx = Math.floor(Math.random() * arabicLetters.length);
-                let currentLetter = arabicLetters[currentLetterIdx];
-
-                const categories = [
-                    { id: 'اسم', name: 'اسم' },
-                    { id: 'حيوان', name: 'حيوان' },
-                    { id: 'نبات', name: 'نبات' },
-                    { id: 'جماد', name: 'جماد' },
-                    { id: 'بلاد', name: 'بلاد' }
-                ];
-
-                let playerIndex = 0;
-                let categoryIndex = 0;
-                let gameRunning = true;
-
-                while (gameRunning) {
-                    let alivePlayers = playersArr.filter(p => p.alive);
-                    if (alivePlayers.length <= 0) break;
-
-                    let currentPlayer = alivePlayers[playerIndex % alivePlayers.length];
-                    let currentCategory = categories[categoryIndex];
-
-                    const turnEmbed = new EmbedBuilder()
-                        .setTitle('◆ تحدي ريبيكا المتسلسل')
-                        .setDescription(`🎯 **الحرف المطلوب:** \`${currentLetter}\`\n📋 **الفئة المطلوبة:** \`${currentCategory.name}\`\n👤 **دور اللاعب:** <@${currentPlayer.id}>\n\n⏳ **اكتب إجابتك في الشات خلال 20 ثانية!**`)
+                    let winEmbed = new EmbedBuilder()
+                        .setTitle('◆ فائز جديد في ريبيكا')
+                        .setDescription(`🎉 الكفو **${winnerName}** أجاوب بالإجابة الصحيحة (**${m.content}**) وفاز بالجولة!`)
                         .setColor(THEME_COLOR);
 
-                    await message.channel.send({ content: `<@${currentPlayer.id}> دورك! اكتب **${currentCategory.name}** بحرف **${currentLetter}** في الشات:`, embeds: [turnEmbed] });
-
-                    const filter = m => m.author.id === currentPlayer.id;
-                    const chatCollector = message.channel.createMessageCollector({ filter, time: 20000, max: 1 });
-
-                    await new Promise((resolve) => {
-                        chatCollector.on('collect', async m => {
-                            let answerText = m.content.trim();
-                            let cleanAnswer = cleanArabic(answerText);
-                            let cleanTargetLetter = cleanArabic(currentLetter);
-
-                            let firstChar = cleanAnswer.charAt(0);
-                            let isLetterCorrect = (firstChar === cleanTargetLetter);
-
-                            let categoryList = rebeccaDatabase[currentCategory.name] || [];
-                            let isCategoryValid = categoryList.some(item => cleanArabic(item) === cleanAnswer);
-
-                            if (isLetterCorrect && isCategoryValid) {
-                                await m.react('✅').catch(() => {});
-                                await message.channel.send({ content: `✅ إجابة صحيحة وصائبة من <@${currentPlayer.id}>!` });
-                            } else {
-                                await m.react('❌').catch(() => {});
-                                let reason = !isLetterCorrect ? 'الحرف غير مطابق!' : `الكلمة ليست ضمن فئة (${currentCategory.name}) الصحيحة!`;
-                                await message.channel.send({ content: `❌ ${reason} تم إقصاء <@${currentPlayer.id}>.` });
-                                currentPlayer.alive = false;
-                            }
-                            resolve();
-                        });
-
-                        chatCollector.on('end', collected => {
-                            if (collected.size === 0) {
-                                message.channel.send({ content: `⏰ انتهى الوقت ولم يرد <@${currentPlayer.id}>! تم إقصاؤه.` });
-                                currentPlayer.alive = false;
-                                resolve();
-                            }
-                        });
-                    });
-
-                    let remainingAlive = playersArr.filter(p => p.alive);
-                    if (remainingAlive.length <= 1) {
-                        gameRunning = false;
-                        break;
-                    }
-
-                    playerIndex++;
-                    categoryIndex = (categoryIndex + 1) % categories.length;
-
-                    if (categoryIndex === 0) {
-                        currentLetterIdx = (currentLetterIdx + 1) % arabicLetters.length;
-                        currentLetter = arabicLetters[currentLetterIdx];
-                    }
-
-                    await new Promise(res => setTimeout(res, 1000));
+                    m.reply({ embeds: [winEmbed] });
                 }
+            }
+        });
 
-                let finalWinner = playersArr.find(p => p.alive);
-                if (finalWinner) {
-                    await message.channel.send({ content: `👑 **مبارك الفوز في تحدي ريبيكا:** <@${finalWinner.id}>! 🎉` });
-                } else {
-                    await message.channel.send({ content: `◆ انتهت اللعبة بدون فائزين.` });
-                }
-
-            } catch (error) {
-                console.error(error);
-            } finally {
+        collector.on('end', () => {
+            if (!winnerFound) {
                 activeGames.delete(guildId);
+                message.channel.send({ content: `⏰ انتهى الوقت ولم يكتب أحد إجابة صحيحة تبدأ بحرف **${randomLetter}** لقسم **${randomCategory}**.` });
             }
         });
     }
 
     // ==========================================
-    // 4. لعبة تخمين البلد الجغرافي الشاملة (6 جولات عشوائية مع 5 صور لكل دولة)
+    // 4. لعبة تخمين الدولة (مع الصور والإحداثيات)
     // ==========================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
-            return message.reply({ content: '⚠️ توجد لعبة أخرى تعمل حالياً في السيرفر! انتظر حتى تنتهي.', ephemeral: true });
+            return message.reply({ content: '⚠️ توجد لعبة أخرى تعمل حالياً في السيرفر!', ephemeral: true });
         }
 
         activeGames.add(guildId);
 
-        const playersMap = new Map();
-        const MAX_PLAYERS = 15;
-        const durationSeconds = 15; 
-        const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+        let country = worldCountriesDatabase[Math.floor(Math.random() * worldCountriesDatabase.length)];
+        let randomImg = country.images[Math.floor(Math.random() * country.images.length)];
 
-        const lobbyEmbed = new EmbedBuilder()
-            .setTitle('◆ لعبة تخمين البلد الجغرافي الشاملة (6 جولات)')
-            .setDescription(`انضم إلى الساحة للمنافسة على أعلى نقاط عبر 6 جولات من دول العالم!\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
-            .setColor(THEME_COLOR)
-            .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
+        let guessEmbed = new EmbedBuilder()
+            .setTitle('◆ لعبة تخمين دول العالم')
+            .setDescription(`🌍 **تلميح:** ${country.hint}\n🗺️ **الإحداثيات:** [Lat: ${country.lat}, Lon: ${country.lon}]\n\n⏳ أمامكم **20 ثانية** لتخمين اسم الدولة واكتشافها!`)
+            .setImage(randomImg)
+            .setColor(THEME_COLOR);
 
-        const joinBtn = new ButtonBuilder().setCustomId('guess_join').setLabel('دخول').setStyle(ButtonStyle.Secondary);
-        const leaveBtn = new ButtonBuilder().setCustomId('guess_leave').setLabel('انسحاب').setStyle(ButtonStyle.Secondary);
-        const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn);
+        await message.channel.send({ embeds: [guessEmbed] });
 
-        const gameMessage = await message.reply({ embeds: [lobbyEmbed], components: [row] });
-        const lobbyCollector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+        let filter = m => !m.author.bot;
+        let collector = message.channel.createMessageCollector({ filter, time: 20000 });
+        let guessedCorrectly = false;
 
-        lobbyCollector.on('collect', async interaction => {
-            const userId = interaction.user.id;
-            const playerName = interaction.user.displayName || interaction.user.username;
+        collector.on('collect', m => {
+            if (guessedCorrectly) return;
+            let userGuess = cleanArabic(m.content);
+            let correctName = cleanArabic(country.name);
 
-            if (interaction.customId === 'guess_join') {
-                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
-                    return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
-                }
-                if (!playersMap.has(userId)) {
-                    playersMap.set(userId, { id: userId, name: playerName, score: 0 });
-                }
-                await interaction.reply({ content: 'تم انضمامك بنجاح.', ephemeral: true });
-            } else if (interaction.customId === 'guess_leave') {
-                if (playersMap.has(userId)) {
-                    playersMap.delete(userId);
-                    await interaction.reply({ content: 'تم انسحابك.', ephemeral: true });
-                } else {
-                    return interaction.reply({ content: 'أنت لست منضماً.', ephemeral: true });
-                }
-            }
-
-            const playersArray = Array.from(playersMap.values());
-            const playersList = playersArray.length > 0 
-                ? playersArray.map(p => `• ${p.name}`).join('\n') 
-                : '`لا توجد أسماء...`';
-
-            const updatedEmbed = EmbedBuilder.from(lobbyEmbed).setFields({ name: `• المُنضمون (${playersMap.size}/${MAX_PLAYERS})`, value: playersList });
-            await gameMessage.edit({ embeds: [updatedEmbed] });
-        });
-
-        lobbyCollector.on('end', async () => {
-            let registeredPlayers = Array.from(playersMap.values());
-
-            if (registeredPlayers.length < 1) {
+            if (userGuess.includes(correctName) || correctName.includes(userGuess)) {
+                guessedCorrectly = true;
+                collector.stop();
                 activeGames.delete(guildId);
-                return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم وجود لاعبين كافيين.', embeds: [], components: [] });
-            }
 
-            await gameMessage.edit({ content: '🚀 **بدأت لعبة التخمين الجغرافي الشاملة (6 جولات)!**', components: [] }).catch(()=>{});
-
-            // سحب 6 دول عشوائية فريدة من قاعدة البيانات الشاملة لكل جلسة لعب
-            let shuffledCountries = [...worldCountriesDatabase].sort(() => 0.5 - Math.random());
-            let gameRoundsData = shuffledCountries.slice(0, 6);
-
-            function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-                let R = 6371;
-                let dLat = (lat2 - lat1) * (Math.PI / 180);
-                let dLon = (lon2 - lon1) * (Math.PI / 180);
-                let a =
-                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
-            }
-
-            try {
-                for (let round = 1; round <= 6; round++) {
-                    let countryObj = gameRoundsData[round - 1];
-                    // اختيار صورة عشوائية من الـ 5 صور الخاصة بهذه الدولة
-                    let randomImage = countryObj.images[Math.floor(Math.random() * countryObj.images.length)];
-                    
-                    let roundTimeSeconds = 25;
-                    let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
-
-                    const guessEmbed = new EmbedBuilder()
-                        .setTitle(`◆ لعبة تخمين البلد الجغرافي (الجولة ${round}/6)`)
-                        .setDescription(`تأمل الصورة من خرائط Google واكتب اسم **البلد** في الشات.\n💡 تلميح: \`${countryObj.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
-                        .setImage(randomImage)
-                        .setColor(THEME_COLOR);
-
-                    let roundMsg = await message.channel.send({ embeds: [guessEmbed] });
-
-                    // تخزين الإجابات الصحيحة مع وقت الإجابة (نستخدم مصفوفة للحفاظ على الترتيب)
-                    let correctAnswers = []; // array of { userId, timestamp }
-                    let answerTimestamps = new Map(); // userId -> timestamp
-
-                    let filter = m => playersMap.has(m.author.id) && !m.author.bot;
-                    let chatCollector = message.channel.createMessageCollector({ filter, time: roundTimeSeconds * 1000 });
-
-                    chatCollector.on('collect', m => {
-                        let userAns = cleanArabic(m.content);
-                        // البحث عن تطابق تام مع اسم الدولة الصحيحة بعد التنظيف
-                        let isCorrect = (cleanArabic(countryObj.name) === userAns);
-                        
-                        if (isCorrect && !answerTimestamps.has(m.author.id)) {
-                            // أول إجابة صحيحة لهذا اللاعب في هذه الجولة
-                            answerTimestamps.set(m.author.id, Date.now());
-                            correctAnswers.push({ userId: m.author.id, timestamp: Date.now() });
-                            m.react('✅').catch(() => {});
-                        }
-                    });
-
-                    await new Promise(resolve => {
-                        chatCollector.on('end', () => resolve());
-                    });
-
-                    // ترتيب الإجابات حسب وقت الإرسال (أسرع أولاً)
-                    correctAnswers.sort((a, b) => a.timestamp - b.timestamp);
-
-                    let roundSummary = `🏁 **نتائج الجولة ${round} من 6**\nالبلد الصحيح: **${countryObj.name}**\n\n`;
-                    
-                    if (correctAnswers.length === 0) {
-                        roundSummary += '`لم يقم أي من المشاركين بتخمين البلد بشكل صحيح في هذه الجولة!`';
-                    } else {
-                        // منح النقاط حسب الترتيب: الأول 50، الثاني 40، الثالث 30، الرابع 20، الخامس 10، الباقي 5
-                        const rewardPoints = [50, 40, 30, 20, 10];
-                        correctAnswers.forEach((item, index) => {
-                            let points = (index < rewardPoints.length) ? rewardPoints[index] : 5;
-                            let pObj = playersMap.get(item.userId);
-                            if (pObj) pObj.score += points;
-                            roundSummary += `• <@${item.userId}> - إجابة صحيحة ➔ **+${points} نقطة**\n`;
-                        });
-                    }
-
-                    const roundEmbed = new EmbedBuilder()
-                        .setTitle(`◆ حصيلة الجولة ${round}`)
-                        .setDescription(roundSummary)
-                        .setColor(THEME_COLOR);
-
-                    await message.channel.send({ embeds: [roundEmbed] });
-                    await new Promise(res => setTimeout(res, 3000));
-                }
-
-                // نهاية الـ 6 جولات واعلان الترتيب النهائي
-                let finalPlayersArr = Array.from(playersMap.values());
-                finalPlayersArr.sort((a, b) => b.score - a.score);
-
-                let finalDesc = `🏆 **انتهت الـ 6 جولات بنجاح! إليكم الترتيب النهائي والمجموع الكلي للنقاط:**\n\n`;
-                finalPlayersArr.forEach((p, idx) => {
-                    let medal = idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '🔹';
-                    finalDesc += `${medal} **${p.name}**: \`${p.score} نقطة\`\n`;
-                });
-
-                let winner = finalPlayersArr[0];
-                if (winner && winner.score > 0) {
-                    finalDesc += `\n🎉 **الفائز بالمركز الأول بجدارة هو <@${winner.id}> برصيد ${winner.score} نقطة!**`;
-                } else {
-                    finalDesc += `\n◆ انتهت اللعبة بدون جمع نقاط كافية.`;
-                }
-
-                const finalEmbed = new EmbedBuilder()
-                    .setTitle('◆ لوحة الشرف النهائية - تخمين البلد')
-                    .setDescription(finalDesc)
+                let winnerName = m.author.displayName || m.author.username;
+                let correctEmbed = new EmbedBuilder()
+                    .setTitle('◆ إجابة صحيحة!')
+                    .setDescription(`🏆 البطل **${winnerName}** استطاع تخمين الدولة الصحيحة وهي: **${country.name}**!`)
                     .setColor(THEME_COLOR);
 
-                await message.channel.send({ embeds: [finalEmbed] });
+                m.reply({ embeds: [correctEmbed] });
+            }
+        });
 
-            } catch (error) {
-                console.error(error);
-            } finally {
+        collector.on('end', () => {
+            if (!guessedCorrectly) {
                 activeGames.delete(guildId);
+                message.channel.send({ content: `⏰ انتهى الوقت! الدولة الصحيحة التي كان يجب تخمينها هي: **${country.name}**.` });
             }
         });
     }
 });
 
-client.login(process.env.DISCORD_TOKEN);
+client.login('YOUR_BOT_TOKEN');
