@@ -20,17 +20,14 @@ app.listen(port, () => console.log(`✅ Web server running on port ${port}`));
 
 // ================== [ تهيئة البوت ] ==================
 const TOKEN = process.env.DISCORD_TOKEN;
-if (!TOKEN) {
-  console.error('❌ DISCORD_TOKEN environment variable is not set.');
-  process.exit(1);
-}
+if (!TOKEN) { console.error('❌ DISCORD_TOKEN missing'); process.exit(1); }
 
-// تسجيل الخط العربي (يجب أن يكون الملف موجوداً في المجلد)
+// تسجيل الخط العربي (Cairo)
 try {
   registerFont(path.join(__dirname, 'Cairo-Regular.ttf'), { family: 'Cairo' });
-  console.log('✅ Arabic font registered successfully');
+  console.log('✅ Arabic font registered');
 } catch (e) {
-  console.error('⚠️ Failed to register Arabic font:', e.message);
+  console.error('⚠️ Font registration failed:', e.message);
 }
 
 const client = new Client({
@@ -42,10 +39,9 @@ const client = new Client({
   ],
 });
 
-// ================== [ قاعدة بيانات مؤقتة ] ==================
 const rouletteSessions = {};
 
-// ================== [ دالة رسم العجلة ] ==================
+// ================== [ رسم العجلة مع الأسماء ] ==================
 function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   const size = 600;
   const canvas = createCanvas(size, size);
@@ -54,7 +50,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   const centerY = size / 2;
   const radius = 240;
 
-  // --- خلفية ---
+  // خلفية
   ctx.fillStyle = '#1a1a2e';
   ctx.fillRect(0, 0, size, size);
 
@@ -66,7 +62,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   const numPlayers = players.length || 1;
   const anglePerSlice = (2 * Math.PI) / numPlayers;
 
-  // --- رسم الشرائح ---
+  // رسم الشرائح
   for (let i = 0; i < numPlayers; i++) {
     const startAngle = i * anglePerSlice + (rotationDegrees * Math.PI) / 180 - Math.PI / 2;
     const endAngle = startAngle + anglePerSlice;
@@ -76,16 +72,15 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.moveTo(centerX, centerY);
     ctx.arc(centerX, centerY, radius, startAngle, endAngle);
     ctx.closePath();
-
     ctx.fillStyle = i === highlightIndex ? '#ffd700' : colors[i % colors.length];
     ctx.fill();
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // --- اسم اللاعب (خط عربي، أبيض) ---
+    // اسم اللاعب (أبيض ناصح، خط عربي)
     const textAngle = startAngle + anglePerSlice / 2;
-    const textRadius = radius * 0.65;
+    const textRadius = radius * 0.7;
     const textX = centerX + Math.cos(textAngle) * textRadius;
     const textY = centerY + Math.sin(textAngle) * textRadius;
 
@@ -93,7 +88,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.translate(textX, textY);
     ctx.rotate(textAngle + Math.PI / 2);
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 16px "Cairo", "Arial", sans-serif'; // استخدام الخط العربي
+    ctx.font = 'bold 16px "Cairo", "Arial", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -103,21 +98,21 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.restore();
   }
 
-  // --- الدائرة المركزية ---
+  // الدائرة المركزية
   ctx.beginPath();
-  ctx.arc(centerX, centerY, 55, 0, 2 * Math.PI);
+  ctx.arc(centerX, centerY, 50, 0, 2 * Math.PI);
   ctx.fillStyle = '#2c3e50';
   ctx.fill();
   ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 4;
   ctx.stroke();
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 28px "Cairo", Arial';
+  ctx.font = 'bold 24px "Cairo", Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('🎡', centerX, centerY);
 
-  // --- المؤشر ---
+  // المؤشر
   ctx.beginPath();
   ctx.moveTo(centerX, centerY - radius - 5);
   ctx.lineTo(centerX - 25, centerY - radius - 40);
@@ -129,7 +124,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // --- إطار خارجي ---
+  // إطار ذهبي
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius + 18, 0, 2 * Math.PI);
   ctx.strokeStyle = '#ffd700';
@@ -139,7 +134,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   return canvas.toBuffer('image/png');
 }
 
-// ================== [ دالة جلب أسماء اللاعبين ] ==================
+// ================== [ جلب أسماء اللاعبين ] ==================
 async function fetchPlayers(guild, playerIds) {
   const players = [];
   for (const id of playerIds) {
@@ -156,13 +151,12 @@ async function fetchPlayers(guild, playerIds) {
   return players;
 }
 
-// ================== [ أحداث البوت ] ==================
 client.once('ready', () => {
   console.log(`✅ Roulette Bot online as ${client.user.tag}`);
   client.user.setActivity('🎡 !روليت', { type: ActivityType.Watching });
 });
 
-// ================== [ معالج الأوامر النصية ] ==================
+// ================== [ الأوامر ] ==================
 client.on('messageCreate', async (message) => {
   if (message.author.bot || !message.guild) return;
   if (!message.content.startsWith('!')) return;
@@ -171,12 +165,11 @@ client.on('messageCreate', async (message) => {
   const command = args.shift().toLowerCase();
   const guildId = message.guild.id;
 
-  // ========== [ !روليت_ابدأ ] ==========
+  // بدء الجلسة
   if (command === 'روليت_ابدأ' || command === 'roulette_start') {
     if (rouletteSessions[guildId]) {
-      return message.reply('⚠️ هناك جلسة روليت نشطة بالفعل. استخدم `!روليت_سحب` أو `!روليت_الغاء`.');
+      return message.reply('⚠️ هناك جلسة روليت نشطة بالفعل.');
     }
-
     rouletteSessions[guildId] = {
       players: [],
       messageId: null,
@@ -190,8 +183,8 @@ client.on('messageCreate', async (message) => {
       .setTitle('🎡 روليت السيرفر')
       .setDescription(
         `**0 لاعبين مسجلين**\n\n` +
-        `اضغط على الزر أدناه للانضمام!\n` +
-        `لبدء السحب: \`!روليت_سحب\`\n` +
+        `اضغط على الزر للانضمام!\n` +
+        `للسحب: \`!روليت_سحب\`\n` +
         `للإلغاء: \`!روليت_الغاء\``
       )
       .setColor(0xcc0000)
@@ -210,17 +203,17 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== [ !روليت_سحب ] ==========
+  // سحب الفائز
   if (command === 'روليت_سحب' || command === 'roulette_spin') {
     const session = rouletteSessions[guildId];
-    if (!session) return message.reply('⚠️ لا توجد جلسة روليت نشطة.');
-    if (session.players.length < 2) return message.reply('⚠️ يجب أن يكون هناك لاعبان على الأقل.');
+    if (!session) return message.reply('⚠️ لا توجد جلسة نشطة.');
+    if (session.players.length < 2) return message.reply('⚠️ تحتاج لاعبَين على الأقل.');
 
     const sessionMessage = await message.channel.messages.fetch(session.messageId).catch(() => null);
-    if (!sessionMessage) { delete rouletteSessions[guildId]; return message.reply('❌ رسالة الروليت غير موجودة.'); }
+    if (!sessionMessage) { delete rouletteSessions[guildId]; return message.reply('❌ الجلسة منتهية.'); }
 
     const players = await fetchPlayers(message.guild, session.players);
-    const playersListText = session.players.map((id, index) => `**${index + 1}.** <@${id}>`).join('\n');
+    const playersListText = session.players.map((id, idx) => `**${idx + 1}.** <@${id}>`).join('\n');
 
     // عد تنازلي
     for (let count = 3; count >= 1; count--) {
@@ -256,12 +249,11 @@ client.on('messageCreate', async (message) => {
       await new Promise(r => setTimeout(r, 250));
     }
 
-    // إعلان الفائز
+    // الفائز
     const finalRotation = totalDegrees % 360;
-    const numPlayers = session.players.length;
-    const anglePerSlice = 360 / numPlayers;
+    const anglePerSlice = 360 / session.players.length;
     const normalizedAngle = (360 - (finalRotation % 360)) % 360;
-    const winnerIndex = Math.floor(normalizedAngle / anglePerSlice) % numPlayers;
+    const winnerIndex = Math.floor(normalizedAngle / anglePerSlice) % session.players.length;
     const winnerId = session.players[winnerIndex];
 
     const finalBuffer = drawWheel(players, finalRotation, winnerIndex);
@@ -279,7 +271,7 @@ client.on('messageCreate', async (message) => {
       embeds: [
         new EmbedBuilder()
           .setTitle('🎉 مبروك!')
-          .setDescription(`🏆 **<@${winnerId}>** هو الفائز!\n\n🎊 حظ أوفر للبقية.`)
+          .setDescription(`🏆 **<@${winnerId}>** هو الفائز!`)
           .setColor(0x00ff00)
           .setTimestamp()
       ]
@@ -289,20 +281,20 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== [ !روليت_الغاء ] ==========
+  // إلغاء الجلسة
   if (command === 'روليت_الغاء' || command === 'roulette_cancel') {
     const session = rouletteSessions[guildId];
     if (!session) return message.reply('⚠️ لا توجد جلسة نشطة.');
-    const sessionMessage = await message.channel.messages.fetch(session.messageId).catch(() => null);
-    if (sessionMessage) {
+    const msg = await message.channel.messages.fetch(session.messageId).catch(() => null);
+    if (msg) {
       const buffer = drawWheel([]);
       const attachment = new AttachmentBuilder(buffer, { name: 'wheel.png' });
-      const embed = EmbedBuilder.from(sessionMessage.embeds[0])
+      const embed = EmbedBuilder.from(msg.embeds[0])
         .setTitle('🚫 جلسة ملغية')
         .setDescription('تم إلغاء جلسة الروليت.')
         .setColor(0xff0000)
         .setImage('attachment://wheel.png');
-      await sessionMessage.edit({ embeds: [embed], components: [], files: [attachment] }).catch(() => {});
+      await msg.edit({ embeds: [embed], components: [], files: [attachment] }).catch(() => {});
     }
     delete rouletteSessions[guildId];
     await message.reply('✅ تم إلغاء الجلسة.');
@@ -367,5 +359,4 @@ client.on('interactionCreate', async (interaction) => {
   }
 });
 
-// ================== [ تشغيل البوت ] ==================
 client.login(TOKEN).catch(err => { console.error('❌ فشل:', err); process.exit(1); });
