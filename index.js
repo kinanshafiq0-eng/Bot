@@ -158,95 +158,96 @@ const rebeccaDatabase = {
 };
 
 // ==========================================
-// قاعدة بيانات 80 دولة مع أعلام ورابط صورة ديناميكي
+// قاعدة بيانات 80 دولة مع أعلام وصور من داخل الدولة
 // ==========================================
 const countryData = [
-    { name: 'الاردن', lat: 31.95, lon: 35.91, hint: 'بلد عربي يشتهر بمدينة البتراء الأثرية', flag: 'https://flagcdn.com/jo.svg' },
-    { name: 'فلسطين', lat: 31.90, lon: 35.20, hint: 'مهد الديانات وعاصمة التاريخ والصمود', flag: 'https://flagcdn.com/ps.svg' },
-    { name: 'مصر', lat: 30.04, lon: 31.23, hint: 'بلد الأهرامات ونهر النيل الخالد', flag: 'https://flagcdn.com/eg.svg' },
-    { name: 'السعودية', lat: 24.71, lon: 46.67, hint: 'قلب العالم الإسلامي وبلاد الحرمين الشريفين', flag: 'https://flagcdn.com/sa.svg' },
-    { name: 'الإمارات', lat: 24.45, lon: 54.37, hint: 'تضم أطول برج في العالم وواحة ناطحات السحاب', flag: 'https://flagcdn.com/ae.svg' },
-    { name: 'فرنسا', lat: 48.85, lon: 2.35, hint: 'عاصمة الموضة وبرج إيفل الشهير', flag: 'https://flagcdn.com/fr.svg' },
-    { name: 'بريطانيا', lat: 51.50, lon: -0.12, hint: 'بلد الساعة الكبرى بيج بن ونهر التمز', flag: 'https://flagcdn.com/gb.svg' },
-    { name: 'اليابان', lat: 35.67, lon: 139.65, hint: 'بلاد الساموراي وأزهار الساكورا والتكنولوجيا', flag: 'https://flagcdn.com/jp.svg' },
-    { name: 'تركيا', lat: 41.00, lon: 28.97, hint: 'ملتقى القارات ومعالم إسطنبول العريقة', flag: 'https://flagcdn.com/tr.svg' },
-    { name: 'ايطاليا', lat: 41.90, lon: 12.49, hint: 'بلد الكولوسيوم والبيتزا والتاريخ الروماني', flag: 'https://flagcdn.com/it.svg' },
-    { name: 'المانيا', lat: 52.52, lon: 13.40, hint: 'عاصمة الصناعة وقوة أوروبا الاقتصادية', flag: 'https://flagcdn.com/de.svg' },
-    { name: 'اسبانيا', lat: 40.41, lon: -3.70, hint: 'بلد الشمس والشواطئ ومعالم مدريد وبرشلونة', flag: 'https://flagcdn.com/es.svg' },
-    { name: 'امريكا', lat: 38.89, lon: -77.03, hint: 'بلاد العم سام وتمثال الحرية وناطحات السحاب الكبرى', flag: 'https://flagcdn.com/us.svg' },
-    { name: 'كندا', lat: 45.42, lon: -75.69, hint: 'بلد الطبيعة الخلابة وأوراق الشجر القيقبية', flag: 'https://flagcdn.com/ca.svg' },
-    { name: 'البرازيل', lat: -15.79, lon: -47.88, hint: 'موطن كرة القدم وغابات الأمازون وراميو السامبا', flag: 'https://flagcdn.com/br.svg' },
-    { name: 'الصين', lat: 39.90, lon: 116.40, hint: 'بلد سور الصين العظيم والتاريخ العريق', flag: 'https://flagcdn.com/cn.svg' },
-    { name: 'الهند', lat: 28.61, lon: 77.20, hint: 'بلد تاج محل والثقافات المتنوعة والألوان الزاهية', flag: 'https://flagcdn.com/in.svg' },
-    { name: 'كوريا الجنوبية', lat: 37.56, lon: 126.97, hint: 'بلد الثقافة الحديثة وقصور سيول والتكنولوجيا', flag: 'https://flagcdn.com/kr.svg' },
-    { name: 'الأرجنتين', lat: -34.60, lon: -58.38, hint: 'موطن التانجو ونجوم كرة القدم في أمريكا الجنوبية', flag: 'https://flagcdn.com/ar.svg' },
-    { name: 'المكسيك', lat: 19.43, lon: -99.13, hint: 'بلد الحضارات القديمة والأهرامات والمأكولات الشهيرة', flag: 'https://flagcdn.com/mx.svg' },
-    { name: 'إندونيسيا', lat: -6.20, lon: 106.84, hint: 'أكبر دولة إسلامية من حيث السكان وتضم جزر بالي الساحرة', flag: 'https://flagcdn.com/id.svg' },
-    { name: 'هندوراس', lat: 14.07, lon: -87.20, hint: 'بلد في أمريكا الوسطى يشتهر بآثار المايا والشواطئ الكاريبية', flag: 'https://flagcdn.com/hn.svg' },
-    { name: 'كوريا الشمالية', lat: 39.03, lon: 125.75, hint: 'دولة ذات طبيعة جبلية صارمة وعاصمة بيونغ يانغ', flag: 'https://flagcdn.com/kp.svg' },
-    { name: 'السويد', lat: 59.32, lon: 18.06, hint: 'بلد إسكندنافي يشتهر بالغابات والبحيرات وتصميم الطبيعة الخلابة', flag: 'https://flagcdn.com/se.svg' },
-    { name: 'نرويج', lat: 59.91, lon: 10.75, hint: 'بلد المضايق البحرية العميقة والأضواء الشمالية الشفق القطبي', flag: 'https://flagcdn.com/no.svg' },
-    { name: 'الجزائر', lat: 36.75, lon: 3.05, hint: 'بلد المليون شهيد وأكبر دولة عربية مساحة مع الصحراء الكبرى', flag: 'https://flagcdn.com/dz.svg' },
-    { name: 'المغرب', lat: 33.97, lon: -6.84, hint: 'بلد الألوان والأسواق التاريخية وجبال الأطلس وعاصمة الرباط', flag: 'https://flagcdn.com/ma.svg' },
-    { name: 'تونس', lat: 36.80, lon: 10.18, hint: 'بلد الآثار القرطاجية والشواطئ المتوسطية الساحرة', flag: 'https://flagcdn.com/tn.svg' },
-    { name: 'العراق', lat: 33.31, lon: 44.36, hint: 'بلد بلاد ما بين النهرين والتاريخ الحضاري العريق وبابل', flag: 'https://flagcdn.com/iq.svg' },
-    { name: 'سوريا', lat: 33.51, lon: 36.29, hint: 'بلد الياسمين ودمشق العاصمة الأقدم في التاريخ', flag: 'https://flagcdn.com/sy.svg' },
-    { name: 'لبنان', lat: 33.89, lon: 35.50, hint: 'بلد الأرز وطبيعة بيروت الساحرة ومعالمها العريقة', flag: 'https://flagcdn.com/lb.svg' },
-    { name: 'الكويت', lat: 29.37, lon: 47.97, hint: 'دولة الخليج العربي وتشتهر بأبراج الكويت الشهيرة', flag: 'https://flagcdn.com/kw.svg' },
-    { name: 'قطر', lat: 25.28, lon: 51.53, hint: 'بلد اللؤلؤ ونهضة الدوحة الحديثة واستضافة المونديال', flag: 'https://flagcdn.com/qa.svg' },
-    { name: 'البحرين', lat: 26.06, lon: 50.55, hint: 'لؤلؤة الخليج وجزر الدار والتاريخ العريق', flag: 'https://flagcdn.com/bh.svg' },
-    { name: 'عمان', lat: 23.58, lon: 58.38, hint: 'سلطنة الجبال والشواطئ النظيفة والقلاع التاريخية', flag: 'https://flagcdn.com/om.svg' },
-    { name: 'اليونان', lat: 37.98, lon: 23.72, hint: 'مهد الحضارة الغربية والجزر البيضاء الساحرة في البحر المتوسط', flag: 'https://flagcdn.com/gr.svg' },
-    { name: 'هولندا', lat: 52.36, lon: 4.90, hint: 'بلد طواحين الهواء وقنوات أمستردام المائية وحقول الزهور', flag: 'https://flagcdn.com/nl.svg' },
-    { name: 'سويسرا', lat: 46.94, lon: 7.44, hint: 'بلد الجبال السويسرية الشهيرة والشوكولاتة الفاخرة والساعات العريقة', flag: 'https://flagcdn.com/ch.svg' },
-    { name: 'البرتغال', lat: 38.72, lon: -9.13, hint: 'بلد المستكشفين والشواطئ الأطلسية الساحرة', flag: 'https://flagcdn.com/pt.svg' },
-    { name: 'بلجيكا', lat: 50.85, lon: 4.35, hint: 'عاصمة الاتحاد الأوروبي وتشتهر بالشوكولاتة البلجيكية', flag: 'https://flagcdn.com/be.svg' },
-    { name: 'روسيا', lat: 55.75, lon: 37.62, hint: 'أكبر دولة في العالم مساحةً وعاصمة موسكو', flag: 'https://flagcdn.com/ru.svg' },
-    { name: 'أوكرانيا', lat: 50.45, lon: 30.52, hint: 'بلد السهول الخضراء وعاصمتها كييف التاريخية', flag: 'https://flagcdn.com/ua.svg' },
-    { name: 'بولندا', lat: 52.23, lon: 21.01, hint: 'بلد تاريخي في أوروبا الوسطى وعاصمتها وارسو', flag: 'https://flagcdn.com/pl.svg' },
-    { name: 'رومانيا', lat: 44.43, lon: 26.10, hint: 'بلد القلاع والغابات وعاصمتها بوخارست', flag: 'https://flagcdn.com/ro.svg' },
-    { name: 'كازاخستان', lat: 51.18, lon: 71.45, hint: 'أكبر دولة في آسيا الوسطى وعاصمتها نور سلطان', flag: 'https://flagcdn.com/kz.svg' },
-    { name: 'أوزبكستان', lat: 41.31, lon: 69.28, hint: 'بلد المدن التاريخية مثل سمرقند وبخارى', flag: 'https://flagcdn.com/uz.svg' },
-    { name: 'باكستان', lat: 33.68, lon: 73.04, hint: 'بلد الجبال العالية والثقافات المتنوعة وعاصمتها إسلام أباد', flag: 'https://flagcdn.com/pk.svg' },
-    { name: 'نيجيريا', lat: 9.06, lon: 7.49, hint: 'أكبر دولة في أفريقيا من حيث السكان وعاصمتها أبوجا', flag: 'https://flagcdn.com/ng.svg' },
-    { name: 'جنوب أفريقيا', lat: -25.75, lon: 28.23, hint: 'بلد التنوع الطبيعي وعاصمتها بريتوريا', flag: 'https://flagcdn.com/za.svg' },
-    { name: 'كينيا', lat: -1.29, lon: 36.82, hint: 'بلد السافانا والحياة البرية وعاصمتها نيروبي', flag: 'https://flagcdn.com/ke.svg' },
-    { name: 'إثيوبيا', lat: 9.03, lon: 38.74, hint: 'بلد الحضارة القديمة والكنائس المنحوتة في الصخر', flag: 'https://flagcdn.com/et.svg' },
-    { name: 'تنزانيا', lat: -6.17, lon: 35.74, hint: 'بلد جبل كليمنجارو ومحميات الحياة البرية', flag: 'https://flagcdn.com/tz.svg' },
-    { name: 'فيتنام', lat: 21.03, lon: 105.85, hint: 'بلد الخلجان الخضراء والثقافة الغنية وعاصمتها هانوي', flag: 'https://flagcdn.com/vn.svg' },
-    { name: 'تايلاند', lat: 13.75, lon: 100.50, hint: 'بلد المعابد والشواطئ الاستوائية وعاصمتها بانكوك', flag: 'https://flagcdn.com/th.svg' },
-    { name: 'ماليزيا', lat: 3.14, lon: 101.69, hint: 'بلد الغابات المطيرة وناطحات السحاب وعاصمتها كوالالمبور', flag: 'https://flagcdn.com/my.svg' },
-    { name: 'الفلبين', lat: 14.60, lon: 120.98, hint: 'بلد الجزر الاستوائية والشواطئ الجميلة', flag: 'https://flagcdn.com/ph.svg' },
-    { name: 'بيرو', lat: -12.06, lon: -77.04, hint: 'موطن إمبراطورية الإنكا وماتشو بيتشو', flag: 'https://flagcdn.com/pe.svg' },
-    { name: 'تشيلي', lat: -33.45, lon: -70.66, hint: 'بلد الضيق الطويل في أمريكا الجنوبية وعاصمتها سانتياغو', flag: 'https://flagcdn.com/cl.svg' },
-    { name: 'كولومبيا', lat: 4.60, lon: -74.08, hint: 'بلد القهوة والتنوع الطبيعي وعاصمتها بوغوتا', flag: 'https://flagcdn.com/co.svg' },
-    { name: 'فنزويلا', lat: 10.48, lon: -66.90, hint: 'بلد شلالات الملاك والنفط وعاصمتها كراكاس', flag: 'https://flagcdn.com/ve.svg' },
-    { name: 'نيوزيلندا', lat: -41.28, lon: 174.77, hint: 'بلد الجمال الطبيعي والمناظر الخلابة والماوري', flag: 'https://flagcdn.com/nz.svg' },
-    { name: 'أستراليا', lat: -35.28, lon: 149.13, hint: 'بلد الكنغر والكوالا والشواطئ الذهبية', flag: 'https://flagcdn.com/au.svg' },
-    { name: 'إيران', lat: 35.69, lon: 51.39, hint: 'بلد الحضارة الفارسية القديمة وعاصمتها طهران', flag: 'https://flagcdn.com/ir.svg' },
-    { name: 'أفغانستان', lat: 34.53, lon: 69.17, hint: 'بلد الجبال الوعرة والتاريخ العريق وعاصمتها كابول', flag: 'https://flagcdn.com/af.svg' },
-    { name: 'نيبال', lat: 27.70, lon: 85.32, hint: 'بلد جبل إيفرست والثقافة الهندوسية', flag: 'https://flagcdn.com/np.svg' },
-    { name: 'بنغلاديش', lat: 23.81, lon: 90.41, hint: 'بلد الأنهار والمزارع الخضراء وعاصمتها دكا', flag: 'https://flagcdn.com/bd.svg' },
-    { name: 'ميانمار', lat: 19.76, lon: 96.08, hint: 'بلد الباغودات الذهبية وعاصمتها نايبيداو', flag: 'https://flagcdn.com/mm.svg' },
-    { name: 'سريلانكا', lat: 6.93, lon: 79.85, hint: 'جوهرة المحيط الهندي والشواطئ الاستوائية', flag: 'https://flagcdn.com/lk.svg' },
-    { name: 'ليبيا', lat: 32.88, lon: 13.19, hint: 'بلد الصحراء والآثار الرومانية وعاصمتها طرابلس', flag: 'https://flagcdn.com/ly.svg' },
-    { name: 'السودان', lat: 15.59, lon: 32.54, hint: 'بلد النيلين والتنوع الثقافي وعاصمتها الخرطوم', flag: 'https://flagcdn.com/sd.svg' },
-    { name: 'اليمن', lat: 15.36, lon: 44.20, hint: 'بلد الحضارة السبئية ومدينة صنعاء القديمة', flag: 'https://flagcdn.com/ye.svg' },
-    { name: 'الصومال', lat: 2.04, lon: 45.34, hint: 'بلد القرن الأفريقي وعاصمتها مقديشو', flag: 'https://flagcdn.com/so.svg' },
-    { name: 'جيبوتي', lat: 11.59, lon: 43.15, hint: 'بلد مضيق باب المندب والبحيرات المالحة', flag: 'https://flagcdn.com/dj.svg' },
-    { name: 'إريتريا', lat: 15.33, lon: 38.93, hint: 'بلد السواحل الإفريقية وعاصمتها أسمرة', flag: 'https://flagcdn.com/er.svg' },
-    { name: 'غانا', lat: 5.60, lon: -0.19, hint: 'بلد الساحل الذهبي والتاريخ الأفريقي العريق', flag: 'https://flagcdn.com/gh.svg' },
-    { name: 'السنغال', lat: 14.69, lon: -17.44, hint: 'بلد الغروب الجميل وعاصمتها داكار', flag: 'https://flagcdn.com/sn.svg' },
-    { name: 'مالي', lat: 12.65, lon: -8.00, hint: 'بلد التمبكتو والصحراء الكبرى', flag: 'https://flagcdn.com/ml.svg' },
-    { name: 'النيجر', lat: 13.51, lon: 2.12, hint: 'بلد الصحراء الكبرى وعاصمتها نيامي', flag: 'https://flagcdn.com/ne.svg' },
-    { name: 'تشاد', lat: 12.13, lon: 15.05, hint: 'بلد بحيرة تشاد والسهول الواسعة', flag: 'https://flagcdn.com/td.svg' },
-    { name: 'الكاميرون', lat: 3.85, lon: 11.50, hint: 'بلد إفريقيا الصغيرة وعاصمتها ياوندي', flag: 'https://flagcdn.com/cm.svg' }
+    { name: 'الاردن', lat: 31.95, lon: 35.91, flag: 'https://flagcdn.com/jo.svg' },
+    { name: 'فلسطين', lat: 31.90, lon: 35.20, flag: 'https://flagcdn.com/ps.svg' },
+    { name: 'مصر', lat: 30.04, lon: 31.23, flag: 'https://flagcdn.com/eg.svg' },
+    { name: 'السعودية', lat: 24.71, lon: 46.67, flag: 'https://flagcdn.com/sa.svg' },
+    { name: 'الإمارات', lat: 24.45, lon: 54.37, flag: 'https://flagcdn.com/ae.svg' },
+    { name: 'فرنسا', lat: 48.85, lon: 2.35, flag: 'https://flagcdn.com/fr.svg' },
+    { name: 'بريطانيا', lat: 51.50, lon: -0.12, flag: 'https://flagcdn.com/gb.svg' },
+    { name: 'اليابان', lat: 35.67, lon: 139.65, flag: 'https://flagcdn.com/jp.svg' },
+    { name: 'تركيا', lat: 41.00, lon: 28.97, flag: 'https://flagcdn.com/tr.svg' },
+    { name: 'ايطاليا', lat: 41.90, lon: 12.49, flag: 'https://flagcdn.com/it.svg' },
+    { name: 'المانيا', lat: 52.52, lon: 13.40, flag: 'https://flagcdn.com/de.svg' },
+    { name: 'اسبانيا', lat: 40.41, lon: -3.70, flag: 'https://flagcdn.com/es.svg' },
+    { name: 'امريكا', lat: 38.89, lon: -77.03, flag: 'https://flagcdn.com/us.svg' },
+    { name: 'كندا', lat: 45.42, lon: -75.69, flag: 'https://flagcdn.com/ca.svg' },
+    { name: 'البرازيل', lat: -15.79, lon: -47.88, flag: 'https://flagcdn.com/br.svg' },
+    { name: 'الصين', lat: 39.90, lon: 116.40, flag: 'https://flagcdn.com/cn.svg' },
+    { name: 'الهند', lat: 28.61, lon: 77.20, flag: 'https://flagcdn.com/in.svg' },
+    { name: 'كوريا الجنوبية', lat: 37.56, lon: 126.97, flag: 'https://flagcdn.com/kr.svg' },
+    { name: 'الأرجنتين', lat: -34.60, lon: -58.38, flag: 'https://flagcdn.com/ar.svg' },
+    { name: 'المكسيك', lat: 19.43, lon: -99.13, flag: 'https://flagcdn.com/mx.svg' },
+    { name: 'إندونيسيا', lat: -6.20, lon: 106.84, flag: 'https://flagcdn.com/id.svg' },
+    { name: 'هندوراس', lat: 14.07, lon: -87.20, flag: 'https://flagcdn.com/hn.svg' },
+    { name: 'كوريا الشمالية', lat: 39.03, lon: 125.75, flag: 'https://flagcdn.com/kp.svg' },
+    { name: 'السويد', lat: 59.32, lon: 18.06, flag: 'https://flagcdn.com/se.svg' },
+    { name: 'نرويج', lat: 59.91, lon: 10.75, flag: 'https://flagcdn.com/no.svg' },
+    { name: 'الجزائر', lat: 36.75, lon: 3.05, flag: 'https://flagcdn.com/dz.svg' },
+    { name: 'المغرب', lat: 33.97, lon: -6.84, flag: 'https://flagcdn.com/ma.svg' },
+    { name: 'تونس', lat: 36.80, lon: 10.18, flag: 'https://flagcdn.com/tn.svg' },
+    { name: 'العراق', lat: 33.31, lon: 44.36, flag: 'https://flagcdn.com/iq.svg' },
+    { name: 'سوريا', lat: 33.51, lon: 36.29, flag: 'https://flagcdn.com/sy.svg' },
+    { name: 'لبنان', lat: 33.89, lon: 35.50, flag: 'https://flagcdn.com/lb.svg' },
+    { name: 'الكويت', lat: 29.37, lon: 47.97, flag: 'https://flagcdn.com/kw.svg' },
+    { name: 'قطر', lat: 25.28, lon: 51.53, flag: 'https://flagcdn.com/qa.svg' },
+    { name: 'البحرين', lat: 26.06, lon: 50.55, flag: 'https://flagcdn.com/bh.svg' },
+    { name: 'عمان', lat: 23.58, lon: 58.38, flag: 'https://flagcdn.com/om.svg' },
+    { name: 'اليونان', lat: 37.98, lon: 23.72, flag: 'https://flagcdn.com/gr.svg' },
+    { name: 'هولندا', lat: 52.36, lon: 4.90, flag: 'https://flagcdn.com/nl.svg' },
+    { name: 'سويسرا', lat: 46.94, lon: 7.44, flag: 'https://flagcdn.com/ch.svg' },
+    { name: 'البرتغال', lat: 38.72, lon: -9.13, flag: 'https://flagcdn.com/pt.svg' },
+    { name: 'بلجيكا', lat: 50.85, lon: 4.35, flag: 'https://flagcdn.com/be.svg' },
+    { name: 'روسيا', lat: 55.75, lon: 37.62, flag: 'https://flagcdn.com/ru.svg' },
+    { name: 'أوكرانيا', lat: 50.45, lon: 30.52, flag: 'https://flagcdn.com/ua.svg' },
+    { name: 'بولندا', lat: 52.23, lon: 21.01, flag: 'https://flagcdn.com/pl.svg' },
+    { name: 'رومانيا', lat: 44.43, lon: 26.10, flag: 'https://flagcdn.com/ro.svg' },
+    { name: 'كازاخستان', lat: 51.18, lon: 71.45, flag: 'https://flagcdn.com/kz.svg' },
+    { name: 'أوزبكستان', lat: 41.31, lon: 69.28, flag: 'https://flagcdn.com/uz.svg' },
+    { name: 'باكستان', lat: 33.68, lon: 73.04, flag: 'https://flagcdn.com/pk.svg' },
+    { name: 'نيجيريا', lat: 9.06, lon: 7.49, flag: 'https://flagcdn.com/ng.svg' },
+    { name: 'جنوب أفريقيا', lat: -25.75, lon: 28.23, flag: 'https://flagcdn.com/za.svg' },
+    { name: 'كينيا', lat: -1.29, lon: 36.82, flag: 'https://flagcdn.com/ke.svg' },
+    { name: 'إثيوبيا', lat: 9.03, lon: 38.74, flag: 'https://flagcdn.com/et.svg' },
+    { name: 'تنزانيا', lat: -6.17, lon: 35.74, flag: 'https://flagcdn.com/tz.svg' },
+    { name: 'فيتنام', lat: 21.03, lon: 105.85, flag: 'https://flagcdn.com/vn.svg' },
+    { name: 'تايلاند', lat: 13.75, lon: 100.50, flag: 'https://flagcdn.com/th.svg' },
+    { name: 'ماليزيا', lat: 3.14, lon: 101.69, flag: 'https://flagcdn.com/my.svg' },
+    { name: 'الفلبين', lat: 14.60, lon: 120.98, flag: 'https://flagcdn.com/ph.svg' },
+    { name: 'بيرو', lat: -12.06, lon: -77.04, flag: 'https://flagcdn.com/pe.svg' },
+    { name: 'تشيلي', lat: -33.45, lon: -70.66, flag: 'https://flagcdn.com/cl.svg' },
+    { name: 'كولومبيا', lat: 4.60, lon: -74.08, flag: 'https://flagcdn.com/co.svg' },
+    { name: 'فنزويلا', lat: 10.48, lon: -66.90, flag: 'https://flagcdn.com/ve.svg' },
+    { name: 'نيوزيلندا', lat: -41.28, lon: 174.77, flag: 'https://flagcdn.com/nz.svg' },
+    { name: 'أستراليا', lat: -35.28, lon: 149.13, flag: 'https://flagcdn.com/au.svg' },
+    { name: 'إيران', lat: 35.69, lon: 51.39, flag: 'https://flagcdn.com/ir.svg' },
+    { name: 'أفغانستان', lat: 34.53, lon: 69.17, flag: 'https://flagcdn.com/af.svg' },
+    { name: 'نيبال', lat: 27.70, lon: 85.32, flag: 'https://flagcdn.com/np.svg' },
+    { name: 'بنغلاديش', lat: 23.81, lon: 90.41, flag: 'https://flagcdn.com/bd.svg' },
+    { name: 'ميانمار', lat: 19.76, lon: 96.08, flag: 'https://flagcdn.com/mm.svg' },
+    { name: 'سريلانكا', lat: 6.93, lon: 79.85, flag: 'https://flagcdn.com/lk.svg' },
+    { name: 'ليبيا', lat: 32.88, lon: 13.19, flag: 'https://flagcdn.com/ly.svg' },
+    { name: 'السودان', lat: 15.59, lon: 32.54, flag: 'https://flagcdn.com/sd.svg' },
+    { name: 'اليمن', lat: 15.36, lon: 44.20, flag: 'https://flagcdn.com/ye.svg' },
+    { name: 'الصومال', lat: 2.04, lon: 45.34, flag: 'https://flagcdn.com/so.svg' },
+    { name: 'جيبوتي', lat: 11.59, lon: 43.15, flag: 'https://flagcdn.com/dj.svg' },
+    { name: 'إريتريا', lat: 15.33, lon: 38.93, flag: 'https://flagcdn.com/er.svg' },
+    { name: 'غانا', lat: 5.60, lon: -0.19, flag: 'https://flagcdn.com/gh.svg' },
+    { name: 'السنغال', lat: 14.69, lon: -17.44, flag: 'https://flagcdn.com/sn.svg' },
+    { name: 'مالي', lat: 12.65, lon: -8.00, flag: 'https://flagcdn.com/ml.svg' },
+    { name: 'النيجر', lat: 13.51, lon: 2.12, flag: 'https://flagcdn.com/ne.svg' },
+    { name: 'تشاد', lat: 12.13, lon: 15.05, flag: 'https://flagcdn.com/td.svg' },
+    { name: 'الكاميرون', lat: 3.85, lon: 11.50, flag: 'https://flagcdn.com/cm.svg' }
 ];
 
-// توليد قاعدة البيانات النهائية مع إضافة رابط الصورة الديناميكي
+// توليد قاعدة البيانات النهائية مع صور من داخل الدولة
 const worldCountriesDatabase = countryData.map(c => ({
     ...c,
-    image: `https://source.unsplash.com/800x600/?${encodeURIComponent(c.name)}`
+    // استخدام كلمات مفتاحية للحصول على صور من داخل الدولة (معالم، طبيعة، شوارع)
+    image: `https://source.unsplash.com/800x600/?${encodeURIComponent(c.name)},city,landmark`
 }));
 
 // دالة لتنظيف الحروف العربية
@@ -1004,18 +1005,6 @@ client.on('messageCreate', async message => {
             let shuffledCountries = [...worldCountriesDatabase].sort(() => 0.5 - Math.random());
             let gameRoundsData = shuffledCountries.slice(0, 6);
 
-            function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-                let R = 6371;
-                let dLat = (lat2 - lat1) * (Math.PI / 180);
-                let dLon = (lon2 - lon1) * (Math.PI / 180);
-                let a =
-                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
-            }
-
             try {
                 for (let round = 1; round <= 6; round++) {
                     let countryObj = gameRoundsData[round - 1];
@@ -1024,10 +1013,10 @@ client.on('messageCreate', async message => {
                     let roundTimeSeconds = 25;
                     let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
 
+                    // Embed الرئيسي للجولة - مع صورة من داخل الدولة
                     const guessEmbed = new EmbedBuilder()
                         .setTitle(`◆ لعبة تخمين البلد الجغرافي (الجولة ${round}/6)`)
-                        .setDescription(`تأمل الصورة واكتب اسم **البلد** في الشات.\n💡 تلميح: \`${countryObj.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
-                        .setThumbnail(countryObj.flag)
+                        .setDescription(`📸 **لديك ${roundTimeSeconds} ثانية لتخمين اسم الدولة من الصورة!**\n\n⏳ **ينتهي الوقت خلال:** <t:${endTimeStamp}:R>`)
                         .setImage(randomImage)
                         .setColor(THEME_COLOR);
 
@@ -1036,18 +1025,19 @@ client.on('messageCreate', async message => {
                     let correctAnswers = [];
                     let answerTimestamps = new Map();
 
+                    // فلتر لجميع الرسائل من اللاعبين المسجلين
                     let filter = m => playersMap.has(m.author.id) && !m.author.bot;
                     let chatCollector = message.channel.createMessageCollector({ filter, time: roundTimeSeconds * 1000 });
 
                     chatCollector.on('collect', m => {
                         let userAns = cleanArabic(m.content);
                         
-                        // البحث عن أي دولة تطابق النص (فوري)
+                        // البحث عن أي دولة تطابق النص الذي كتبه اللاعب
                         let matchedCountry = worldCountriesDatabase.find(c => cleanArabic(c.name) === userAns);
                         if (matchedCountry) {
                             // إرسال رد فوري مع منشن وعلم الدولة التي كتبها
                             const replyEmbed = new EmbedBuilder()
-                                .setDescription(`<@${m.author.id}> 🌍 **${matchedCountry.name}**`)
+                                .setDescription(`🌍 <@${m.author.id}> **${matchedCountry.name}**`)
                                 .setThumbnail(matchedCountry.flag)
                                 .setColor(THEME_COLOR);
                             message.channel.send({ embeds: [replyEmbed] }).catch(() => {});
@@ -1068,25 +1058,28 @@ client.on('messageCreate', async message => {
 
                     correctAnswers.sort((a, b) => a.timestamp - b.timestamp);
 
-                    let roundSummary = `🏁 **نتائج الجولة ${round} من 6**\nالبلد الصحيح: **${countryObj.name}**\n\n`;
-                    
+                    // عرض الدولة الصحيحة مع العلم في نهاية الجولة
+                    let roundSummary = `🏁 **نتائج الجولة ${round} من 6**\n\n`;
+                    roundSummary += `✅ **البلد الصحيح:** ${countryObj.name}\n`;
+                    roundSummary += `🏳️ **العلم:** \n\n`;
+
                     if (correctAnswers.length === 0) {
                         roundSummary += '`لم يقم أي من المشاركين بتخمين البلد بشكل صحيح في هذه الجولة!`';
                     } else {
                         const rewardPoints = [50, 40, 30, 20, 10];
+                        roundSummary += `**الإجابات الصحيحة:**\n`;
                         correctAnswers.forEach((item, index) => {
                             let points = (index < rewardPoints.length) ? rewardPoints[index] : 5;
                             let pObj = playersMap.get(item.userId);
                             if (pObj) pObj.score += points;
-                            roundSummary += `• <@${item.userId}> - إجابة صحيحة ➔ **+${points} نقطة**\n`;
+                            roundSummary += `• <@${item.userId}> ➔ **+${points} نقطة**\n`;
                         });
                     }
 
-                    // إضافة علم الدولة الصحيحة كصورة مصغرة في ملخص الجولة
                     const roundEmbed = new EmbedBuilder()
                         .setTitle(`◆ حصيلة الجولة ${round}`)
                         .setDescription(roundSummary)
-                        .setThumbnail(countryObj.flag)
+                        .setThumbnail(countryObj.flag)  // عرض علم الدولة الصحيحة
                         .setColor(THEME_COLOR);
 
                     await message.channel.send({ embeds: [roundEmbed] });
@@ -1126,4 +1119,4 @@ client.on('messageCreate', async message => {
     }
 });
 
-client.login(process.env.TOKEN);
+client.login(process.env.DISCORD_TOKEN);
