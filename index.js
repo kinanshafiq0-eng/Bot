@@ -84,7 +84,7 @@ client.on('messageCreate', async message => {
             }
 
             try {
-                // دالة رسم الأزرار: 'hit' (فيه شخص = أخضر)، 'safe' (فارغ = أحمر)
+                // رسم الصناديق: 'hit' (فيه شخص = أخضر)، 'safe' (فارغ = أحمر)
                 const renderBoxesRows = (disabled = false, boxStatusMap = {}) => {
                     let rows = [];
                     for (let r = 0; r < 5; r++) {
@@ -94,8 +94,8 @@ client.on('messageCreate', async message => {
                             let status = boxStatusMap[boxNum]; 
                             
                             let btnStyle = ButtonStyle.Secondary;
-                            if (status === 'hit') btnStyle = ButtonStyle.Success;  // أخضر (يوجد شخص بداخله)
-                            else if (status === 'safe') btnStyle = ButtonStyle.Danger;   // أحمر (فارغ)
+                            if (status === 'hit') btnStyle = ButtonStyle.Success;  // أخضر عند كشف شخص
+                            else if (status === 'safe') btnStyle = ButtonStyle.Danger;   // أحمر عند التفجير الفارغ
 
                             rowComponents.push(
                                 new ButtonBuilder()
@@ -154,7 +154,8 @@ client.on('messageCreate', async message => {
                         .setDescription(`دور البطل: <@${currentPlayer.id}>\nاختر صندوقاً لتفجيره.\n⏳ **الوقت:** 10 ثوانٍ`)
                         .setColor(THEME_COLOR);
 
-                    let turnMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك:`, embeds: [turnEmbed], components: renderBoxesRows(false, boxStatusMap) });
+                    // منشن صاحب الدور خارجي للارسال والتنبيه
+                    let turnMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك الآن:`, embeds: [turnEmbed], components: renderBoxesRows(false, boxStatusMap) });
 
                     let turnCollector = turnMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 10000 });
                     let actionTaken = false;
@@ -175,23 +176,30 @@ client.on('messageCreate', async message => {
                         let caughtPlayers = playersArr.filter(p => p.alive && p.hidingSpot === targetBox);
                         
                         if (caughtPlayers.length > 0) {
-                            boxStatusMap[targetBox] = 'hit'; // أخضر لوجود شخص بداخله
+                            boxStatusMap[targetBox] = 'hit'; // أخضر لوجود شخص
                         } else {
                             boxStatusMap[targetBox] = 'safe'; // أحمر لو كان فارغاً
                         }
 
                         let resultText = `💥 تم تفجير الصندوق **[${targetBox}]** بواسطة <@${currentPlayer.id}>\n`;
+                        let pingContent = "";
 
                         if (caughtPlayers.length > 0) {
+                            let pingList = caughtPlayers.map(cp => `<@${cp.id}>`).join(' ');
+                            pingContent = `🚨 **خسارة وإقصاء:** ${pingList}`; // منشن خارجي حقيقي يصل للتنبيهات
                             for (let cp of caughtPlayers) {
                                 cp.alive = false;
-                                resultText += `خروج وخسارة اللاعب: <@${cp.id}>\n`;
+                                resultText += `تم كشف وإقصاء: <@${cp.id}>\n`;
                             }
                         } else {
                             resultText += `الصندوق كان فارغاً وصامداً.`;
                         }
 
-                        await i.update({ embeds: [new EmbedBuilder().setDescription(resultText).setColor(THEME_COLOR)], components: renderBoxesRows(true, boxStatusMap) });
+                        await i.update({ 
+                            content: pingContent || null,
+                            embeds: [new EmbedBuilder().setDescription(resultText).setColor(THEME_COLOR)], 
+                            components: renderBoxesRows(true, boxStatusMap) 
+                        });
                     });
 
                     turnCollector.on('end', async () => {
@@ -209,11 +217,22 @@ client.on('messageCreate', async message => {
                                 }
 
                                 let text = `⏳ انتهى وقت <@${currentPlayer.id}>.. تم تفجير [${randomBox}] تلقائياً.\n`;
-                                for (let cp of caught) {
-                                    cp.alive = false;
-                                    text += `خروج اللاعب: <@${cp.id}>\n`;
+                                let pingContent = "";
+
+                                if (caught.length > 0) {
+                                    let pingList = caught.map(cp => `<@${cp.id}>`).join(' ');
+                                    pingContent = `🚨 **إقصاء لانتهاء الوقت:** ${pingList}`;
+                                    for (let cp of caught) {
+                                        cp.alive = false;
+                                        text += `تم إقصاء اللاعب: <@${cp.id}>\n`;
+                                    }
                                 }
-                                await turnMsg.edit({ embeds: [new EmbedBuilder().setDescription(text).setColor(THEME_COLOR)], components: renderBoxesRows(true, boxStatusMap) }).catch(()=>{});
+
+                                await turnMsg.edit({ 
+                                    content: pingContent || null,
+                                    embeds: [new EmbedBuilder().setDescription(text).setColor(THEME_COLOR)], 
+                                    components: renderBoxesRows(true, boxStatusMap) 
+                                }).catch(()=>{});
                             }
                         }
                     });
@@ -235,12 +254,13 @@ client.on('messageCreate', async message => {
                 if (survivingPlayers.length === 1) {
                     finalEmbed.setTitle('◆ نهاية المعركة')
                     .setDescription(`👑 الناجي الفائز:\n<@${survivingPlayers[0].id}> ✨`);
+                    await message.channel.send({ content: `👑 مبارك الفوز <@${survivingPlayers[0].id}>!`, embeds: [finalEmbed] });
                 } else {
                     finalEmbed.setTitle('◆ نهاية المعركة')
                     .setDescription(`👑 الناجون:\n` + survivingPlayers.map(p => `<@${p.id}>`).join('\n'));
+                    let pings = survivingPlayers.map(p => `<@${p.id}>`).join(' ');
+                    await message.channel.send({ content: `👑 الناجون: ${pings}`, embeds: [finalEmbed] });
                 }
-
-                await message.channel.send({ embeds: [finalEmbed] });
 
             } catch (error) {
                 console.error(error);
