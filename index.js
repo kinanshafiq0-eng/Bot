@@ -6,7 +6,10 @@ const {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
-    ComponentType
+    ComponentType,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle
 } = require('discord.js');
 
 const client = new Client({
@@ -64,7 +67,8 @@ client.on('messageCreate', async message => {
                 { name: '🕵️‍♂️ `!مافيا`', value: 'لعبة المافيا والقرية الممتعة (تحتاج 4 لاعبين).', inline: true },
                 { name: '🪑 `!كراسي`', value: 'لعبة الكراسي الموسيقية الحماسية وسرعة رد الفعل.', inline: true },
                 { name: '✊ `!حجرة`', value: 'لعبة حجرة ورقة مقص التفاعلية السريعة ضد البوت.', inline: true },
-                { name: '🫣 `!اختباء`', value: 'لعبة الاختباء وتفجير الصناديق الـ 25 (تحتاج لاعبين اثنين على الأقل).', inline: true }
+                { name: '🫣 `!اختباء`', value: 'لعبة الاختباء وتفجير الصناديق الـ 25.', inline: true },
+                { name: '📝 `!ريبيكا`', value: 'لعبة (حرف، حيوان، نبات، جماد، بلاد) الكلاسيكية الشهيرة!', inline: true }
             );
         return message.reply({ embeds: [embed] });
     }
@@ -949,7 +953,6 @@ client.on('messageCreate', async message => {
 
                     await gameMessage.edit({ content: `🎮 **انطلقت مرحلة الاختباء!**`, embeds: [startEmbed], components: [] });
 
-                    // توليد صفوف أزرار الصناديق الـ 25 (5 أزرار في كل صف إجمالاً 5 صفوف)
                     const renderBoxesRows = (disabledBoxes = []) => {
                         let rows = [];
                         for (let r = 0; r < 5; r++) {
@@ -970,12 +973,11 @@ client.on('messageCreate', async message => {
                         return rows;
                     };
 
-                    // إرسال رسائل خاصة للمشاركين لاختيار صناديقهم
                     for (let player of playersArr) {
                         try {
                             let userObj = await client.users.fetch(player.id);
                             let boxMsg = await userObj.send({ 
-                                content: '🫣 **اختر صندوقاً رقمياً من 1 إلى 25 لتختبئ فيه بداخل الـ 25 صندوقاً:**', 
+                                content: '🫣 **اختر صندوقاً رقمياً من 1 إلى 25 لتختبئ فيه:**', 
                                 components: renderBoxesRows() 
                             });
 
@@ -1017,11 +1019,8 @@ client.on('messageCreate', async message => {
 
                     while (gameActive) {
                         let alivePlayers = playersArr.filter(p => p.alive);
-                        if (alivePlayers.length <= 1) {
-                            break;
-                        }
+                        if (alivePlayers.length <= 1) break;
 
-                        // اختيار صندوق عشوائي لم يتم تفجيره بعد
                         let availableBoxes = [];
                         for (let i = 1; i <= 25; i++) {
                             if (!explodedBoxes.includes(i)) availableBoxes.push(i);
@@ -1039,7 +1038,6 @@ client.on('messageCreate', async message => {
 
                         await new Promise(res => setTimeout(res, 3000));
 
-                        // فحص من كان مختبئاً في هذا الصندوق
                         let caughtPlayers = playersArr.filter(p => p.alive && p.hidingSpot === targetBox);
                         if (caughtPlayers.length > 0) {
                             for (let cp of caughtPlayers) {
@@ -1082,6 +1080,187 @@ client.on('messageCreate', async message => {
                 } catch (error) {
                     console.error(error);
                     await message.channel.send("❌ حدث خطأ أثناء تشغيل لعبة الاختباء.").catch(() => {});
+                }
+            }
+        });
+    }
+
+    // 8. لعبة ريبيكا (حرف، حيوان، نبات، جماد، بلاد) - Rebecca Game
+    if (message.content === prefix + 'ريبيكا' || message.content === prefix + 'rebecca') {
+        const playersMap = new Map();
+        const MAX_PLAYERS = 15;
+        const durationSeconds = 30;
+        const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+
+        const embed = new EmbedBuilder()
+            .setTitle('📝 لعبة ريبيكا (حرف، حيوان، نبات، جماد، بلاد)')
+            .setDescription(`اضغط على زر **انضمام** للمشاركة!\nسيتم اختيار حرف عشوائي للجميع، وكل لاعب يرسل إجاباته (حيوان، نبات، جماد، بلاد) تبدأ بهذا الحرف.\n\n⏳ **تبدأ اللعبة تلقائياً بعد:** <t:${endTime}:R>`)
+            .setColor('#16a085')
+            .addFields({ name: `👥 المشاركون (0/${MAX_PLAYERS}):`, value: 'لا يوجد مشاركين حتى الآن.' });
+
+        const joinBtn = new ButtonBuilder().setCustomId('join').setLabel('انضمام 🟢').setStyle(ButtonStyle.Success);
+        const leaveBtn = new ButtonBuilder().setCustomId('leave').setLabel('انسحاب 🔴').setStyle(ButtonStyle.Danger);
+        const startBtn = new ButtonBuilder().setCustomId('start').setLabel('بدء الآن 🚀').setStyle(ButtonStyle.Primary);
+
+        const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn, startBtn);
+        const gameMessage = await message.reply({ embeds: [embed], components: [row] });
+
+        const collector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+
+        collector.on('collect', async interaction => {
+            const userId = interaction.user.id;
+            const playerName = interaction.user.displayName || interaction.user.username;
+
+            if (interaction.customId === 'join') {
+                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
+                    return interaction.reply({ content: '⚠️ عذراً، العدد مكتمل!', ephemeral: true });
+                }
+                if (!playersMap.has(userId)) {
+                    playersMap.set(userId, { id: userId, name: playerName, answers: null });
+                }
+                await interaction.reply({ content: `✅ تم انضمامك للعبة ريبيكا بنجاح!`, ephemeral: true });
+            } else if (interaction.customId === 'leave') {
+                if (playersMap.has(userId)) {
+                    playersMap.delete(userId);
+                    await interaction.reply({ content: '❌ لقد انسحبت من اللعبة.', ephemeral: true });
+                } else {
+                    return interaction.reply({ content: '⚠️ أنت لست منضم أصلاً!', ephemeral: true });
+                }
+            } else if (interaction.customId === 'start') {
+                if (userId !== message.author.id) {
+                    return interaction.reply({ content: '⚠️ صاحب الأمر فقط يمكنه بدء اللعبة!', ephemeral: true });
+                }
+                if (playersMap.size < 1) {
+                    return interaction.reply({ content: '⚠️ نحتاج إلى لاعب واحد على الأقل لبدء اللعبة!', ephemeral: true });
+                }
+                collector.stop('start');
+                return;
+            }
+
+            const playersArray = Array.from(playersMap.values());
+            const playersList = playersArray.length > 0 
+                ? playersArray.map(p => `• ${p.name}`).join('\n') 
+                : 'لا يوجد مشاركين حتى الآن.';
+
+            const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `👥 المشاركون (${playersMap.size}/${MAX_PLAYERS}):`, value: playersList });
+            await gameMessage.edit({ embeds: [updatedEmbed] });
+        });
+
+        collector.on('end', async (collected, reason) => {
+            if (reason === 'time' || reason === 'start') {
+                let playersArr = Array.from(playersMap.values());
+
+                if (playersArr.length < 1) {
+                    return gameMessage.edit({ content: '❌ تم إلغاء اللعبة لعدم وجود مشاركين.', embeds: [], components: [] });
+                }
+
+                try {
+                    // اختيار حرف عشوائي باللغة العربية
+                    const arabicLetters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'];
+                    const chosenLetter = arabicLetters[Math.floor(Math.random() * arabicLetters.length)];
+
+                    const roundStartEmbed = new EmbedBuilder()
+                        .setTitle('📝 انطلقت لعبة ريبيكا!')
+                        .setDescription(`الحرف المطلوب لهذه الجولة هو: ** \` ${chosenLetter} \` **\n\nاضغط على الزر أدناه لفتح نموذج الإجابة وكتابة (حيوان، نبات، جماد، بلاد).\n⏳ **لديك 45 ثانية للإجابة!**`)
+                        .setColor('#1abc9c');
+
+                    const answerBtn = new ButtonBuilder().setCustomId('open_modal').setLabel('اكتب إجاباتك ✍️').setStyle(ButtonStyle.Primary);
+                    const answerRow = new ActionRowBuilder().addComponents(answerBtn);
+
+                    await gameMessage.edit({ content: '🎮 **بدأت التحديات!**', embeds: [roundStartEmbed], components: [answerRow] });
+
+                    const buttonCollector = gameMessage.createMessageComponentCollector({ componentType: ComponentType.Button, time: 45000 });
+
+                    buttonCollector.on('collect', async i => {
+                        if (!playersMap.has(i.user.id)) {
+                            return i.reply({ content: '⚠️ أنت لست مشاركاً في هذه اللعبة!', ephemeral: true });
+                        }
+
+                        // إنشاء نافذة منبثقة (Modal) لإدخال الكلمات الأربعة
+                        const modal = new ModalBuilder()
+                            .setCustomId(`rebecca_modal_${i.user.id}`)
+                            .setTitle(`إجابات لعبة ريبيكا (الحرف: ${chosenLetter})`);
+
+                        const animalInput = new TextInputBuilder()
+                            .setCustomId('animal')
+                            .setLabel('حيوان يبدأ بالحرف:')
+                            .setStyle(TextInputStyle.Short)
+                            .setRequired(true);
+
+                        const plantInput = new TextInputBuilder()
+                            .setCustomId('plant')
+                            .setLabel('نبات يبدأ بالحرف:')
+                            .setStyle(TextInputStyle.Short)
+                            .setRequired(true);
+
+                        const objectInput = new TextInputBuilder()
+                            .setCustomId('object')
+                            .setLabel('جماد يبدأ بالحرف:')
+                            .setStyle(TextInputStyle.Short)
+                            .setRequired(true);
+
+                        const countryInput = new TextInputBuilder()
+                            .setCustomId('country')
+                            .setLabel('بلاد تبدأ بالحرف:')
+                            .setStyle(TextInputStyle.Short)
+                            .setRequired(true);
+
+                        modal.addComponents(
+                            new ActionRowBuilder().addComponents(animalInput),
+                            new ActionRowBuilder().addComponents(plantInput),
+                            new ActionRowBuilder().addComponents(objectInput),
+                            new ActionRowBuilder().addComponents(countryInput)
+                        );
+
+                        await i.showModal(modal);
+
+                        try {
+                            const modalResponse = await i.awaitModalSubmit({
+                                filter: mInteraction => mInteraction.customId === `rebecca_modal_${i.user.id}` && mInteraction.user.id === i.user.id,
+                                time: 40000
+                            });
+
+                            const animal = modalResponse.fields.getTextInputValue('animal');
+                            const plant = modalResponse.fields.getTextInputValue('plant');
+                            const obj = modalResponse.fields.getTextInputValue('object');
+                            const country = modalResponse.fields.getTextInputValue('country');
+
+                            let playerObj = playersMap.get(i.user.id);
+                            playerObj.answers = { animal, plant, object: obj, country };
+
+                            await modalResponse.reply({ content: '✅ تم استلام إجاباتك بنجاح! انتظر ظهور النتائج.', ephemeral: true });
+                        } catch (err) {
+                            // انتهى وقت إدخال الـ Modal
+                        }
+                    });
+
+                    await new Promise(res => setTimeout(res, 46000));
+
+                    // عرض النتائج والإجابات لكل المشاركين
+                    let resultsDescription = `الحرف المختار كان: ** \` ${chosenLetter} \` **\n\n`;
+                    playersArr.forEach(p => {
+                        if (p.answers) {
+                            resultsDescription += `👤 **${p.name}**:\n` +
+                                `• حيوان: \`${p.answers.animal}\`\n` +
+                                `• نبات: \`${p.answers.plant}\`\n` +
+                                `• جماد: \`${p.answers.object}\`\n` +
+                                `• بلاد: \`${p.answers.country}\`\n\n`;
+                        } else {
+                            resultsDescription += `👤 **${p.name}**: ❌ لم يرسل إجاباته في الوقت المحدد.\n\n`;
+                        }
+                    });
+
+                    const finalResultEmbed = new EmbedBuilder()
+                        .setTitle('📊 نتائج لعبة ريبيكا')
+                        .setDescription(resultsDescription)
+                        .setColor('#f39c12');
+
+                    await message.channel.send({ embeds: [finalResultEmbed] });
+                    await gameMessage.edit({ content: '🎉 **انتهت لعبة ريبيكا بنجاح!**', components: [] }).catch(() => {});
+
+                } catch (error) {
+                    console.error(error);
+                    await message.channel.send("❌ حدث خطأ أثناء تشغيل لعبة ريبيكا.").catch(() => {});
                 }
             }
         });
