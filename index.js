@@ -677,7 +677,7 @@ client.on('messageCreate', async message => {
 
                 let answered = false;
 
-                modalCollector.on('collect, async i => {
+                modalCollector.on('collect', async i => {
                     if (i.customId === `open_modal_${chosenPlayer.id}`) {
                         await i.showModal(modal);
 
