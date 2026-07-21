@@ -9,7 +9,7 @@ const {
   ActivityType,
   PermissionsBitField,
 } = require('discord.js');
-const { createCanvas, registerFont } = require('@napi-rs/canvas');
+const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
@@ -25,53 +25,59 @@ app.listen(port, () => console.log(`✅ Web server on port ${port}`));
 const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) { console.error('❌ DISCORD_TOKEN missing'); process.exit(1); }
 
+// --- تنزيل الخط العربي (إذا لم يكن موجوداً) ---
 const fontPath = path.join(__dirname, 'Cairo-Regular.ttf');
-const fontUrl = 'https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Regular.ttf';
+const fontUrl = 'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Regular.ttf';
+let arabicFontLoaded = false;
 
-// --- تنزيل الخط تلقائياً ---
-async function ensureFont() {
+async function downloadFont() {
   if (fs.existsSync(fontPath)) {
-    console.log('✅ Font file exists');
+    console.log('✅ Font file found');
     return;
   }
   console.log('⬇️ Downloading Arabic font...');
   return new Promise((resolve, reject) => {
     const file = fs.createWriteStream(fontPath);
-    https.get(fontUrl, (response) => {
-      if (response.statusCode !== 200) {
-        reject(new Error(`Font download failed: ${response.statusCode}`));
+    https.get(fontUrl, (res) => {
+      if (res.statusCode !== 200) {
+        file.close();
+        fs.unlinkSync(fontPath);
+        reject(new Error(`Download failed: ${res.statusCode}`));
         return;
       }
-      response.pipe(file);
+      res.pipe(file);
       file.on('finish', () => {
         file.close();
         console.log('✅ Font downloaded successfully');
         resolve();
       });
-    }).on('error', reject);
+    }).on('error', (err) => {
+      fs.unlinkSync(fontPath);
+      reject(err);
+    });
   });
 }
 
-// --- تسجيل الخط ---
-function registerArabicFont() {
-  if (fs.existsSync(fontPath)) {
-    try {
-      registerFont(fontPath, { family: 'Cairo' });
-      console.log('✅ Arabic font registered');
-      return true;
-    } catch (e) {
-      console.error('⚠️ Font registration failed:', e.message);
+function registerFont() {
+  try {
+    if (fs.existsSync(fontPath)) {
+      const fontBuffer = fs.readFileSync(fontPath);
+      GlobalFonts.register(fontBuffer, 'Cairo');
+      arabicFontLoaded = true;
+      console.log('✅ Arabic font registered via GlobalFonts');
+    } else {
+      console.warn('⚠️ Font file not found, Arabic names may not display on wheel');
     }
-  } else {
-    console.warn('⚠️ Font file missing. Arabic names may not display correctly.');
+  } catch (e) {
+    console.error('⚠️ Font registration error:', e.message);
+    arabicFontLoaded = false;
   }
-  return false;
 }
 
-// --- تجهيز الخط قبل تشغيل البوت ---
+// --- تسلسل التشغيل ---
 (async () => {
-  await ensureFont();
-  registerArabicFont();
+  await downloadFont().catch(() => console.log('⚠️ Font download skipped'));
+  registerFont();
 })();
 
 const client = new Client({
@@ -114,14 +120,13 @@ function getGuildConfig(guildId) {
   return db.config[guildId];
 }
 
-// ================== [ Roulette Canvas – تم تحسين رسم الأسماء ] ==================
+// ================== [ Roulette Canvas ] ==================
 function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   const size = 600;
   const canvas = createCanvas(size, size);
   const ctx = canvas.getContext('2d');
   const centerX = size / 2, centerY = size / 2, radius = 230;
 
-  // خلفية داكنة
   ctx.fillStyle = DARK_BG;
   ctx.fillRect(0, 0, size, size);
 
@@ -133,7 +138,6 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     const startAngle = i * anglePerSlice + (rotationDegrees * Math.PI) / 180 - Math.PI / 2;
     const endAngle = startAngle + anglePerSlice;
 
-    // الشريحة
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.arc(centerX, centerY, radius, startAngle, endAngle);
@@ -144,24 +148,29 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // اسم اللاعب (تم التصحيح: مسافة أقل وخط أكثر وضوحاً)
     const textAngle = startAngle + anglePerSlice / 2;
-    const textRadius = radius * 0.55; // أقرب إلى المركز لضمان الظهور
+    const textRadius = radius * 0.55;
     const textX = centerX + Math.cos(textAngle) * textRadius;
     const textY = centerY + Math.sin(textAngle) * textRadius;
 
     ctx.save();
     ctx.translate(textX, textY);
-    // تدوير النص لمتابعة الشريحة (عمودي)
     ctx.rotate(textAngle + Math.PI / 2);
     ctx.fillStyle = '#FFFFFF';
-    // استخدام الخط العربي إن تم تسجيله، وإلا Arial
-    ctx.font = 'bold 17px "Cairo", Arial, sans-serif';
+    ctx.font = arabicFontLoaded
+      ? 'bold 17px "Cairo", Arial, sans-serif'
+      : 'bold 17px Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    let name = players[i]?.displayName || players[i]?.username || `لاعب ${i + 1}`;
-    if (name.length > 10) name = name.substring(0, 9) + '…';
+    let name;
+    if (arabicFontLoaded) {
+      name = players[i]?.displayName || players[i]?.username || `لاعب ${i + 1}`;
+      if (name.length > 10) name = name.substring(0, 9) + '…';
+    } else {
+      // بدون الخط العربي، استخدم الأحرف الأولى من اليوزر أو المعرف
+      name = players[i]?.username?.substring(0, 10) || `P${i + 1}`;
+    }
     ctx.fillText(name, 0, 0);
     ctx.restore();
   }
@@ -180,7 +189,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.textBaseline = 'middle';
   ctx.fillText('🎡', centerX, centerY);
 
-  // المؤشر الأحمر
+  // المؤشر
   ctx.beginPath();
   ctx.moveTo(centerX, centerY - radius - 5);
   ctx.lineTo(centerX - 25, centerY - radius - 40);
@@ -192,7 +201,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // إطار أحمر خارجي
+  // الإطار
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius + 18, 0, 2 * Math.PI);
   ctx.strokeStyle = '#cc0000';
@@ -206,7 +215,7 @@ async function fetchPlayers(guild, ids) {
   const arr = [];
   for (const id of ids) {
     const m = await guild.members.fetch(id).catch(() => null);
-    arr.push(m ? { displayName: m.displayName, username: m.user.username } : { displayName: 'غير معروف' });
+    arr.push(m ? { displayName: m.displayName, username: m.user.username } : { displayName: 'غير معروف', username: `ID: ${id}` });
   }
   return arr;
 }
@@ -325,7 +334,6 @@ client.on('messageCreate', async (message) => {
     const players = await fetchPlayers(message.guild, session.players);
     const listText = session.players.map((id,i)=>`**${i+1}.** <@${id}>`).join('\n');
 
-    // عد تنازلي
     for (let c=3; c>=1; c--) {
       const b = drawWheel(players);
       const a = new AttachmentBuilder(b,{name:'wheel.png'});
@@ -335,7 +343,6 @@ client.on('messageCreate', async (message) => {
       await new Promise(r=>setTimeout(r,1000));
     }
 
-    // دوران العجلة
     const totalDeg = 360*3+Math.floor(Math.random()*360);
     for (let f=0; f<=20; f++) {
       const rot = f*(totalDeg/20);
@@ -347,7 +354,6 @@ client.on('messageCreate', async (message) => {
       await new Promise(r=>setTimeout(r,250));
     }
 
-    // الفائز
     const finalRot = totalDeg % 360;
     const anglePerSlice = 360 / session.players.length;
     const normalized = (360 - (finalRot % 360)) % 360;
@@ -509,7 +515,7 @@ client.on('interactionCreate', async (interaction) => {
   const config = getGuildConfig(guildId);
   const serverImg = getServerImage(interaction.guild, config);
 
-  // --- Roulette Join/Leave ---
+  // --- Roulette Join/Leave (same as before) ---
   if (interaction.customId === 'join_roulette') {
     const session = db.roulette[guildId];
     if (!session) return interaction.reply({ content: '⚠️ لا جلسة.', ephemeral: true });
@@ -550,7 +556,7 @@ client.on('interactionCreate', async (interaction) => {
     return interaction.reply({ content: '🚫 خرجت.', ephemeral: true });
   }
 
-  // --- Hide & Seek ---
+  // --- Hide & Seek (same) ---
   if (interaction.customId === 'join_hide') {
     const game = db.hideSeek[guildId];
     if (!game || game.phase !== 'joining') return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
