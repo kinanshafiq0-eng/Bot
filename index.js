@@ -158,55 +158,129 @@ const rebeccaDatabase = {
 };
 
 // ==========================================
-// قاعدة بيانات شاملة لجميع دول العالم مع الإحداثيات و 5 صور لكل دولة
+// قاعدة بيانات شاملة لجميع دول العالم مع الإحداثيات و 5 صور لكل دولة + رابط العلم
 // ==========================================
 const worldCountriesDatabase = [
-    { name: 'الاردن', lat: 31.95, lon: 35.91, hint: 'بلد عربي يشتهر بمدينة البتراء الأثرية', images: [
+    { name: 'الاردن', lat: 31.95, lon: 35.91, hint: 'بلد عربي يشتهر بمدينة البتراء الأثرية', flag: 'https://flagcdn.com/jo.svg', images: [
         'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=800', 'https://images.unsplash.com/photo-1568194053315-89f5ce127494?w=800', 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800', 'https://images.unsplash.com/photo-1650645604112-9c107297e163?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800'
     ]},
-    { name: 'فلسطين', lat: 31.90, lon: 35.20, hint: 'مهد الديانات وعاصمة التاريخ والصمود', images: [
+    { name: 'فلسطين', lat: 31.90, lon: 35.20, hint: 'مهد الديانات وعاصمة التاريخ والصمود', flag: 'https://flagcdn.com/ps.svg', images: [
         'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800', 'https://images.unsplash.com/photo-1578334465494-04664c12574e?w=800', 'https://images.unsplash.com/photo-1569263979104-865ab9cd8d49?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800'
     ]},
-    { name: 'مصر', lat: 30.04, lon: 31.23, hint: 'بلد الأهرامات ونهر النيل الخالد', images: [
+    { name: 'مصر', lat: 30.04, lon: 31.23, hint: 'بلد الأهرامات ونهر النيل الخالد', flag: 'https://flagcdn.com/eg.svg', images: [
         'https://images.unsplash.com/photo-1539785876258-0043141e05a3?w=800', 'https://images.unsplash.com/photo-1572252009286-268acec5ca0a?w=800', 'https://images.unsplash.com/photo-1568322445167-e9aef09a9638?w=800', 'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800', 'https://images.unsplash.com/photo-1553913861-c0fddf2619ee?w=800'
     ]},
-    { name: 'السعودية', lat: 24.71, lon: 46.67, hint: 'قلب العالم الإسلامي وبلاد الحرمين الشريفين', images: [
+    { name: 'السعودية', lat: 24.71, lon: 46.67, hint: 'قلب العالم الإسلامي وبلاد الحرمين الشريفين', flag: 'https://flagcdn.com/sa.svg', images: [
         'https://images.unsplash.com/photo-1586724237569-f3d025d76a0a?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800', 'https://images.unsplash.com/photo-1565013067884-25d98306f2e8?w=800'
     ]},
-    { name: 'الإمارات', lat: 24.45, lon: 54.37, hint: 'تضم أطول برج في العالم وواحة ناطحات السحاب', images: [
+    { name: 'الإمارات', lat: 24.45, lon: 54.37, hint: 'تضم أطول برج في العالم وواحة ناطحات السحاب', flag: 'https://flagcdn.com/ae.svg', images: [
         'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800', 'https://images.unsplash.com/photo-1526495124233-a0af41858376?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800', 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800', 'https://images.unsplash.com/photo-1576014131356-fc844ff73ab9?w=800'
     ]},
-    { name: 'فرنسا', lat: 48.85, lon: 2.35, hint: 'عاصمة الموضة وبرج إيفل الشهير', images: [
+    { name: 'فرنسا', lat: 48.85, lon: 2.35, hint: 'عاصمة الموضة وبرج إيفل الشهير', flag: 'https://flagcdn.com/fr.svg', images: [
         'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800', 'https://images.unsplash.com/photo-1534430480872-3498386e7856?w=800', 'https://images.unsplash.com/photo-1509439573887-01e76b4d2c0b?w=800', 'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=800', 'https://images.unsplash.com/photo-1520939817895-060bdaf4fe1b?w=800'
     ]},
-    { name: 'بريطانيا', lat: 51.50, lon: -0.12, hint: 'بلد الساعة الكبرى بيج بن ونهر التمز', images: [
+    { name: 'بريطانيا', lat: 51.50, lon: -0.12, hint: 'بلد الساعة الكبرى بيج بن ونهر التمز', flag: 'https://flagcdn.com/gb.svg', images: [
         'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800', 'https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=800', 'https://images.unsplash.com/photo-1526129318478-62ed807ebdf9?w=800', 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?w=800', 'https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=800'
     ]},
-    { name: 'اليابان', lat: 35.67, lon: 139.65, hint: 'بلاد الساموراي وأزهار الساكورا والتكنولوجيا', images: [
+    { name: 'اليابان', lat: 35.67, lon: 139.65, hint: 'بلاد الساموراي وأزهار الساكورا والتكنولوجيا', flag: 'https://flagcdn.com/jp.svg', images: [
         'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800', 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800', 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800', 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800', 'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800'
     ]},
-    { name: 'تركيا', lat: 41.00, lon: 28.97, hint: 'ملتقى القارات ومعالم إسطنبول العريقة', images: [
+    { name: 'تركيا', lat: 41.00, lon: 28.97, hint: 'ملتقى القارات ومعالم إسطنبول العريقة', flag: 'https://flagcdn.com/tr.svg', images: [
         'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=800', 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=800', 'https://images.unsplash.com/photo-1527838832700-505925257cb7?w=800', 'https://images.unsplash.com/photo-1569383749723-942ad26fc546?w=800', 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800'
     ]},
-    { name: 'ايطاليا', lat: 41.90, lon: 12.49, hint: 'بلد الكولوسيوم والبيتزا والتاريخ الروماني', images: [
+    { name: 'ايطاليا', lat: 41.90, lon: 12.49, hint: 'بلد الكولوسيوم والبيتزا والتاريخ الروماني', flag: 'https://flagcdn.com/it.svg', images: [
         'https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?w=800', 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800', 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800', 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800', 'https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=800'
     ]},
-    { name: 'المانيا', lat: 52.52, lon: 13.40, hint: 'عاصمة الصناعة وقوة أوروبا الاقتصادية', images: [
+    { name: 'المانيا', lat: 52.52, lon: 13.40, hint: 'عاصمة الصناعة وقوة أوروبا الاقتصادية', flag: 'https://flagcdn.com/de.svg', images: [
         'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800', 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=800', 'https://images.unsplash.com/photo-1546874177-9e664107bc48?w=800', 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?w=800', 'https://images.unsplash.com/photo-1598970434795-0c54fe7c0648?w=800'
     ]},
-    { name: 'اسبانيا', lat: 40.41, lon: -3.70, hint: 'بلد الشمس والشواطئ ومعالم مدريد وبرشلونة', images: [
+    { name: 'اسبانيا', lat: 40.41, lon: -3.70, hint: 'بلد الشمس والشواطئ ومعالم مدريد وبرشلونة', flag: 'https://flagcdn.com/es.svg', images: [
         'https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=800', 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800', 'https://images.unsplash.com/photo-1508233324673-f932859d040a?w=800', 'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=800', 'https://images.unsplash.com/photo-1511527661048-7fa73d8af18g?w=800'
     ]},
-    { name: 'امريكا', lat: 38.89, lon: -77.03, hint: 'بلاد العم سام وتمثال الحرية وناطحات السحاب الكبرى', images: [
+    { name: 'امريكا', lat: 38.89, lon: -77.03, hint: 'بلاد العم سام وتمثال الحرية وناطحات السحاب الكبرى', flag: 'https://flagcdn.com/us.svg', images: [
         'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?w=800', 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800', 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=800', 'https://images.unsplash.com/photo-1534430480872-3498386e7856?w=800', 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800'
     ]},
-    { name: 'كندا', lat: 45.42, lon: -75.69, hint: 'بلد الطبيعة الخلابة وأوراق الشجر القيقبية', images: [
+    { name: 'كندا', lat: 45.42, lon: -75.69, hint: 'بلد الطبيعة الخلابة وأوراق الشجر القيقبية', flag: 'https://flagcdn.com/ca.svg', images: [
         'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=800', 'https://images.unsplash.com/photo-1517935706615-2717063c2225?w=800', 'https://images.unsplash.com/photo-1508193638397-1c42f9db1780?w=800', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800', 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800'
     ]},
-    { name: 'البرازيل', lat: -15.79, lon: -47.88, hint: 'موطن كرة القدم وغابات الأمازون وراميو السامبا', images: [
+    { name: 'البرازيل', lat: -15.79, lon: -47.88, hint: 'موطن كرة القدم وغابات الأمازون وراميو السامبا', flag: 'https://flagcdn.com/br.svg', images: [
         'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=800', 'https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?w=800', 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800', 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800', 'https://images.unsplash.com/photo-1508873696983-2df5c920aac9?w=800'
+    ]},
+    { name: 'الصين', lat: 39.90, lon: 116.40, hint: 'بلد سور الصين العظيم والتاريخ العريق', flag: 'https://flagcdn.com/cn.svg', images: [
+        'https://images.unsplash.com/photo-1508804185872-d7badad00f7d?w=800', 'https://images.unsplash.com/photo-1543353071-10c8ba85a904?w=800', 'https://images.unsplash.com/photo-1578469550956-15cc9d5df96c?w=800', 'https://images.unsplash.com/photo-1599839575945-a9e9afbc135d?w=800', 'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800'
+    ]},
+    { name: 'الهند', lat: 28.61, lon: 77.20, hint: 'بلد تاج محل والثقافات المتنوعة والألوان الزاهية', flag: 'https://flagcdn.com/in.svg', images: [
+        'https://images.unsplash.com/photo-1524492412937-b28074a5d7da?w=800', 'https://images.unsplash.com/photo-1548013146-72479768bada?w=800', 'https://images.unsplash.com/photo-1587474260584-136574528ed5?w=800', 'https://images.unsplash.com/photo-1522885147699-6faa2093530d?w=800', 'https://images.unsplash.com/photo-1592635199204-a953c6d66e74?w=800'
+    ]},
+    { name: 'كوريا الجنوبية', lat: 37.56, lon: 126.97, hint: 'بلد الثقافة الحديثة وقصور سيول والتكنولوجيا', flag: 'https://flagcdn.com/kr.svg', images: [
+        'https://images.unsplash.com/photo-1538485399060-0714fc2874fa?w=800', 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=800', 'https://images.unsplash.com/photo-1578637387939-43c525550085?w=800', 'https://images.unsplash.com/photo-1546874177-9e664107bc48?w=800', 'https://images.unsplash.com/photo-1548113251-f5e71d36d49f?w=800'
+    ]},
+    { name: 'الأرجنتين', lat: -34.60, lon: -58.38, hint: 'موطن التانجو ونجوم كرة القدم في أمريكا الجنوبية', flag: 'https://flagcdn.com/ar.svg', images: [
+        'https://images.unsplash.com/photo-1589909202874-1789fd59f0d2?w=800', 'https://images.unsplash.com/photo-1612294037637-ec32080dcfb4?w=800', 'https://images.unsplash.com/photo-1531816433857-463287d3a8a9?w=800', 'https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=800', 'https://images.unsplash.com/photo-1533929736458-ca588d58c8be?w=800'
+    ]},
+    { name: 'المكسيك', lat: 19.43, lon: -99.13, hint: 'بلد الحضارات القديمة والأهرامات الأمريكية والمأكولات الشهيرة', flag: 'https://flagcdn.com/mx.svg', images: [
+        'https://images.unsplash.com/photo-1512818016086-13d46cb342c8?w=800', 'https://images.unsplash.com/photo-1568605117036-5fe5e7bab0b7?w=800', 'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800', 'https://images.unsplash.com/photo-1518638150340-f706e86654de?w=800', 'https://images.unsplash.com/photo-1565689157206-0fddef7589a2?w=800'
+    ]},
+    { name: 'إندونيسيا', lat: -6.20, lon: 106.84, hint: 'أكبر دولة إسلامية من حيث السكان وتضم جزر بالي الساحرة', flag: 'https://flagcdn.com/id.svg', images: [
+        'https://images.unsplash.com/photo-1537996194471-e657df975ab4?w=800', 'https://images.unsplash.com/photo-1518548419970-58e3b4079ab2?w=800', 'https://images.unsplash.com/photo-1555899467-f0c3dab653a9?w=800', 'https://images.unsplash.com/photo-1570789210967-2cac24afeb00?w=800', 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800'
+    ]},
+    { name: 'هندوراس', lat: 14.07, lon: -87.20, hint: 'بلد في أمريكا الوسطى يشتهر بآثار المايا والشواطئ الكاريبية', flag: 'https://flagcdn.com/hn.svg', images: [
+        'https://images.unsplash.com/photo-1589182373726-e4f658ab50f0?w=800', 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800', 'https://images.unsplash.com/photo-1512818016086-13d46cb342c8?w=800', 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=800', 'https://images.unsplash.com/photo-1518638150340-f706e86654de?w=800'
+    ]},
+    { name: 'كوريا الشمالية', lat: 39.03, lon: 125.75, hint: 'دولة ذات طبيعة جبلية صارمة وعاصمة بيونغ يانغ', flag: 'https://flagcdn.com/kp.svg', images: [
+        'https://images.unsplash.com/photo-1546874177-9e664107bc48?w=800', 'https://images.unsplash.com/photo-1538485399060-0714fc2874fa?w=800', 'https://images.unsplash.com/photo-1578637387939-43c525550085?w=800', 'https://images.unsplash.com/photo-1517154421773-0529f29ea451?w=800', 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800'
+    ]},
+    { name: 'السويد', lat: 59.32, lon: 18.06, hint: 'بلد إسكندنافي يشتهر بالغابات والبحيرات وتصميم الطبيعة الخلابة', flag: 'https://flagcdn.com/se.svg', images: [
+        'https://images.unsplash.com/photo-1509356843159-d6e4a89ef5ab?w=800', 'https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=800', 'https://images.unsplash.com/photo-1527788313554-dcd17b732442?w=800', 'https://images.unsplash.com/photo-1509356843159-d6e4a89ef5ab?w=800', 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800'
+    ]},
+    { name: 'نرويج', lat: 59.91, lon: 10.75, hint: 'بلد المضايق البحرية العميقة والأضواء الشمالية الشفق القطبي', flag: 'https://flagcdn.com/no.svg', images: [
+        'https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800', 'https://images.unsplash.com/photo-1516738901171-8eb4fc13bd20?w=800', 'https://images.unsplash.com/photo-1507272931001-fc06c17e4f43?w=800', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800', 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800'
+    ]},
+    { name: 'الجزائر', lat: 36.75, lon: 3.05, hint: 'بلد المليون شهيد وأكبر دولة عربية مساحة مع معالم الصحراء الكبرى', flag: 'https://flagcdn.com/dz.svg', images: [
+        'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800', 'https://images.unsplash.com/photo-1569263979104-865ab9cd8d49?w=800', 'https://images.unsplash.com/photo-1578334465494-04664c12574e?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800'
+    ]},
+    { name: 'المغرب', lat: 33.97, lon: -6.84, hint: 'بلد الألوان والأسواق التاريخية وجبال الأطلس وعاصمة الرباط', flag: 'https://flagcdn.com/ma.svg', images: [
+        'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800', 'https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=800', 'https://images.unsplash.com/photo-1508233324673-f932859d040a?w=800', 'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=800', 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800'
+    ]},
+    { name: 'تونس', lat: 36.80, lon: 10.18, hint: 'بلد الآثار القرطاجية والشواطئ المتوسطية الساحرة', flag: 'https://flagcdn.com/tn.svg', images: [
+        'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=800', 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=800', 'https://images.unsplash.com/photo-1527838832700-505925257cb7?w=800', 'https://images.unsplash.com/photo-1569383749723-942ad26fc546?w=800', 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800'
+    ]},
+    { name: 'العراق', lat: 33.31, lon: 44.36, hint: 'بلد بلاد ما بين النهرين والتاريخ الحضاري العريق وبابل', flag: 'https://flagcdn.com/iq.svg', images: [
+        'https://images.unsplash.com/photo-1586724237569-f3d025d76a0a?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800', 'https://images.unsplash.com/photo-1565013067884-25d98306f2e8?w=800'
+    ]},
+    { name: 'سوريا', lat: 33.51, lon: 36.29, hint: 'بلد الياسمين ودمشق العاصمة الأقدم في التاريخ', flag: 'https://flagcdn.com/sy.svg', images: [
+        'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800', 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=800', 'https://images.unsplash.com/photo-1568194053315-89f5ce127494?w=800', 'https://images.unsplash.com/photo-1650645604112-9c107297e163?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800'
+    ]},
+    { name: 'لبنان', lat: 33.89, lon: 35.50, hint: 'بلد الأرز وطبيعة بيروت الساحرة ومعالمها العريقة', flag: 'https://flagcdn.com/lb.svg', images: [
+        'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800', 'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=800', 'https://images.unsplash.com/photo-1568194053315-89f5ce127494?w=800', 'https://images.unsplash.com/photo-1650645604112-9c107297e163?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800'
+    ]},
+    { name: 'الكويت', lat: 29.37, lon: 47.97, hint: 'دولة الخليج العربي وتشتهر بأبراج الكويت الشهيرة', flag: 'https://flagcdn.com/kw.svg', images: [
+        'https://images.unsplash.com/photo-1586724237569-f3d025d76a0a?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800', 'https://images.unsplash.com/photo-1565013067884-25d98306f2e8?w=800'
+    ]},
+    { name: 'قطر', lat: 25.28, lon: 51.53, hint: 'بلد اللؤلؤ ونهضة الدوحة الحديثة واستضافة المونديال', flag: 'https://flagcdn.com/qa.svg', images: [
+        'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800', 'https://images.unsplash.com/photo-1526495124233-a0af41858376?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800', 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800', 'https://images.unsplash.com/photo-1576014131356-fc844ff73ab9?w=800'
+    ]},
+    { name: 'البحرين', lat: 26.06, lon: 50.55, hint: 'لؤلؤة الخليج وجزر الدار والتاريخ العريق', flag: 'https://flagcdn.com/bh.svg', images: [
+        'https://images.unsplash.com/photo-1586724237569-f3d025d76a0a?w=800', 'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800', 'https://images.unsplash.com/photo-1576014131356-fc844ff73ab9?w=800'
+    ]},
+    { name: 'عمان', lat: 23.58, lon: 58.38, hint: 'سلطنة الجبال والشواطئ النظيفة والقلاع التاريخية', flag: 'https://flagcdn.com/om.svg', images: [
+        'https://images.unsplash.com/photo-1586724237569-f3d025d76a0a?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800', 'https://images.unsplash.com/photo-1565013067884-25d98306f2e8?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800'
+    ]},
+    { name: 'اليونان', lat: 37.98, lon: 23.72, hint: 'مهد الحضارة الغربية والجزر البيضاء الساحرة في البحر المتوسط', flag: 'https://flagcdn.com/gr.svg', images: [
+        'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800', 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800', 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800', 'https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?w=800', 'https://images.unsplash.com/photo-1503152394-c571994fd138?w=800'
+    ]},
+    { name: 'هولندا', lat: 52.36, lon: 4.90, hint: 'بلد طواحين الهواء وقنوات أمستردام المائية وحقول الزهور', flag: 'https://flagcdn.com/nl.svg', images: [
+        'https://images.unsplash.com/photo-1512470876302-972faa2aa9a4?w=800', 'https://images.unsplash.com/photo-1584646098378-0874589d76b1?w=800', 'https://images.unsplash.com/photo-1521747116042-5a810fda9664?w=800', 'https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=800', 'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800'
+    ]},
+    { name: 'سويسرا', lat: 46.94, lon: 7.44, hint: 'بلد الجبال السويسرية الشهيرة والشوكولاتة الفاخرة والساعات العريقة', flag: 'https://flagcdn.com/ch.svg', images: [
+        'https://images.unsplash.com/photo-1530122037265-a5f1f91d3b99?w=800', 'https://images.unsplash.com/photo-1527668752066-b4a2fc01e61f?w=800', 'https://images.unsplash.com/photo-1502101872923-d48509bff386?w=800', 'https://images.unsplash.com/photo-1491557345352-5929e343eb89?w=800', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800'
+    ]},
+    { name: 'البرتغال', lat: 38.72, lon: -9.13, hint: 'بلد المستكشفين والشواطئ الأطلسية الساحرة في شبه الجزيرة الإيبيرية', flag: 'https://flagcdn.com/pt.svg', images: [
+        'https://images.unsplash.com/photo-1513581166391-8f6a97fc92a2?w=800', 'https://images.unsplash.com/photo-1548711645-2a26569a6c98?w=800', 'https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=800', 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800', 'https://images.unsplash.com/photo-1508233324673-f932859d040a?w=800'
+    ]},
+    { name: 'بلجيكا', lat: 50.85, lon: 4.35, hint: 'عاصمة الاتحاد الأوروبي وتشتهر بالشوكولاتة البلجيكية والهندسة المعمارية', flag: 'https://flagcdn.com/be.svg', images: [
+        'https://images.unsplash.com/photo-1531366936337-7c912a4589a7?w=800', 'https://images.unsplash.com/photo-1559563458-527698bf5295?w=800', 'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800', 'https://images.unsplash.com/photo-1513622470522-26c3c8a854bc?w=800', 'https://images.unsplash.com/photo-1546874177-9e664107bc48?w=800'
     ]}
-    // يمكنك إضافة أو تمديد القائمة بأي عدد إضافي من دول العالم هنا بنفس الهيكلية تماماً
 ];
 
 // دالة لتنظيف وتوحيد الحروف العربية للمقارنة الصحيحة
@@ -893,7 +967,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 4. لعبة تخمين البلد الجغرافي الشاملة (6 جولات عشوائية مع 5 صور لكل دولة)
+    // 4. لعبة تخمين البلد الجغرافي الشاملة (6 جولات عشوائية مع 5 صور + علم لكل دولة)
     // ==========================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -987,26 +1061,29 @@ client.on('messageCreate', async message => {
 
                     const guessEmbed = new EmbedBuilder()
                         .setTitle(`◆ لعبة تخمين البلد الجغرافي (الجولة ${round}/6)`)
-                        .setDescription(`تأمل الصورة من خرائط Google واكتب اسم **البلد** في الشات.\n💡 تلميح: \`${countryObj.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
+                        .setDescription(`تأمل الصورة واكتب اسم **البلد** في الشات.\n💡 تلميح: \`${countryObj.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
+                        .setThumbnail(countryObj.flag)  // إضافة العلم كصورة مصغرة
                         .setImage(randomImage)
                         .setColor(THEME_COLOR);
 
                     let roundMsg = await message.channel.send({ embeds: [guessEmbed] });
 
-                    let roundGuesses = new Map();
+                    // تخزين الإجابات الصحيحة مع وقت الإجابة (نستخدم مصفوفة للحفاظ على الترتيب)
+                    let correctAnswers = []; // array of { userId, timestamp }
+                    let answerTimestamps = new Map(); // userId -> timestamp
+
                     let filter = m => playersMap.has(m.author.id) && !m.author.bot;
                     let chatCollector = message.channel.createMessageCollector({ filter, time: roundTimeSeconds * 1000 });
 
                     chatCollector.on('collect', m => {
                         let userAns = cleanArabic(m.content);
-                        let matchedCountry = worldCountriesDatabase.find(c => cleanArabic(c.name) === userAns || userAns.includes(cleanArabic(c.name)));
+                        // البحث عن تطابق تام مع اسم الدولة الصحيحة بعد التنظيف
+                        let isCorrect = (cleanArabic(countryObj.name) === userAns);
                         
-                        if (matchedCountry && !roundGuesses.has(m.author.id)) {
-                            roundGuesses.set(m.author.id, {
-                                userId: m.author.id,
-                                countryGuessed: matchedCountry.name,
-                                coords: { lat: matchedCountry.lat, lon: matchedCountry.lon }
-                            });
+                        if (isCorrect && !answerTimestamps.has(m.author.id)) {
+                            // أول إجابة صحيحة لهذا اللاعب في هذه الجولة
+                            answerTimestamps.set(m.author.id, Date.now());
+                            correctAnswers.push({ userId: m.author.id, timestamp: Date.now() });
                             m.react('✅').catch(() => {});
                         }
                     });
@@ -1015,33 +1092,21 @@ client.on('messageCreate', async message => {
                         chatCollector.on('end', () => resolve());
                     });
 
-                    // حساب النقاط بناءً على المسافة أو المطابقة للجولة الحالية
+                    // ترتيب الإجابات حسب وقت الإرسال (أسرع أولاً)
+                    correctAnswers.sort((a, b) => a.timestamp - b.timestamp);
+
                     let roundSummary = `🏁 **نتائج الجولة ${round} من 6**\nالبلد الصحيح: **${countryObj.name}**\n\n`;
                     
-                    if (roundGuesses.size === 0) {
-                        roundSummary += '`لم يقم أي من المشاركين بتخمين البلد في هذه الجولة!`';
+                    if (correctAnswers.length === 0) {
+                        roundSummary += '`لم يقم أي من المشاركين بتخمين البلد بشكل صحيح في هذه الجولة!`';
                     } else {
-                        let scoredList = [];
-                        for (let [uId, data] of roundGuesses.entries()) {
-                            let distance = getDistanceFromLatLonInKm(
-                                countryObj.lat, countryObj.lon,
-                                data.coords.lat, data.coords.lon
-                            );
-                            scoredList.push({ userId: uId, distance: distance, country: data.countryGuessed });
-                        }
-
-                        scoredList.sort((a, b) => a.distance - b.distance);
-
-                        let rewardPoints = [50, 40, 30, 20, 10];
-                        scoredList.forEach((item, index) => {
-                            let points = rewardPoints[index] || 5;
-                            if (item.distance > 4000 && index > 1) {
-                                roundSummary += `• <@${item.userId}> اختر (${item.country}) - بعيد جداً (0 نقاط)\n`;
-                            } else {
-                                let pObj = playersMap.get(item.userId);
-                                if (pObj) pObj.score += points;
-                                roundSummary += `• <@${item.userId}> اختر (${item.country}) - المسافة ~${Math.round(item.distance)} كم ➔ **+${points} نقطة**\n`;
-                            }
+                        // منح النقاط حسب الترتيب: الأول 50، الثاني 40، الثالث 30، الرابع 20، الخامس 10، الباقي 5
+                        const rewardPoints = [50, 40, 30, 20, 10];
+                        correctAnswers.forEach((item, index) => {
+                            let points = (index < rewardPoints.length) ? rewardPoints[index] : 5;
+                            let pObj = playersMap.get(item.userId);
+                            if (pObj) pObj.score += points;
+                            roundSummary += `• <@${item.userId}> - إجابة صحيحة ➔ **+${points} نقطة**\n`;
                         });
                     }
 
