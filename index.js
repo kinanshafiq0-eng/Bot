@@ -13,7 +13,6 @@ const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const https = require('https');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -25,7 +24,7 @@ app.listen(port, () => console.log(`✅ Web server on port ${port}`));
 const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) { console.error('❌ DISCORD_TOKEN missing'); process.exit(1); }
 
-// --- تنزيل الخط العربي (متعدد المصادر) ---
+// --- تحميل الخط العربي (اختياري) ---
 const fontPath = path.join(__dirname, 'Cairo-Regular.ttf');
 let arabicFontLoaded = false;
 
@@ -35,31 +34,19 @@ async function downloadFont() {
     return;
   }
   const urls = [
-    'https://cdn.jsdelivr.net/gh/googlefonts/cairo@main/static/Cairo-Regular.ttf',
+    'https://cdn.jsdelivr.net/gh/google/fonts/ofl/cairo/static/Cairo-Regular.ttf',
     'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Regular.ttf',
-    'https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Regular.ttf'
+    'https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Regular.ttf',
   ];
   for (const url of urls) {
     try {
       console.log(`⬇️ Trying: ${url}`);
-      await new Promise((resolve, reject) => {
-        const file = fs.createWriteStream(fontPath);
-        https.get(url, (res) => {
-          if (res.statusCode !== 200) {
-            file.close();
-            fs.unlinkSync(fontPath);
-            reject(new Error(`Status ${res.statusCode}`));
-            return;
-          }
-          res.pipe(file);
-          file.on('finish', () => {
-            file.close();
-            console.log('✅ Font downloaded');
-            resolve();
-          });
-        }).on('error', reject);
-      });
-      return; // نجح
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`Status ${response.status}`);
+      const buffer = Buffer.from(await response.arrayBuffer());
+      fs.writeFileSync(fontPath, buffer);
+      console.log('✅ Font downloaded');
+      return;
     } catch (e) {
       console.log(`❌ Failed: ${e.message}`);
       if (fs.existsSync(fontPath)) fs.unlinkSync(fontPath);
@@ -74,7 +61,7 @@ function registerFont() {
       const fontBuffer = fs.readFileSync(fontPath);
       GlobalFonts.register(fontBuffer, 'Cairo');
       arabicFontLoaded = true;
-      console.log('✅ Arabic font registered via GlobalFonts');
+      console.log('✅ Arabic font registered');
     } else {
       console.warn('⚠️ Font file not found, Arabic names may not display on wheel');
     }
@@ -84,7 +71,6 @@ function registerFont() {
   }
 }
 
-// --- تسلسل التشغيل ---
 (async () => {
   await downloadFont();
   registerFont();
