@@ -1,5 +1,6 @@
 // ============================================================
-// index.js - البوت الكامل مع صور من Unsplash (مجاني، بدون مفاتيح)
+// index.js - البوت الكامل مع جميع الألعاب الأربعة
+// تم إزالة الإمبيد من لعبة التخمين واستخدام المرفقات بدلاً منه
 // ============================================================
 
 const { 
@@ -9,8 +10,11 @@ const {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
-    ComponentType
+    ComponentType,
+    AttachmentBuilder
 } = require('discord.js');
+
+const axios = require('axios');
 
 const client = new Client({
     intents: [
@@ -151,11 +155,10 @@ const rebeccaDatabase = {
 };
 
 // ============================================================
-// توليد قاعدة بيانات الدول مع صور من Unsplash (مجاني، بدون مفاتيح)
+// توليد قاعدة بيانات الدول مع صور من Unsplash
 // ============================================================
 const countryNames = rebeccaDatabase['بلاد'];
 const countryData = countryNames.map(name => {
-    // تنظيف الاسم للاستخدام في الرابط
     const cleanName = name.replace(/\s/g, '').toLowerCase();
     return {
         name: name,
@@ -163,7 +166,6 @@ const countryData = countryNames.map(name => {
         lon: (Math.random() * 360 - 180).toFixed(2),
         hint: `بلد من دول العالم، حاول تخمينه من الصورة.`,
         flag: `https://flagcdn.com/${cleanName.substring(0,2)}.svg`,
-        // 🔥 الصورة من Unsplash مع كلمات مفتاحية دقيقة
         image: `https://source.unsplash.com/800x600/?${encodeURIComponent(cleanName)},landmark,city,tourism`
     };
 });
@@ -178,6 +180,32 @@ function cleanArabic(text) {
         .replace(/ة/g, 'ه')
         .replace(/ى/g, 'ي')
         .replace(/[\u064b-\u0652]/g, '');
+}
+
+// ============================================================
+// دالة تحميل الصورة وإرجاع Buffer مع Fallback
+// ============================================================
+async function fetchImageBuffer(url) {
+    try {
+        const response = await axios.get(url, {
+            responseType: 'arraybuffer',
+            timeout: 15000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+        return Buffer.from(response.data);
+    } catch (error) {
+        console.error('❌ فشل تحميل الصورة من الرابط:', url, error.message);
+        const fallbackUrl = 'https://picsum.photos/seed/fallback' + Date.now() + '/800/600';
+        try {
+            const fallbackResponse = await axios.get(fallbackUrl, { responseType: 'arraybuffer' });
+            return Buffer.from(fallbackResponse.data);
+        } catch (e) {
+            console.error('❌ فشل حتى تحميل الصورة الاحتياطية:', e.message);
+            return Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]);
+        }
+    }
 }
 
 client.on('ready', () => {
@@ -856,7 +884,7 @@ client.on('messageCreate', async message => {
     }
 
     // ============================================================
-    // 4. لعبة تخمين البلد (مع صور من Unsplash - بدون تحميل محلي)
+    // 4. لعبة تخمين البلد (بدون إمبيد - مع مرفقات)
     // ============================================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -941,19 +969,20 @@ client.on('messageCreate', async message => {
             try {
                 for (let round = 1; round <= 6; round++) {
                     let countryObj = gameRoundsData[round - 1];
-                    let imageUrl = countryObj.image; // رابط Unsplash
+                    let imageUrl = countryObj.image;
+
+                    // تحميل الصورة كمرفق (بدون إمبيد)
+                    let imageBuffer = await fetchImageBuffer(imageUrl);
+                    let attachment = new AttachmentBuilder(imageBuffer, { name: 'country.jpg' });
 
                     let roundTimeSeconds = 25;
                     let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
 
-                    const guessEmbed = new EmbedBuilder()
-                        .setTitle(`◆ لعبة تخمين البلد الجغرافي (الجولة ${round}/6)`)
-                        .setDescription(`لديك ${roundTimeSeconds} ثانية لتخمين اسم الدولة من الصورة!\n\n💡 تلميح: \`${countryObj.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
-                        .setThumbnail(countryObj.flag)
-                        .setImage(imageUrl) // عرض الصورة مباشرة من Unsplash
-                        .setColor(THEME_COLOR);
-
-                    let roundMsg = await message.channel.send({ embeds: [guessEmbed] });
+                    // إرسال الرسالة بدون إمبيد، مع المرفق
+                    let roundMsg = await message.channel.send({
+                        content: `◆ **لعبة تخمين البلد الجغرافي (الجولة ${round}/6)**\nلديك ${roundTimeSeconds} ثانية لتخمين اسم الدولة من الصورة!\n💡 تلميح: \`${countryObj.hint}\`\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`,
+                        files: [attachment]
+                    });
 
                     let correctAnswers = [];
                     let answerTimestamps = new Map();
