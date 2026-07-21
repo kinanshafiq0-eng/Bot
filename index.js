@@ -604,122 +604,118 @@ client.on('messageCreate', async message => {
             }
 
             try {
-                // اختيار حرف عشوائي باللغة العربية
-                const arabicLetters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي'];
-                const randomLetter = arabicLetters[Math.floor(Math.random() * arabicLetters.length)];
+                const arabicLetters = ['أ', 'b', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي'];
+                let currentLetterIdx = Math.floor(Math.random() * arabicLetters.length);
+                let currentLetter = arabicLetters[currentLetterIdx];
 
-                // اختيار شخص عشوائي من المتسابقين
-                const chosenPlayer = playersArr[Math.floor(Math.random() * playersArr.length)];
+                const categories = [
+                    { id: 'r_name', name: 'اسم' },
+                    { id: 'r_animal', name: 'حيوان' },
+                    { id: 'r_plant', name: 'نبات' },
+                    { id: 'r_inanimate', name: 'جماد' },
+                    { id: 'r_country', name: 'بلاد' }
+                ];
 
-                const announceEmbed = new EmbedBuilder()
-                    .setTitle('◆ تحدي ريبيكا')
-                    .setDescription(`🎯 **الحرف المختار:** \`${randomLetter}\`\n👤 **اللاعب المستهدف:** <@${chosenPlayer.id}>\n\n⏳ **لديك 20 ثانية لملء الحقول عبر النافذة!**`)
-                    .setColor(THEME_COLOR);
+                let playerIndex = 0;
+                let categoryIndex = 0;
+                let gameRunning = true;
 
-                await message.channel.send({ content: `🚨 دور اللاعب <@${chosenPlayer.id}>!`, embeds: [announceEmbed] });
+                while (gameRunning) {
+                    let currentPlayer = playersArr[playerIndex % playersArr.length];
+                    let currentCategory = categories[categoryIndex];
 
-                // إنشاء نافذة تفاعلية (Modal) للاعب المستهدف
-                const modalId = `rebecca_modal_${chosenPlayer.id}_${Date.now()}`;
-                const modal = new ModalBuilder()
-                    .setCustomId(modalId)
-                    .setTitle('لعبة ريبيكا - الحرف: ' + randomLetter);
+                    const announceEmbed = new EmbedBuilder()
+                        .setTitle('◆ تحدي ريبيكا المتسلسل')
+                        .setDescription(`🎯 **الحرف الحالي:** \`${currentLetter}\`\n📋 **الفئة المطلوبة:** \`${currentCategory.name}\`\n👤 **دور اللاعب:** <@${currentPlayer.id}>\n\n⏳ **لديك 20 ثانية للإجابة عبر الزر أدناه!**`)
+                        .setColor(THEME_COLOR);
 
-                const nameInput = new TextInputBuilder()
-                    .setCustomId('r_name')
-                    .setLabel('اسم بحرف ' + randomLetter)
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true);
+                    const modalId = `rebecca_modal_${currentPlayer.id}_${Date.now()}`;
+                    const modal = new ModalBuilder()
+                        .setCustomId(modalId)
+                        .setTitle(`لعبة ريبيكا - الحرف: ${currentLetter} (${currentCategory.name})`);
 
-                const animalInput = new TextInputBuilder()
-                    .setCustomId('r_animal')
-                    .setLabel('حيوان بحرف ' + randomLetter)
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true);
+                    const textInput = new TextInputBuilder()
+                        .setCustomId(currentCategory.id)
+                        .setLabel(`أدخل ${currentCategory.name} بحرف ${currentLetter}`)
+                        .setStyle(TextInputStyle.Short)
+                        .setRequired(true);
 
-                const plantInput = new TextInputBuilder()
-                    .setCustomId('r_plant')
-                    .setLabel('نبات بحرف ' + randomLetter)
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true);
+                    modal.addComponents(new ActionRowBuilder().addComponents(textInput));
 
-                const inanimateInput = new TextInputBuilder()
-                    .setCustomId('r_inanimate')
-                    .setLabel('جماد بحرف ' + randomLetter)
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true);
+                    const btnRow = new ActionRowBuilder().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`open_modal_${currentPlayer.id}`)
+                            .setLabel(`اضغط للإجابة (${currentCategory.name})`)
+                            .setStyle(ButtonStyle.Primary)
+                    );
 
-                const countryInput = new TextInputBuilder()
-                    .setCustomId('r_country')
-                    .setLabel('بلاد بحرف ' + randomLetter)
-                    .setStyle(TextInputStyle.Short)
-                    .setRequired(true);
+                    let promptMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك الآن!`, embeds: [announceEmbed], components: [btnRow] });
 
-                modal.addComponents(
-                    new ActionRowBuilder().addComponents(nameInput),
-                    new ActionRowBuilder().addComponents(animalInput),
-                    new ActionRowBuilder().addComponents(plantInput),
-                    new ActionRowBuilder().addComponents(inanimateInput),
-                    new ActionRowBuilder().addComponents(countryInput)
-                );
+                    const filter = i => i.user.id === currentPlayer.id;
+                    const modalCollector = promptMsg.createMessageComponentCollector({ filter, time: 20000 });
 
-                // إرسال زر لفتح النافذة
-                const btnRow = new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId(`open_modal_${chosenPlayer.id}`)
-                        .setLabel('اضغط لفتح لوحة الإجابة')
-                        .setStyle(ButtonStyle.Primary)
-                );
+                    let answeredSuccessfully = false;
 
-                const promptMsg = await message.channel.send({ content: `<@${chosenPlayer.id}> اضغط الزر بالأسفل للإجابة:`, components: [btnRow] });
+                    await new Promise((resolve) => {
+                        modalCollector.on('collect', async i => {
+                            if (i.customId === `open_modal_${currentPlayer.id}`) {
+                                await i.showModal(modal);
 
-                const filter = i => i.user.id === chosenPlayer.id;
-                const modalCollector = promptMsg.createMessageComponentCollector({ filter, time: 20000 });
+                                try {
+                                    const modalSubmit = await i.awaitModalSubmit({
+                                        filter: mi => mi.customId === modalId && mi.user.id === currentPlayer.id,
+                                        time: 25000
+                                    });
 
-                let answered = false;
+                                    answeredSuccessfully = true;
+                                    modalCollector.stop();
 
-                modalCollector.on('collect', async i => {
-                    if (i.customId === `open_modal_${chosenPlayer.id}`) {
-                        await i.showModal(modal);
+                                    const answerValue = modalSubmit.fields.getTextInputValue(currentCategory.id);
 
-                        try {
-                            const modalSubmit = await i.awaitModalSubmit({
-                                filter: mi => mi.customId === modalId && mi.user.id === chosenPlayer.id,
-                                time: 25000
-                            });
+                                    const resultEmbed = new EmbedBuilder()
+                                        .setTitle('◆ إجابة صحيحة')
+                                        .setDescription(`أبدع اللاعب <@${currentPlayer.id}> وأجاب بنجاح!\n📌 **${currentCategory.name}:** \`${answerValue}\` (\`${currentLetter}\`)`)
+                                        .setColor(THEME_COLOR);
 
-                            answered = true;
-                            const ansName = modalSubmit.fields.getTextInputValue('r_name');
-                            const ansAnimal = modalSubmit.fields.getTextInputValue('r_animal');
-                            const ansPlant = modalSubmit.fields.getTextInputValue('r_plant');
-                            const ansInanimate = modalSubmit.fields.getTextInputValue('r_inanimate');
-                            const ansCountry = modalSubmit.fields.getTextInputValue('r_country');
+                                    await modalSubmit.reply({ embeds: [resultEmbed] });
+                                    promptMsg.delete().catch(() => {});
+                                    resolve();
+                                } catch (err) {
+                                    // انتهى وقت إدخال الـ Modal
+                                }
+                            }
+                        });
 
-                            const resultEmbed = new EmbedBuilder()
-                                .setTitle('◆ نتيجة ريبيكا')
-                                .setDescription(`أبدع اللاعب <@${chosenPlayer.id}> وأتم التحدي بنجاح للحرف \`${randomLetter}\`!`)
-                                .addFields(
-                                    { name: '• اسم', value: `\`${ansName}\``, inline: true },
-                                    { name: '• حيوان', value: `\`${ansAnimal}\``, inline: true },
-                                    { name: '• نبات', value: `\`${ansPlant}\``, inline: true },
-                                    { name: '• جماد', value: `\`${ansInanimate}\``, inline: true },
-                                    { name: '• بلاد', value: `\`${ansCountry}\``, inline: true }
-                                )
-                                .setColor(THEME_COLOR);
+                        modalCollector.on('end', async () => {
+                            if (!answeredSuccessfully) {
+                                promptMsg.edit({ content: `⏰ انتهى الوقت ولم يقم <@${currentPlayer.id}> بالإجابة!`, components: [] }).catch(() => {});
+                                resolve();
+                            }
+                        });
+                    });
 
-                            await modalSubmit.reply({ embeds: [resultEmbed] });
-                            promptMsg.delete().catch(() => {});
-                        } catch (err) {
-                            // انتهى وقت إدخال الـ Modal
-                        }
+                    if (!answeredSuccessfully) {
+                        // إذا لم يجب اللاعب، تنتهي اللعبة أو يمكن جعله يخرج، هنا سننهي الجولة لحماس أكبر
+                        break;
                     }
-                });
 
-                modalCollector.on('end', async () => {
-                    if (!answered) {
-                        promptMsg.edit({ content: `⏰ انتهى الوقت ولم يقم <@${chosenPlayer.id}> بالإجابة!`, components: [] }).catch(() => {});
+                    // الانتقال للفئة أو اللاعب التالي
+                    categoryIndex++;
+                    
+                    // إذا وصلنا لنهاية الفئات (بعد "بلاد")
+                    if (categoryIndex >= categories.length) {
+                        categoryIndex = 0; // إعادة تعليق الفئات من البداية (اسم)
+                        currentLetterIdx = (currentLetterIdx + 1) % arabicLetters.length;
+                        currentLetter = arabicLetters[currentLetterIdx]; // اختيار حرف جديد
+
+                        await message.channel.send({ content: `🔄 **انتهت دورة الفئات كاملة! تم الانتقال إلى حرف جديد:** \`${currentLetter}\`` });
                     }
-                    activeGames.delete(guildId);
-                });
+
+                    playerIndex++;
+                    await new Promise(res => setTimeout(res, 1500));
+                }
+
+                activeGames.delete(guildId);
 
             } catch (error) {
                 console.error(error);
