@@ -1,3 +1,4 @@
+require('dotenv').config();
 const { 
     Client, 
     GatewayIntentBits, 
@@ -17,8 +18,6 @@ const client = new Client({
 });
 
 const THEME_COLOR = '#0A0A0A'; // أسود فخم مطفي
-
-// تخزين الألعاب النشطة لكل سيرفر لمنع تداخل الألعاب
 const activeGames = new Set();
 
 client.on('ready', () => {
@@ -32,7 +31,7 @@ client.on('messageCreate', async message => {
     const guildId = message.guild.id;
 
     // ==========================================
-    // 1. لعبة الاختباء
+    // 1. لعبة الاختباء (25 صندوق - تدمير عشوائي - بدون زر بدء)
     // ==========================================
     if (message.content === prefix + 'اختباء' || message.content === prefix + 'hide') {
         if (activeGames.has(guildId)) {
@@ -48,7 +47,7 @@ client.on('messageCreate', async message => {
 
         const embed = new EmbedBuilder()
             .setTitle('◆ لُعبة الاختباء الكبرى')
-            .setDescription(`انضم إلى الساحة، والبقاء للأذكى.\n\n⏳ **تبدأ المواجهة خلال:** <t:${endTime}:R>`)
+            .setDescription(`انضم إلى الساحة، والبقاء للأذكى.\n\n⏳ **تبدأ المواجهة تلقائياً خلال:** <t:${endTime}:R>`)
             .setColor(THEME_COLOR)
             .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
 
@@ -70,7 +69,7 @@ client.on('messageCreate', async message => {
                 if (!playersMap.has(userId)) {
                     playersMap.set(userId, { id: userId, name: playerName, alive: true, hidingSpot: null });
                 }
-                await interaction.reply({ content: 'تم انضمامك.', ephemeral: true });
+                await interaction.reply({ content: 'تم انضمامك بنجاح.', ephemeral: true });
             } else if (interaction.customId === 'hide_leave') {
                 if (playersMap.has(userId)) {
                     playersMap.delete(userId);
@@ -125,7 +124,7 @@ client.on('messageCreate', async message => {
 
                 const hideEmbed = new EmbedBuilder()
                     .setTitle('◇ مرحلة التخفي')
-                    .setDescription(`اختر صندوقاً (1-25) لتختبئ فيه بسرعة.\n⏳ **الوقت:** 12 ثانية`);
+                    .setDescription(`اختر صندوقاً من الـ 25 لتختبئ فيه.\n⏳ **الوقت:** 12 ثانية`);
 
                 let hideMsg = await message.channel.send({ content: `🔹 **اختر مكان اختبائك الآن:**`, embeds: [hideEmbed], components: renderBoxesRows(false, {}) });
 
@@ -164,7 +163,7 @@ client.on('messageCreate', async message => {
 
                     let turnEmbed = new EmbedBuilder()
                         .setTitle('◇ جولة التدمير')
-                        .setDescription(`دور البطل: <@${currentPlayer.id}>\nاختر صندوقاً لتفجيره.\n⏳ **الوقت:** 10 ثوانٍ`)
+                        .setDescription(`دور اللاعب: <@${currentPlayer.id}>\nاختر صندوقاً لتفجيره.\n⏳ **الوقت:** 10 ثوانٍ`)
                         .setColor(THEME_COLOR);
 
                     let turnMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك الآن:`, embeds: [turnEmbed], components: renderBoxesRows(false, boxStatusMap) });
@@ -283,7 +282,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 2. لعبة الكراسي الموسيقية
+    // 2. لعبة الكراسي الموسيقية (بدون زر بدء)
     // ==========================================
     if (message.content === prefix + 'كراسي' || message.content === prefix + 'chairs') {
         if (activeGames.has(guildId)) {
@@ -299,7 +298,7 @@ client.on('messageCreate', async message => {
 
         const embed = new EmbedBuilder()
             .setTitle('◆ لُعبة الكراسي الموسيقية')
-            .setDescription(`انضم إلى الساحة، والبقاء للأسرع.\n\n⏳ **تبدأ المواجهة خلال:** <t:${endTime}:R>`)
+            .setDescription(`انضم إلى الساحة، والبقاء للأسرع.\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
             .setColor(THEME_COLOR)
             .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
 
@@ -316,7 +315,7 @@ client.on('messageCreate', async message => {
 
             if (interaction.customId === 'chair_join') {
                 if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
-                    return interaction.reply({ content: 'العدد غير كافٍ أو مكتمل.', ephemeral: true });
+                    return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
                 }
                 if (!playersMap.has(userId)) {
                     playersMap.set(userId, { id: userId, name: playerName, alive: true });
@@ -360,7 +359,6 @@ client.on('messageCreate', async message => {
                     if (chairCount < 1) chairCount = 1;
 
                     let totalBoxes = chairCount; 
-
                     let roundState = {}; 
                     let redRoundLosers = []; 
                     let isRoundRed = Math.random() < 0.3; 
@@ -411,7 +409,7 @@ client.on('messageCreate', async message => {
 
                     let roundEmbed = new EmbedBuilder()
                         .setTitle(`◇ جولة الكراسي رقم ${roundNumber}`)
-                        .setDescription(`الباقون: **${alivePlayers.length}** | الكراسي المطلوبة: **${chairCount}**\n⏳ **الموسيقى تعمل.. الأزرار سمراء (تنتظر 15 ثانية)!**`)
+                        .setDescription(`الباقون: **${alivePlayers.length}** | الكراسي: **${chairCount}**\n⏳ **الموسيقى تعمل.. الأزرار تنتظر الكشف!**`)
                         .setColor(THEME_COLOR);
 
                     let totalRoundTime = 25000;
@@ -428,10 +426,10 @@ client.on('messageCreate', async message => {
                     setTimeout(async () => {
                         try {
                             let revealDesc = isRoundRed 
-                                ? `⚠️ **تنبيه:** انتهت الـ 15 ثانية.. الجولة حمراء! تظهر الألوان الآن!` 
-                                : `الباقون: **${alivePlayers.length}** | انتهت الـ 15 ثانية وتلونت الكراسي! اسرع بالجلوس!`;
+                                ? `⚠️ **تنبيه:** انتهت الـ 15 ثانية.. الجولة حمراء (فخ)!` 
+                                : `الباقون: **${alivePlayers.length}** | ظهرت الألوان الآن! اسرع بالجلوس!`;
                             
-                            let revealEmbed = EmbedBuilder.from(roundEmbed).setDescription(`${revealDesc}\n⏳ **تبقى 10 ثوانٍ متبقية!**`);
+                            let revealEmbed = EmbedBuilder.from(roundEmbed).setDescription(`${revealDesc}\n⏳ **تبقى 10 ثوانٍ!**`);
                             await roundMsg.edit({ embeds: [revealEmbed], components: renderChairRows(false, true) }).catch(()=>{});
                         } catch (e) {}
                     }, revealDelay);
@@ -449,7 +447,7 @@ client.on('messageCreate', async message => {
                                 redRoundLosers.push(player.id);
                                 player.alive = false;
                             }
-                            await i.reply({ content: 'لقد ضغطت في جولة حمراء! تم إقصاؤك.', ephemeral: true });
+                            await i.reply({ content: 'جولة حمراء! تم إقصاؤك.', ephemeral: true });
                             return;
                         }
 
@@ -457,7 +455,7 @@ client.on('messageCreate', async message => {
                             return i.reply({ content: 'لقد جلست مسبقاً!', ephemeral: true });
                         }
                         if (Object.values(roundState).includes(targetBox)) {
-                            return i.reply({ content: 'هذا الكرسي محجوز مسبقاً!', ephemeral: true });
+                            return i.reply({ content: 'هذا الكرسي محجوز!', ephemeral: true });
                         }
 
                         roundState[i.user.id] = targetBox;
@@ -487,10 +485,6 @@ client.on('messageCreate', async message => {
 
                     let pingContent = "";
                     let resultDesc = `🏁 انتهت الجولة ${roundNumber}\n`;
-
-                    if (isRoundRed) {
-                        resultDesc += `🔴 كانت الجولة حمراء (فخ).\n`;
-                    }
 
                     if (eliminatedInRound.length > 0) {
                         let pings = eliminatedInRound.map(p => `<@${p.id}>`).join(' ');
@@ -535,7 +529,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 3. لعبة ريبيكا (Rebecca) - المتسلسلة بالشات العادي
+    // 3. لعبة ريبيكا (اسم حيوان نبات جماد بلاد - بدون زر بدء)
     // ==========================================
     if (message.content === prefix + 'ريبيكا' || message.content === prefix + 'rebecca') {
         if (activeGames.has(guildId)) {
@@ -551,7 +545,7 @@ client.on('messageCreate', async message => {
 
         const embed = new EmbedBuilder()
             .setTitle('◆ لُعبة ريبيكا (اسم - حيوان - نبات - جماد - بلاد)')
-            .setDescription(`انضم إلى التحدي المعرفي!\n\n⏳ **تبدأ اللعبة خلال:** <t:${endTime}:R>`)
+            .setDescription(`انضم إلى التحدي المعرفي!\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
             .setColor(THEME_COLOR)
             .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
 
@@ -629,7 +623,7 @@ client.on('messageCreate', async message => {
                         .setDescription(`🎯 **الحرف المطلوب:** \`${currentLetter}\`\n📋 **الفئة:** \`${currentCategory.name}\`\n👤 **دور اللاعب:** <@${currentPlayer.id}>\n\n⏳ **اكتب إجابتك في الشات خلال 20 ثانية!**`)
                         .setColor(THEME_COLOR);
 
-                    let promptMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك! اكتب **${currentCategory.name}** بحرف **${currentLetter}** في الشات:`, embeds: [turnEmbed] });
+                    await message.channel.send({ content: `<@${currentPlayer.id}> دورك! اكتب **${currentCategory.name}** بحرف **${currentLetter}** في الشات:`, embeds: [turnEmbed] });
 
                     const filter = m => m.author.id === currentPlayer.id;
                     const chatCollector = message.channel.createMessageCollector({ filter, time: 20000, max: 1 });
@@ -682,7 +676,6 @@ client.on('messageCreate', async message => {
                     playerIndex++;
                     categoryIndex = (categoryIndex + 1) % categories.length;
 
-                    // تغيير الحرف تدريجياً مع كل دورة مكتملة للفئات أو عشوائياً
                     if (categoryIndex === 0) {
                         currentLetterIdx = (currentLetterIdx + 1) % arabicLetters.length;
                         currentLetter = arabicLetters[currentLetterIdx];
@@ -707,4 +700,4 @@ client.on('messageCreate', async message => {
     }
 });
 
-client.login('YOUR_BOT_TOKEN');
+client.login(process.env.DISCORD_TOKEN);
