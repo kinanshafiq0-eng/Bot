@@ -1,4 +1,3 @@
-require('dotenv').config();
 const { 
     Client, 
     GatewayIntentBits, 
@@ -31,7 +30,7 @@ client.on('messageCreate', async message => {
     const guildId = message.guild.id;
 
     // ==========================================
-    // 1. لعبة الاختباء (25 صندوق - تدمير عشوائي - بدون زر بدء)
+    // 1. لعبة الاختباء (25 صندوق - تدمير عشوائي)
     // ==========================================
     if (message.content === prefix + 'اختباء' || message.content === prefix + 'hide') {
         if (activeGames.has(guildId)) {
@@ -282,7 +281,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 2. لعبة الكراسي الموسيقية (بدون زر بدء)
+    // 2. لعبة الكراسي الموسيقية
     // ==========================================
     if (message.content === prefix + 'كراسي' || message.content === prefix + 'chairs') {
         if (activeGames.has(guildId)) {
@@ -529,7 +528,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 3. لعبة ريبيكا (اسم حيوان نبات جماد بلاد - بدون زر بدء)
+    // 3. لعبة ريبيكا (اسم حيوان نبات جماد بلاد)
     // ==========================================
     if (message.content === prefix + 'ريبيكا' || message.content === prefix + 'rebecca') {
         if (activeGames.has(guildId)) {
@@ -628,8 +627,6 @@ client.on('messageCreate', async message => {
                     const filter = m => m.author.id === currentPlayer.id;
                     const chatCollector = message.channel.createMessageCollector({ filter, time: 20000, max: 1 });
 
-                    let answeredCorrectly = false;
-
                     await new Promise((resolve) => {
                         chatCollector.on('collect', async m => {
                             let answerText = m.content.trim();
@@ -647,7 +644,6 @@ client.on('messageCreate', async message => {
                                 .replace('ة', 'ه');
 
                             if (cleanAnswerFirstChar === cleanTargetLetter) {
-                                answeredCorrectly = true;
                                 await m.react('✅').catch(() => {});
                                 await message.channel.send({ content: `✅ إجابة صحيحة من <@${currentPlayer.id}>!` });
                             } else {
