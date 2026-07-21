@@ -17,7 +17,6 @@ const client = new Client({
 });
 
 const THEME_COLOR = '#0A0A0A'; // أسود فخم مطفي
-const ACCENT_COLOR = '#8B0000'; // أحمر داكن هادئ
 
 client.on('ready', () => {
     console.log(`✅ Hide and Seek Bot Logged in as ${client.user.tag}!`);
@@ -36,12 +35,11 @@ client.on('messageCreate', async message => {
 
         const embed = new EmbedBuilder()
             .setTitle('◆ لُعبة الاختباء الكبرى')
-            .setDescription(`انضم إلى الساحة الكبرى، حيث الغموض والبقاء للصامد الأخير.\n\n⏳ **تبدأ المواجهة خلال:** <t:${endTime}:R>`)
+            .setDescription(`انضم إلى الساحة، والبقاء للأذكى.\n\n⏳ **تبدأ المواجهة خلال:** <t:${endTime}:R>`)
             .setColor(THEME_COLOR)
-            .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء حتى اللحظة...`' })
-            .setFooter({ text: 'نظام اللعب التفاعلي • البوت الرسمي' });
+            .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
 
-        const joinBtn = new ButtonBuilder().setCustomId('hide_join').setLabel('دخول الساحة').setStyle(ButtonStyle.Secondary);
+        const joinBtn = new ButtonBuilder().setCustomId('hide_join').setLabel('دخول').setStyle(ButtonStyle.Secondary);
         const leaveBtn = new ButtonBuilder().setCustomId('hide_leave').setLabel('انسحاب').setStyle(ButtonStyle.Secondary);
         const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn);
 
@@ -54,25 +52,25 @@ client.on('messageCreate', async message => {
 
             if (interaction.customId === 'hide_join') {
                 if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
-                    return interaction.reply({ content: 'عذراً، المقاعد اكتملت.', ephemeral: true });
+                    return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
                 }
                 if (!playersMap.has(userId)) {
                     playersMap.set(userId, { id: userId, name: playerName, alive: true, hidingSpot: null });
                 }
-                await interaction.reply({ content: 'تم تسجيل حضورك في الساحة بنجاح.', ephemeral: true });
+                await interaction.reply({ content: 'تم انضمامك.', ephemeral: true });
             } else if (interaction.customId === 'hide_leave') {
                 if (playersMap.has(userId)) {
                     playersMap.delete(userId);
-                    await interaction.reply({ content: 'تم إزالتك من قائمة المشاركين.', ephemeral: true });
+                    await interaction.reply({ content: 'تم انسحابك.', ephemeral: true });
                 } else {
-                    return interaction.reply({ content: 'أنت لست مسجلاً أساساً.', ephemeral: true });
+                    return interaction.reply({ content: 'أنت لست منضماً.', ephemeral: true });
                 }
             }
 
             const playersArray = Array.from(playersMap.values());
             const playersList = playersArray.length > 0 
                 ? playersArray.map(p => `• ${p.name}`).join('\n') 
-                : '`لا توجد أسماء حتى اللحظة...`';
+                : '`لا توجد أسماء...`';
 
             const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `• المُنضمون (${playersMap.size}/${MAX_PLAYERS})`, value: playersList });
             await gameMessage.edit({ embeds: [updatedEmbed] });
@@ -82,7 +80,7 @@ client.on('messageCreate', async message => {
             let playersArr = Array.from(playersMap.values());
 
             if (playersArr.length < 1) {
-                return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم اكتمال الحضور.', embeds: [], components: [] });
+                return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم وجود لاعبين.', embeds: [], components: [] });
             }
 
             try {
@@ -107,27 +105,21 @@ client.on('messageCreate', async message => {
                 };
 
                 const hideEmbed = new EmbedBuilder()
-                    .setTitle('◇ مرحلة التخفي الكبرى')
-                    .setDescription(`اختر صندوقاً من الـ 25 لتتخذ منه مأوى سرياً.\n\n⏳ **الوقت المتبقي للاختيار:**`)
-                    .setColor(THEME_COLOR);
+                    .setTitle('◇ مرحلة التخفي')
+                    .setDescription(`اختر صندوقاً (1-25) لتختبئ فيه بسرعة.\n⏳ **الوقت:** 12 ثانية`);
 
-                let hideMsg = await message.channel.send({ content: `🔹 **انطلقت مرحلة الاختباء.. اختر موقعك بحذر:**`, embeds: [hideEmbed], components: renderBoxesRows() });
+                let hideMsg = await message.channel.send({ content: `🔹 **اختر مكان اختبائك الآن:**`, embeds: [hideEmbed], components: renderBoxesRows() });
 
-                let hideCollector = hideMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 20000 });
+                let hideCollector = hideMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 12000 });
 
                 hideCollector.on('collect', async i => {
                     let player = playersMap.get(i.user.id);
-                    if (!player) {
-                        return i.reply({ content: 'لست من ضمن المشاركين في هذه المعركة.', ephemeral: true });
-                    }
-                    if (player.hidingSpot !== null) {
-                        return i.reply({ content: `لقد اخترت مسبقاً الصندوق رقم [ ${player.hidingSpot} ].`, ephemeral: true });
-                    }
+                    if (!player) return i.reply({ content: 'لست مشاركاً.', ephemeral: true });
+                    if (player.hidingSpot !== null) return i.reply({ content: `اخترت مسبقاً [${player.hidingSpot}].`, ephemeral: true });
 
                     let boxNum = parseInt(i.customId.split('_')[1]);
                     player.hidingSpot = boxNum;
-
-                    await i.reply({ content: `تم استقرارك في الصندوق [ ${boxNum} ]. حافظ على سرية مكانك.`, ephemeral: true });
+                    await i.reply({ content: `اختبأت في الصندوق [${boxNum}].`, ephemeral: true });
                 });
 
                 hideCollector.on('end', async () => {
@@ -138,10 +130,8 @@ client.on('messageCreate', async message => {
                     }
                 });
 
-                await new Promise(res => setTimeout(res, 22000));
-
-                await hideMsg.edit({ content: `🔒 **أغلق الستار.. انتهى وقت الاختباء.**`, components: [] }).catch(() => {});
-                await message.channel.send(`⚔️ **بدأت مرحلة التدمير..** لكل مشارك دوره الخاص في كشف المخابئ.`);
+                await new Promise(res => setTimeout(res, 13000));
+                await hideMsg.edit({ content: `🔒 **بدأت مرحلة التدمير..**`, components: [] }).catch(() => {});
 
                 let explodedBoxes = [];
                 let turnIndex = 0;
@@ -155,42 +145,41 @@ client.on('messageCreate', async message => {
 
                     let turnEmbed = new EmbedBuilder()
                         .setTitle('◇ جولة التدمير')
-                        .setDescription(`دور البطل: <@${currentPlayer.id}>\nاختر صندوقاً لهدمه واستكشاف ما خلفه.\n\n⏳ **المهلة الممنوحة:**`)
+                        .setDescription(`دور البطل: <@${currentPlayer.id}>\nاختر صندوقاً لتفجيره.\n⏳ **الوقت:** 10 ثوانٍ`)
                         .setColor(THEME_COLOR);
 
-                    let turnMsg = await message.channel.send({ content: `🔹 الدور الآن للـ <@${currentPlayer.id}>`, embeds: [turnEmbed], components: renderBoxesRows(false, explodedBoxes) });
+                    let turnMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك:`, embeds: [turnEmbed], components: renderBoxesRows(false, explodedBoxes) });
 
-                    let turnCollector = turnMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 20000 });
+                    let turnCollector = turnMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 10000 });
                     let actionTaken = false;
 
                     turnCollector.on('collect', async i => {
                         if (i.user.id !== currentPlayer.id) {
-                            return i.reply({ content: 'ليس دورك الآن.', ephemeral: true });
+                            return i.reply({ content: 'ليس دورك.', ephemeral: true });
                         }
 
                         let targetBox = parseInt(i.customId.split('_')[1]);
                         if (explodedBoxes.includes(targetBox)) {
-                            return i.reply({ content: 'هذا الصندوق تم تدميره مسبقاً.', ephemeral: true });
+                            return i.reply({ content: 'مفجر مسبقاً.', ephemeral: true });
                         }
 
                         actionTaken = true;
                         turnCollector.stop();
-
                         explodedBoxes.push(targetBox);
 
                         let caughtPlayers = playersArr.filter(p => p.alive && p.hidingSpot === targetBox);
-                        let resultText = `💥 أطاح اللاعب <@${currentPlayer.id}> بالصندوق رقم **[ ${targetBox} ]**\n\n`;
+                        let resultText = `💥 تم تفجير الصندوق **[${targetBox}]** بواسطة <@${currentPlayer.id}>\n`;
 
                         if (caughtPlayers.length > 0) {
                             for (let cp of caughtPlayers) {
                                 cp.alive = false;
-                                resultText += `✖ تم كشف واقصاء: **${cp.name}** من المعركة.\n`;
+                                resultText += `❌ خروج وخسارة اللاعب: <@${cp.id}> 💀\n`;
                             }
                         } else {
-                            resultText += `🛡️ كان الصندوق خالياً تماماً.. نجا الجميع هذه المرة.`;
+                            resultText += `🛡️ الصندوق كان فارغاً.`;
                         }
 
-                        await i.update({ embeds: [new EmbedBuilder().setTitle('◇ تقرير التفجير').setDescription(resultText).setColor(THEME_COLOR)], components: renderBoxesRows(true, explodedBoxes) });
+                        await i.update({ embeds: [new EmbedBuilder().setDescription(resultText).setColor(THEME_COLOR)], components: renderBoxesRows(true, explodedBoxes) });
                     });
 
                     turnCollector.on('end', async () => {
@@ -201,17 +190,18 @@ client.on('messageCreate', async message => {
                                 let randomBox = available[Math.floor(Math.random() * available.length)];
                                 explodedBoxes.push(randomBox);
                                 let caught = playersArr.filter(p => p.alive && p.hidingSpot === randomBox);
-                                let text = `⏳ انقضى الوقت.. تم تدمير الصندوق **[ ${randomBox} ]** تلقائياً.\n\n`;
+                                let text = `⏳ انتهى وقت <@${currentPlayer.id}>.. تم تفجير [${randomBox}] تلقائياً.\n`;
                                 for (let cp of caught) {
                                     cp.alive = false;
-                                    text += `✖ سقط اللاعب: **${cp.name}**\n`;
+                                    text += `❌ خروج اللاعب: <@${cp.id}> 💀\n`;
                                 }
-                                await turnMsg.edit({ embeds: [new EmbedBuilder().setTitle('◇ انتهاء الوقت').setDescription(text).setColor(THEME_COLOR)], components: renderBoxesRows(true, explodedBoxes) }).catch(()=>{});
+                                await turnMsg.edit({ embeds: [new EmbedBuilder().setDescription(text).setColor(THEME_COLOR)], components: renderBoxesRows(true, explodedBoxes) }).catch(()=>{});
                             }
                         }
                     });
 
-                    await new Promise(res => setTimeout(res, 22000));
+                    // تقليل وقت الانتظار بين الأدوار لتكون سريعة وفورية
+                    await new Promise(res => setTimeout(res, 11000));
 
                     let remainingAlive = playersArr.filter(p => p.alive);
                     if (remainingAlive.length <= 1) {
@@ -226,18 +216,17 @@ client.on('messageCreate', async message => {
                 const finalEmbed = new EmbedBuilder().setColor(THEME_COLOR);
 
                 if (survivingPlayers.length === 1) {
-                    finalEmbed.setTitle('◆ نهاية المعركة • الناجي الأخير')
-                    .setDescription(`بكل هيبة واقتدار، صمد حتى النهاية:\n\n👑 **${survivingPlayers[0].name}** 👑\n\nمبارك لك سيادتك على هذه الجولة.`);
+                    finalEmbed.setTitle('◆ نهاية المعركة')
+                    .setDescription(`👑 الناجي الفائز:\n<@${survivingPlayers[0].id}> ✨`);
                 } else {
-                    finalEmbed.setTitle('◆ نهاية المعركة • تعادل الأبطال')
-                    .setDescription(`الصامدون في وجه الدمار:\n\n` + survivingPlayers.map(p => `👑 **${p.name}**`).join('\n'));
+                    finalEmbed.setTitle('◆ نهاية المعركة')
+                    .setDescription(`👑 الناجون:\n` + survivingPlayers.map(p => `<@${p.id}>`).join('\n'));
                 }
 
                 await message.channel.send({ embeds: [finalEmbed] });
 
             } catch (error) {
                 console.error(error);
-                await message.channel.send("حدث خطأ غير متوقع أثناء إدارة اللعبة.").catch(() => {});
             }
         });
     }
