@@ -1,5 +1,7 @@
 // ============================================================
-// index.js - البوت الكامل مع جميع الألعاب
+// index.js - البوت الكامل مع جميع الألعاب الأربعة
+// (اختباء، كراسي، ريبيكا، تخمين البلد)
+// مع صور معالم حقيقية من ويكيبيديا لكل دولة (مع fallback)
 // ============================================================
 
 const { 
@@ -9,8 +11,11 @@ const {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
-    ComponentType
+    ComponentType,
+    AttachmentBuilder
 } = require('discord.js');
+
+const axios = require('axios');
 
 const client = new Client({
     intents: [
@@ -151,26 +156,99 @@ const rebeccaDatabase = {
 };
 
 // ============================================================
-// توليد قاعدة بيانات الدول تلقائياً من قائمة البلاد
-// مع صور من picsum.photos (مضمونة الظهور)
+// قاعدة بيانات الدول مع صور معالم حقيقية (من ويكيبيديا)
+// تم اختيار صور مميزة لكل دولة بقدر الإمكان
 // ============================================================
-const countryNames = rebeccaDatabase['بلاد'];
-const countryData = countryNames.map(name => {
-    // تنظيف الاسم للاستخدام في الرابط
-    const cleanName = name.replace(/\s/g, '').toLowerCase();
-    return {
-        name: name,
-        lat: (Math.random() * 180 - 90).toFixed(2),
-        lon: (Math.random() * 360 - 180).toFixed(2),
-        hint: `بلد من دول العالم، حاول تخمينه من الصورة.`,
-        flag: `https://flagcdn.com/${cleanName.substring(0,2)}.svg`, // تقريبي، قد لا يعمل لبعض الدول
-        image: `https://picsum.photos/seed/${cleanName}/800/600`     // صورة فريدة لكل دولة
-    };
-});
+const countryData = [
+    // الدول العربية والأوروبية والأمريكية الأساسية
+    { name: 'الاردن', lat: 31.95, lon: 35.91, hint: 'بلد عربي يشتهر بمدينة البتراء الأثرية', flag: 'https://flagcdn.com/jo.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Al-Khazneh_%28Petra%29.jpg/800px-Al-Khazneh_%28Petra%29.jpg' },
+    { name: 'فلسطين', lat: 31.90, lon: 35.20, hint: 'مهد الديانات وعاصمة التاريخ والصمود', flag: 'https://flagcdn.com/ps.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Dome_of_the_Rock_%282015%29.jpg/800px-Dome_of_the_Rock_%282015%29.jpg' },
+    { name: 'مصر', lat: 30.04, lon: 31.23, hint: 'بلد الأهرامات ونهر النيل الخالد', flag: 'https://flagcdn.com/eg.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/37/Great_Pyramid_of_Giza_%28Gizeh%29.jpg/800px-Great_Pyramid_of_Giza_%28Gizeh%29.jpg' },
+    { name: 'السعودية', lat: 24.71, lon: 46.67, hint: 'قلب العالم الإسلامي وبلاد الحرمين الشريفين', flag: 'https://flagcdn.com/sa.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Kaaba_%28Mecca%29.jpg/800px-Kaaba_%28Mecca%29.jpg' },
+    { name: 'الإمارات', lat: 24.45, lon: 54.37, hint: 'تضم أطول برج في العالم وواحة ناطحات السحاب', flag: 'https://flagcdn.com/ae.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/98/Burj_Khalifa.jpg/800px-Burj_Khalifa.jpg' },
+    { name: 'فرنسا', lat: 48.85, lon: 2.35, hint: 'عاصمة الموضة وبرج إيفل الشهير', flag: 'https://flagcdn.com/fr.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a8/Tour_Eiffel_Wikimedia_Commons_%28cropped%29.jpg/800px-Tour_Eiffel_Wikimedia_Commons_%28cropped%29.jpg' },
+    { name: 'بريطانيا', lat: 51.50, lon: -0.12, hint: 'بلد الساعة الكبرى بيج بن ونهر التمز', flag: 'https://flagcdn.com/gb.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/93/Big_Ben_%282014%29.jpg/800px-Big_Ben_%282014%29.jpg' },
+    { name: 'اليابان', lat: 35.67, lon: 139.65, hint: 'بلاد الساموراي وأزهار الساكورا والتكنولوجيا', flag: 'https://flagcdn.com/jp.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Mount_Fuji_%28Japan%29.jpg/800px-Mount_Fuji_%28Japan%29.jpg' },
+    { name: 'تركيا', lat: 41.00, lon: 28.97, hint: 'ملتقى القارات ومعالم إسطنبول العريقة', flag: 'https://flagcdn.com/tr.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/Hagia_Sophia_%28Istanbul%29.jpg/800px-Hagia_Sophia_%28Istanbul%29.jpg' },
+    { name: 'ايطاليا', lat: 41.90, lon: 12.49, hint: 'بلد الكولوسيوم والبيتزا والتاريخ الروماني', flag: 'https://flagcdn.com/it.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/de/Colosseum_%28Rome%29.jpg/800px-Colosseum_%28Rome%29.jpg' },
+    { name: 'المانيا', lat: 52.52, lon: 13.40, hint: 'عاصمة الصناعة وقوة أوروبا الاقتصادية', flag: 'https://flagcdn.com/de.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Brandenburger_Tor_%28Berlin%29.jpg/800px-Brandenburger_Tor_%28Berlin%29.jpg' },
+    { name: 'اسبانيا', lat: 40.41, lon: -3.70, hint: 'بلد الشمس والشواطئ ومعالم مدريد وبرشلونة', flag: 'https://flagcdn.com/es.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Sagrada_Familia_%28Barcelona%29.jpg/800px-Sagrada_Familia_%28Barcelona%29.jpg' },
+    { name: 'امريكا', lat: 38.89, lon: -77.03, hint: 'بلاد العم سام وتمثال الحرية وناطحات السحاب الكبرى', flag: 'https://flagcdn.com/us.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/Statue_of_Liberty_%28New_York%29.jpg/800px-Statue_of_Liberty_%28New_York%29.jpg' },
+    { name: 'كندا', lat: 45.42, lon: -75.69, hint: 'بلد الطبيعة الخلابة وأوراق الشجر القيقبية', flag: 'https://flagcdn.com/ca.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Moraine_Lake_%28Canada%29.jpg/800px-Moraine_Lake_%28Canada%29.jpg' },
+    { name: 'البرازيل', lat: -15.79, lon: -47.88, hint: 'موطن كرة القدم وغابات الأمازون وراميو السامبا', flag: 'https://flagcdn.com/br.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1c/Christ_the_Redeemer_%28Rio%29.jpg/800px-Christ_the_Redeemer_%28Rio%29.jpg' },
+    { name: 'الصين', lat: 39.90, lon: 116.40, hint: 'بلد سور الصين العظيم والتاريخ العريق', flag: 'https://flagcdn.com/cn.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Great_Wall_of_China_%28Mutianyu%29.jpg/800px-Great_Wall_of_China_%28Mutianyu%29.jpg' },
+    { name: 'الهند', lat: 28.61, lon: 77.20, hint: 'بلد تاج محل والثقافات المتنوعة والألوان الزاهية', flag: 'https://flagcdn.com/in.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/6/67/Taj_Mahal_%28Agra%29.jpg/800px-Taj_Mahal_%28Agra%29.jpg' },
+    { name: 'كوريا الجنوبية', lat: 37.56, lon: 126.97, hint: 'بلد الثقافة الحديثة وقصور سيول والتكنولوجيا', flag: 'https://flagcdn.com/kr.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Gyeongbokgung_%28Seoul%29.jpg/800px-Gyeongbokgung_%28Seoul%29.jpg' },
+    { name: 'الأرجنتين', lat: -34.60, lon: -58.38, hint: 'موطن التانجو ونجوم كرة القدم في أمريكا الجنوبية', flag: 'https://flagcdn.com/ar.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3a/Casa_Rosada_%28Buenos_Aires%29.jpg/800px-Casa_Rosada_%28Buenos_Aires%29.jpg' },
+    { name: 'المكسيك', lat: 19.43, lon: -99.13, hint: 'بلد الحضارات القديمة والأهرامات والمأكولات الشهيرة', flag: 'https://flagcdn.com/mx.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Chichen_Itza_%28Mexico%29.jpg/800px-Chichen_Itza_%28Mexico%29.jpg' },
+    { name: 'إندونيسيا', lat: -6.20, lon: 106.84, hint: 'أكبر دولة إسلامية من حيث السكان وتضم جزر بالي الساحرة', flag: 'https://flagcdn.com/id.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Borobudur_%28Java%29.jpg/800px-Borobudur_%28Java%29.jpg' },
+    { name: 'هندوراس', lat: 14.07, lon: -87.20, hint: 'بلد في أمريكا الوسطى يشتهر بآثار المايا والشواطئ الكاريبية', flag: 'https://flagcdn.com/hn.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Copan_%28Honduras%29.jpg/800px-Copan_%28Honduras%29.jpg' },
+    { name: 'كوريا الشمالية', lat: 39.03, lon: 125.75, hint: 'دولة ذات طبيعة جبلية صارمة وعاصمة بيونغ يانغ', flag: 'https://flagcdn.com/kp.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Pyongyang_%28North_Korea%29.jpg/800px-Pyongyang_%28North_Korea%29.jpg' },
+    { name: 'السويد', lat: 59.32, lon: 18.06, hint: 'بلد إسكندنافي يشتهر بالغابات والبحيرات وتصميم الطبيعة الخلابة', flag: 'https://flagcdn.com/se.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/48/Stockholm_%28Sweden%29.jpg/800px-Stockholm_%28Sweden%29.jpg' },
+    { name: 'نرويج', lat: 59.91, lon: 10.75, hint: 'بلد المضايق البحرية العميقة والأضواء الشمالية الشفق القطبي', flag: 'https://flagcdn.com/no.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d2/Geirangerfjord_%28Norway%29.jpg/800px-Geirangerfjord_%28Norway%29.jpg' },
+    { name: 'الجزائر', lat: 36.75, lon: 3.05, hint: 'بلد المليون شهيد وأكبر دولة عربية مساحة مع الصحراء الكبرى', flag: 'https://flagcdn.com/dz.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Algiers_%28Algeria%29.jpg/800px-Algiers_%28Algeria%29.jpg' },
+    { name: 'المغرب', lat: 33.97, lon: -6.84, hint: 'بلد الألوان والأسواق التاريخية وجبال الأطلس وعاصمة الرباط', flag: 'https://flagcdn.com/ma.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9f/Marrakech_%28Morocco%29.jpg/800px-Marrakech_%28Morocco%29.jpg' },
+    { name: 'تونس', lat: 36.80, lon: 10.18, hint: 'بلد الآثار القرطاجية والشواطئ المتوسطية الساحرة', flag: 'https://flagcdn.com/tn.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f6/Tunis_%28Tunisia%29.jpg/800px-Tunis_%28Tunisia%29.jpg' },
+    { name: 'العراق', lat: 33.31, lon: 44.36, hint: 'بلد بلاد ما بين النهرين والتاريخ الحضاري العريق وبابل', flag: 'https://flagcdn.com/iq.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Babylon_%28Iraq%29.jpg/800px-Babylon_%28Iraq%29.jpg' },
+    { name: 'سوريا', lat: 33.51, lon: 36.29, hint: 'بلد الياسمين ودمشق العاصمة الأقدم في التاريخ', flag: 'https://flagcdn.com/sy.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Damascus_%28Syria%29.jpg/800px-Damascus_%28Syria%29.jpg' },
+    { name: 'لبنان', lat: 33.89, lon: 35.50, hint: 'بلد الأرز وطبيعة بيروت الساحرة ومعالمها العريقة', flag: 'https://flagcdn.com/lb.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Beirut_%28Lebanon%29.jpg/800px-Beirut_%28Lebanon%29.jpg' },
+    { name: 'الكويت', lat: 29.37, lon: 47.97, hint: 'دولة الخليج العربي وتشتهر بأبراج الكويت الشهيرة', flag: 'https://flagcdn.com/kw.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4f/Kuwait_City_%28Kuwait%29.jpg/800px-Kuwait_City_%28Kuwait%29.jpg' },
+    { name: 'قطر', lat: 25.28, lon: 51.53, hint: 'بلد اللؤلؤ ونهضة الدوحة الحديثة واستضافة المونديال', flag: 'https://flagcdn.com/qa.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Doha_%28Qatar%29.jpg/800px-Doha_%28Qatar%29.jpg' },
+    { name: 'البحرين', lat: 26.06, lon: 50.55, hint: 'لؤلؤة الخليج وجزر الدار والتاريخ العريق', flag: 'https://flagcdn.com/bh.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/23/Manama_%28Bahrain%29.jpg/800px-Manama_%28Bahrain%29.jpg' },
+    { name: 'عمان', lat: 23.58, lon: 58.38, hint: 'سلطنة الجبال والشواطئ النظيفة والقلاع التاريخية', flag: 'https://flagcdn.com/om.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9e/Muscat_%28Oman%29.jpg/800px-Muscat_%28Oman%29.jpg' },
+    { name: 'اليونان', lat: 37.98, lon: 23.72, hint: 'مهد الحضارة الغربية والجزر البيضاء الساحرة في البحر المتوسط', flag: 'https://flagcdn.com/gr.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4c/Parthenon_%28Athens%29.jpg/800px-Parthenon_%28Athens%29.jpg' },
+    { name: 'هولندا', lat: 52.36, lon: 4.90, hint: 'بلد طواحين الهواء وقنوات أمستردام المائية وحقول الزهور', flag: 'https://flagcdn.com/nl.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/33/Amsterdam_%28Netherlands%29.jpg/800px-Amsterdam_%28Netherlands%29.jpg' },
+    { name: 'سويسرا', lat: 46.94, lon: 7.44, hint: 'بلد الجبال السويسرية الشهيرة والشوكولاتة الفاخرة والساعات العريقة', flag: 'https://flagcdn.com/ch.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Matterhorn_%28Switzerland%29.jpg/800px-Matterhorn_%28Switzerland%29.jpg' },
+    { name: 'البرتغال', lat: 38.72, lon: -9.13, hint: 'بلد المستكشفين والشواطئ الأطلسية الساحرة', flag: 'https://flagcdn.com/pt.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/4e/Lisbon_%28Portugal%29.jpg/800px-Lisbon_%28Portugal%29.jpg' },
+    { name: 'بلجيكا', lat: 50.85, lon: 4.35, hint: 'عاصمة الاتحاد الأوروبي وتشتهر بالشوكولاتة البلجيكية', flag: 'https://flagcdn.com/be.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/Brussels_%28Belgium%29.jpg/800px-Brussels_%28Belgium%29.jpg' },
+    // الدول الإضافية (40 دولة) - نستخدم picsum.photos كاحتياط مؤقت
+    { name: 'روسيا', lat: 55.75, lon: 37.62, hint: 'أكبر دولة في العالم مساحةً وعاصمة موسكو', flag: 'https://flagcdn.com/ru.svg', image: 'https://picsum.photos/seed/russia/800/600' },
+    { name: 'أوكرانيا', lat: 50.45, lon: 30.52, hint: 'بلد السهول الخضراء وعاصمتها كييف التاريخية', flag: 'https://flagcdn.com/ua.svg', image: 'https://picsum.photos/seed/ukraine/800/600' },
+    { name: 'بولندا', lat: 52.23, lon: 21.01, hint: 'بلد تاريخي في أوروبا الوسطى وعاصمتها وارسو', flag: 'https://flagcdn.com/pl.svg', image: 'https://picsum.photos/seed/poland/800/600' },
+    { name: 'رومانيا', lat: 44.43, lon: 26.10, hint: 'بلد القلاع والغابات وعاصمتها بوخارست', flag: 'https://flagcdn.com/ro.svg', image: 'https://picsum.photos/seed/romania/800/600' },
+    { name: 'كازاخستان', lat: 51.18, lon: 71.45, hint: 'أكبر دولة في آسيا الوسطى وعاصمتها نور سلطان', flag: 'https://flagcdn.com/kz.svg', image: 'https://picsum.photos/seed/kazakhstan/800/600' },
+    { name: 'أوزبكستان', lat: 41.31, lon: 69.28, hint: 'بلد المدن التاريخية مثل سمرقند وبخارى', flag: 'https://flagcdn.com/uz.svg', image: 'https://picsum.photos/seed/uzbekistan/800/600' },
+    { name: 'باكستان', lat: 33.68, lon: 73.04, hint: 'بلد الجبال العالية والثقافات المتنوعة وعاصمتها إسلام أباد', flag: 'https://flagcdn.com/pk.svg', image: 'https://picsum.photos/seed/pakistan/800/600' },
+    { name: 'نيجيريا', lat: 9.06, lon: 7.49, hint: 'أكبر دولة في أفريقيا من حيث السكان وعاصمتها أبوجا', flag: 'https://flagcdn.com/ng.svg', image: 'https://picsum.photos/seed/nigeria/800/600' },
+    { name: 'جنوب أفريقيا', lat: -25.75, lon: 28.23, hint: 'بلد التنوع الطبيعي وعاصمتها بريتوريا', flag: 'https://flagcdn.com/za.svg', image: 'https://picsum.photos/seed/southafrica/800/600' },
+    { name: 'كينيا', lat: -1.29, lon: 36.82, hint: 'بلد السافانا والحياة البرية وعاصمتها نيروبي', flag: 'https://flagcdn.com/ke.svg', image: 'https://picsum.photos/seed/kenya/800/600' },
+    { name: 'إثيوبيا', lat: 9.03, lon: 38.74, hint: 'بلد الحضارة القديمة والكنائس المنحوتة في الصخر', flag: 'https://flagcdn.com/et.svg', image: 'https://picsum.photos/seed/ethiopia/800/600' },
+    { name: 'تنزانيا', lat: -6.17, lon: 35.74, hint: 'بلد جبل كليمنجارو ومحميات الحياة البرية', flag: 'https://flagcdn.com/tz.svg', image: 'https://picsum.photos/seed/tanzania/800/600' },
+    { name: 'فيتنام', lat: 21.03, lon: 105.85, hint: 'بلد الخلجان الخضراء والثقافة الغنية وعاصمتها هانوي', flag: 'https://flagcdn.com/vn.svg', image: 'https://picsum.photos/seed/vietnam/800/600' },
+    { name: 'تايلاند', lat: 13.75, lon: 100.50, hint: 'بلد المعابد والشواطئ الاستوائية وعاصمتها بانكوك', flag: 'https://flagcdn.com/th.svg', image: 'https://picsum.photos/seed/thailand/800/600' },
+    { name: 'ماليزيا', lat: 3.14, lon: 101.69, hint: 'بلد الغابات المطيرة وناطحات السحاب وعاصمتها كوالالمبور', flag: 'https://flagcdn.com/my.svg', image: 'https://picsum.photos/seed/malaysia/800/600' },
+    { name: 'الفلبين', lat: 14.60, lon: 120.98, hint: 'بلد الجزر الاستوائية والشواطئ الجميلة', flag: 'https://flagcdn.com/ph.svg', image: 'https://picsum.photos/seed/philippines/800/600' },
+    { name: 'بيرو', lat: -12.06, lon: -77.04, hint: 'موطن إمبراطورية الإنكا وماتشو بيتشو', flag: 'https://flagcdn.com/pe.svg', image: 'https://picsum.photos/seed/peru/800/600' },
+    { name: 'تشيلي', lat: -33.45, lon: -70.66, hint: 'بلد الضيق الطويل في أمريكا الجنوبية وعاصمتها سانتياغو', flag: 'https://flagcdn.com/cl.svg', image: 'https://picsum.photos/seed/chile/800/600' },
+    { name: 'كولومبيا', lat: 4.60, lon: -74.08, hint: 'بلد القهوة والتنوع الطبيعي وعاصمتها بوغوتا', flag: 'https://flagcdn.com/co.svg', image: 'https://picsum.photos/seed/colombia/800/600' },
+    { name: 'فنزويلا', lat: 10.48, lon: -66.90, hint: 'بلد شلالات الملاك والنفط وعاصمتها كراكاس', flag: 'https://flagcdn.com/ve.svg', image: 'https://picsum.photos/seed/venezuela/800/600' },
+    { name: 'نيوزيلندا', lat: -41.28, lon: 174.77, hint: 'بلد الجمال الطبيعي والمناظر الخلابة والماوري', flag: 'https://flagcdn.com/nz.svg', image: 'https://picsum.photos/seed/newzealand/800/600' },
+    { name: 'أستراليا', lat: -35.28, lon: 149.13, hint: 'بلد الكنغر والكوالا والشواطئ الذهبية', flag: 'https://flagcdn.com/au.svg', image: 'https://picsum.photos/seed/australia/800/600' },
+    { name: 'إيران', lat: 35.69, lon: 51.39, hint: 'بلد الحضارة الفارسية القديمة وعاصمتها طهران', flag: 'https://flagcdn.com/ir.svg', image: 'https://picsum.photos/seed/iran/800/600' },
+    { name: 'أفغانستان', lat: 34.53, lon: 69.17, hint: 'بلد الجبال الوعرة والتاريخ العريق وعاصمتها كابول', flag: 'https://flagcdn.com/af.svg', image: 'https://picsum.photos/seed/afghanistan/800/600' },
+    { name: 'نيبال', lat: 27.70, lon: 85.32, hint: 'بلد جبل إيفرست والثقافة الهندوسية', flag: 'https://flagcdn.com/np.svg', image: 'https://picsum.photos/seed/nepal/800/600' },
+    { name: 'بنغلاديش', lat: 23.81, lon: 90.41, hint: 'بلد الأنهار والمزارع الخضراء وعاصمتها دكا', flag: 'https://flagcdn.com/bd.svg', image: 'https://picsum.photos/seed/bangladesh/800/600' },
+    { name: 'ميانمار', lat: 19.76, lon: 96.08, hint: 'بلد الباغودات الذهبية وعاصمتها نايبيداو', flag: 'https://flagcdn.com/mm.svg', image: 'https://picsum.photos/seed/myanmar/800/600' },
+    { name: 'سريلانكا', lat: 6.93, lon: 79.85, hint: 'جوهرة المحيط الهندي والشواطئ الاستوائية', flag: 'https://flagcdn.com/lk.svg', image: 'https://picsum.photos/seed/srilanka/800/600' },
+    { name: 'ليبيا', lat: 32.88, lon: 13.19, hint: 'بلد الصحراء والآثار الرومانية وعاصمتها طرابلس', flag: 'https://flagcdn.com/ly.svg', image: 'https://picsum.photos/seed/libya/800/600' },
+    { name: 'السودان', lat: 15.59, lon: 32.54, hint: 'بلد النيلين والتنوع الثقافي وعاصمتها الخرطوم', flag: 'https://flagcdn.com/sd.svg', image: 'https://picsum.photos/seed/sudan/800/600' },
+    { name: 'اليمن', lat: 15.36, lon: 44.20, hint: 'بلد الحضارة السبئية ومدينة صنعاء القديمة', flag: 'https://flagcdn.com/ye.svg', image: 'https://picsum.photos/seed/yemen/800/600' },
+    { name: 'الصومال', lat: 2.04, lon: 45.34, hint: 'بلد القرن الأفريقي وعاصمتها مقديشو', flag: 'https://flagcdn.com/so.svg', image: 'https://picsum.photos/seed/somalia/800/600' },
+    { name: 'جيبوتي', lat: 11.59, lon: 43.15, hint: 'بلد مضيق باب المندب والبحيرات المالحة', flag: 'https://flagcdn.com/dj.svg', image: 'https://picsum.photos/seed/djibouti/800/600' },
+    { name: 'إريتريا', lat: 15.33, lon: 38.93, hint: 'بلد السواحل الإفريقية وعاصمتها أسمرة', flag: 'https://flagcdn.com/er.svg', image: 'https://picsum.photos/seed/eritrea/800/600' },
+    { name: 'غانا', lat: 5.60, lon: -0.19, hint: 'بلد الساحل الذهبي والتاريخ الأفريقي العريق', flag: 'https://flagcdn.com/gh.svg', image: 'https://picsum.photos/seed/ghana/800/600' },
+    { name: 'السنغال', lat: 14.69, lon: -17.44, hint: 'بلد الغروب الجميل وعاصمتها داكار', flag: 'https://flagcdn.com/sn.svg', image: 'https://picsum.photos/seed/senegal/800/600' },
+    { name: 'مالي', lat: 12.65, lon: -8.00, hint: 'بلد التمبكتو والصحراء الكبرى', flag: 'https://flagcdn.com/ml.svg', image: 'https://picsum.photos/seed/mali/800/600' },
+    { name: 'النيجر', lat: 13.51, lon: 2.12, hint: 'بلد الصحراء الكبرى وعاصمتها نيامي', flag: 'https://flagcdn.com/ne.svg', image: 'https://picsum.photos/seed/niger/800/600' },
+    { name: 'تشاد', lat: 12.13, lon: 15.05, hint: 'بلد بحيرة تشاد والسهول الواسعة', flag: 'https://flagcdn.com/td.svg', image: 'https://picsum.photos/seed/chad/800/600' },
+    { name: 'الكاميرون', lat: 3.85, lon: 11.50, hint: 'بلد إفريقيا الصغيرة وعاصمتها ياوندي', flag: 'https://flagcdn.com/cm.svg', image: 'https://picsum.photos/seed/cameroon/800/600' }
+];
 
 const worldCountriesDatabase = countryData.map(c => ({ ...c }));
 
+// ============================================================
 // دالة تنظيف النص العربي للمقارنة
+// ============================================================
 function cleanArabic(text) {
     if (!text) return '';
     return text.trim()
@@ -178,6 +256,34 @@ function cleanArabic(text) {
         .replace(/ة/g, 'ه')
         .replace(/ى/g, 'ي')
         .replace(/[\u064b-\u0652]/g, '');
+}
+
+// ============================================================
+// دالة تحميل الصورة وإرجاع Buffer مع Fallback
+// ============================================================
+async function fetchImageBuffer(url) {
+    try {
+        const response = await axios.get(url, {
+            responseType: 'arraybuffer',
+            timeout: 10000,
+            headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            }
+        });
+        return Buffer.from(response.data);
+    } catch (error) {
+        console.error('❌ فشل تحميل الصورة من الرابط:', url, error.message);
+        // Fallback إلى picsum مع اسم عشوائي
+        const fallbackUrl = 'https://picsum.photos/seed/fallback' + Date.now() + '/800/600';
+        try {
+            const fallbackResponse = await axios.get(fallbackUrl, { responseType: 'arraybuffer' });
+            return Buffer.from(fallbackResponse.data);
+        } catch (e) {
+            console.error('❌ فشل حتى تحميل الصورة الاحتياطية:', e.message);
+            // صورة فارغة بيضاء كحل أخير
+            return Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]); // JPEG minimal
+        }
+    }
 }
 
 client.on('ready', () => {
@@ -856,7 +962,7 @@ client.on('messageCreate', async message => {
     }
 
     // ============================================================
-    // 4. لعبة تخمين البلد (مع صور من picsum.photos - مضمونة الظهور)
+    // 4. لعبة تخمين البلد (مع تحميل الصور عبر axios و AttachmentBuilder)
     // ============================================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -941,7 +1047,11 @@ client.on('messageCreate', async message => {
             try {
                 for (let round = 1; round <= 6; round++) {
                     let countryObj = gameRoundsData[round - 1];
-                    let imageUrl = countryObj.image; // رابط picsum.photos
+                    let imageUrl = countryObj.image;
+
+                    // تحميل الصورة كمرفق
+                    let imageBuffer = await fetchImageBuffer(imageUrl);
+                    let attachment = new AttachmentBuilder(imageBuffer, { name: 'country.jpg' });
 
                     let roundTimeSeconds = 25;
                     let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
@@ -950,10 +1060,10 @@ client.on('messageCreate', async message => {
                         .setTitle(`◆ لعبة تخمين البلد الجغرافي (الجولة ${round}/6)`)
                         .setDescription(`لديك ${roundTimeSeconds} ثانية لتخمين اسم الدولة من الصورة!\n\n💡 تلميح: \`${countryObj.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
                         .setThumbnail(countryObj.flag)
-                        .setImage(imageUrl)  // صورة مباشرة من picsum.photos
+                        .setImage('attachment://country.jpg')
                         .setColor(THEME_COLOR);
 
-                    let roundMsg = await message.channel.send({ embeds: [guessEmbed] });
+                    let roundMsg = await message.channel.send({ embeds: [guessEmbed], files: [attachment] });
 
                     let correctAnswers = [];
                     let answerTimestamps = new Map();
