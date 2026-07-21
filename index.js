@@ -270,7 +270,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 2. لعبة الكراسي الموسيقية (عدد الكراسي = عدد المشاركين - 1)
+    // 2. لعبة الكراسي الموسيقية (عدد الكراسي = عدد المربعات المعروضة = عدد المشاركين - 1)
     // ==========================================
     if (message.content === prefix + 'كراسي' || message.content === prefix + 'chairs') {
         const playersMap = new Map();
@@ -336,19 +336,11 @@ client.on('messageCreate', async message => {
                     let alivePlayers = playersArr.filter(p => p.alive);
                     if (alivePlayers.length <= 1) break;
 
-                    // عدد الكراسي دائماً أقل من عدد المشاركين الباقين بواحد بالضبط
+                    // عدد الكراسي المطلوبة والمربعات الإجمالية المعروضة = عدد المشاركين الباقين ناقص واحد بالضبط
                     let chairCount = alivePlayers.length - 1;
                     if (chairCount < 1) chairCount = 1;
 
-                    // إجمالي المربعات المعروضة يجب أن يكفي (مثلاً لو الباقين 10 الكراسي 9، نضع إجمالي مربعات قريبة مثل 9 أو 16 حسب الحاجة، وهنا سنبنيها بحيث يكون عدد الكراسي الفعلية المتاحة = chairCount)
-                    let totalBoxes = chairCount + 1; // إجمالي الأزرار هو عدد الكراسي المطلوبة + زر واحد فارغ أو إضافي (أو نحدد الأزرار النشطة بعدد الكراسي)
-                    if (totalBoxes > 25) totalBoxes = 25;
-
-                    let chairIndices = [];
-                    while(chairIndices.length < chairCount) {
-                        let rand = Math.floor(Math.random() * totalBoxes) + 1;
-                        if(!chairIndices.includes(rand)) chairIndices.push(rand);
-                    }
+                    let totalBoxes = chairCount; // مطابقة تامة: لو 2 لاعبين يصير مربع واحد، لو 10 يصير 9 مربعات
 
                     let roundState = {}; 
                     let redRoundLosers = []; 
@@ -370,8 +362,6 @@ client.on('messageCreate', async message => {
                             } else if (isTaken) {
                                 btnStyle = ButtonStyle.Success; // أخضر عند الحجز
                                 btnLabel = `✓ ${i}`;
-                            } else if (!chairIndices.includes(i)) {
-                                btnStyle = ButtonStyle.Secondary;
                             }
 
                             currentRow.addComponents(
@@ -382,7 +372,7 @@ client.on('messageCreate', async message => {
                                     .setDisabled(isDisabled || (!isRoundRed && isTaken))
                             );
 
-                            // ديسكورد يسمح بحد أقصى 5 أزرار في الصف الواحد
+                            // حد أقصى 5 أزرار في الصف الواحد حسب قوانين ديسكورد
                             if (currentRow.components.length === 5 || i === totalBoxes) {
                                 rows.push(currentRow);
                                 currentRow = new ActionRowBuilder();
@@ -430,9 +420,6 @@ client.on('messageCreate', async message => {
                         }
                         if (Object.values(roundState).includes(targetBox)) {
                             return i.reply({ content: 'هذا الكرسي محجوز مسبقاً!', ephemeral: true });
-                        }
-                        if (!chairIndices.includes(targetBox)) {
-                            return i.reply({ content: 'هذا ليس كرسياً متاحاً للحجز!', ephemeral: true });
                         }
 
                         roundState[i.user.id] = targetBox;
