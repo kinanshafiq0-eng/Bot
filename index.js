@@ -84,18 +84,18 @@ client.on('messageCreate', async message => {
             }
 
             try {
-                // دالة رسم الأزرار مع تلوين الصناديق المفجرة (أحمر إذا وجد شخص، أخضر إذا كان فارغاً)
+                // دالة رسم الأزرار: 'hit' (فيه شخص = أخضر)، 'safe' (فارغ = أحمر)
                 const renderBoxesRows = (disabled = false, boxStatusMap = {}) => {
                     let rows = [];
                     for (let r = 0; r < 5; r++) {
                         let rowComponents = [];
                         for (let c = 0; c < 5; c++) {
                             let boxNum = r * 5 + c + 1;
-                            let status = boxStatusMap[boxNum]; // 'hit' (أحمر) أو 'safe' (أخضر)
+                            let status = boxStatusMap[boxNum]; 
                             
                             let btnStyle = ButtonStyle.Secondary;
-                            if (status === 'hit') btnStyle = ButtonStyle.Danger;      // أحمر
-                            else if (status === 'safe') btnStyle = ButtonStyle.Success;  // أخضر
+                            if (status === 'hit') btnStyle = ButtonStyle.Success;  // أخضر (يوجد شخص بداخله)
+                            else if (status === 'safe') btnStyle = ButtonStyle.Danger;   // أحمر (فارغ)
 
                             rowComponents.push(
                                 new ButtonBuilder()
@@ -139,7 +139,7 @@ client.on('messageCreate', async message => {
                 await new Promise(res => setTimeout(res, 13000));
                 await hideMsg.edit({ content: `🔒 **بدأت مرحلة التدمير..**`, components: [] }).catch(() => {});
 
-                let boxStatusMap = {}; // يحفظ حالة كل صندوق تم فتحه ('hit' أو 'safe')
+                let boxStatusMap = {}; 
                 let turnIndex = 0;
                 let gameActive = true;
 
@@ -175,9 +175,9 @@ client.on('messageCreate', async message => {
                         let caughtPlayers = playersArr.filter(p => p.alive && p.hidingSpot === targetBox);
                         
                         if (caughtPlayers.length > 0) {
-                            boxStatusMap[targetBox] = 'hit'; // أحمر لوجود شخص
+                            boxStatusMap[targetBox] = 'hit'; // أخضر لوجود شخص بداخله
                         } else {
-                            boxStatusMap[targetBox] = 'safe'; // أخضر لو كان فارغاً
+                            boxStatusMap[targetBox] = 'safe'; // أحمر لو كان فارغاً
                         }
 
                         let resultText = `💥 تم تفجير الصندوق **[${targetBox}]** بواسطة <@${currentPlayer.id}>\n`;
