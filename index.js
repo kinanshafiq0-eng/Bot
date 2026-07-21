@@ -12,16 +12,15 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent,
-        GatewayIntentBits.DirectMessages
+        GatewayIntentBits.MessageContent
     ]
 });
 
-const THEME_COLOR = '#8B0000'; // الثيم اللوني الداكن (أحمر داكن وأسود)
+const THEME_COLOR = '#8B0000'; // الثيم اللوني الداكن
 
 client.on('ready', () => {
     console.log(`✅ Hide and Seek Bot Logged in as ${client.user.tag}!`);
-    client.user.setActivity('!اختباء | نظام الأدوار', { type: 3 });
+    client.user.setActivity('!اختباء | اختيار الأماكن في الشات', { type: 3 });
 });
 
 client.on('messageCreate', async message => {
@@ -35,7 +34,7 @@ client.on('messageCreate', async message => {
         const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
 
         const embed = new EmbedBuilder()
-            .setTitle('🫣 لعبة الاختباء (25 صندوقاً - نظام الأدوار)')
+            .setTitle('🫣 لعبة الاختباء (25 صندوقاً - اختيار الأماكن)')
             .setDescription(`اضغط على زر **انضمام** في الشات العام للمشاركة!\n\n⏳ **تبدأ اللعبة تلقائياً بعد:** <t:${endTime}:R>`)
             .setColor(THEME_COLOR)
             .addFields({ name: `👥 المشاركون (0/${MAX_PLAYERS}):`, value: 'لا يوجد مشاركين حتى الآن.' });
@@ -85,13 +84,6 @@ client.on('messageCreate', async message => {
             }
 
             try {
-                const startEmbed = new EmbedBuilder()
-                    .setTitle('🫣 مرحلة الاختباء السرية (25 صندوقاً)')
-                    .setDescription(`📦 تم إرسال رسالة خاصة (DM) لكل مشارك.\nاختر صندوقاً من 1 إلى 25 لتختبئ فيه سرّاً.\n\n⏳ **لديك 20 ثانية للاختيار!**`)
-                    .setColor(THEME_COLOR);
-
-                await gameMessage.edit({ content: `🎮 **انطلقت مرحلة الاختباء تلقائياً!**`, embeds: [startEmbed], components: [] });
-
                 // دالة توليد أزرار الصناديق الـ 25 (5x5)
                 const renderBoxesRows = (disabled = false, exploded = []) => {
                     let rows = [];
@@ -113,45 +105,51 @@ client.on('messageCreate', async message => {
                     return rows;
                 };
 
-                // إرسال خيارات الاختباء في الخاص لكل لاعب
-                for (let player of playersArr) {
-                    try {
-                        let userObj = await client.users.fetch(player.id);
-                        let boxMsg = await userObj.send({ 
-                            content: '🫣 **اختر صندوقاً من 1 إلى 25 لتختبئ فيه (سري تماماً):**', 
-                            components: renderBoxesRows() 
-                        });
+                const hideEmbed = new EmbedBuilder()
+                    .setTitle('🫣 مرحلة الاختباء في الروم العام')
+                    .setDescription(`كل لاعب عليه اختيار صندوق من 1 إلى 25 ليختبئ فيه!\n\n⏳ **لديك 20 ثانية لاختيار مكانك:**`)
+                    .setColor(THEME_COLOR);
 
-                        let choiceCollector = boxMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 20000 });
-                        let chosen = false;
+                // إرسال الأزرار في الشات العام لاختيار الأماكن
+                let hideMsg = await message.channel.send({ content: `🎮 **انطلقت مرحلة الاختباء! يرجى من اللاعبين اختيار صناديقهم:**`, embeds: [hideEmbed], components: renderBoxesRows() });
 
-                        choiceCollector.on('collect', async i => {
-                            let boxNum = parseInt(i.customId.split('_')[1]);
-                            player.hidingSpot = boxNum;
-                            chosen = true;
-                            await i.update({ content: `🤫 **تم تأكيد اختبائك السري في الصندوق رقم: ${boxNum}**`, components: [] });
-                            choiceCollector.stop();
-                        });
+                let hideCollector = hideMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 20000 });
 
-                        choiceCollector.on('end', async () => {
-                            if (!chosen) {
-                                player.hidingSpot = Math.floor(Math.random() * 25) + 1;
-                                await userObj.send({ content: `⚠️ انتهى الوقت! تم اختيار صندوق عشوائي لك: **${player.hidingSpot}**` }).catch(() => {});
-                            }
-                        });
-                    } catch (err) {
-                        player.hidingSpot = Math.floor(Math.random() * 25) + 1;
+                hideCollector.on('collect', async i => {
+                    let player = playersMap.get(i.user.id);
+                    if (!player) {
+                        return i.reply({ content: '⚠️ أنت لست مشاركاً في هذه اللعبة!', ephemeral: true });
                     }
-                }
+                    if (player.hidingSpot !== null) {
+                        return i.reply({ content: `⚠️ لقد اخترت مسبقاً الصندوق رقم **${player.hidingSpot}**!`, ephemeral: true });
+                    }
 
+                    let boxNum = parseInt(i.customId.split('_')[1]);
+                    player.hidingSpot = boxNum;
+
+                    await i.reply({ content: `🤫 تم اختيار الصندوق **${boxNum}** بنجاح وتختبئ فيه الآن!`, ephemeral: true });
+                });
+
+                hideCollector.on('end', async () => {
+                    // اللاعبون الذين لم يختاروا يتم اختيار صندوق عشوائي لهم
+                    for (let player of playersArr) {
+                        if (player.hidingSpot === null) {
+                            player.hidingSpot = Math.floor(Math.random() * 25) + 1;
+                        }
+                    }
+                });
+
+                // الانتظار حتى ينتهي وقت اختيار الأماكن (20 ثانية)
                 await new Promise(res => setTimeout(res, 22000));
+
+                await hideMsg.edit({ content: `🔒 **انتهت مرحلة الاختباء وتم قفل الأماكن!**`, components: [] }).catch(() => {});
                 await message.channel.send(`💣 **بدأت مرحلة التفجير بالأدوار!** يأتي دور كل لاعب لاختيار صندوق وتفجيره في الشات العام 🧨`);
 
                 let explodedBoxes = [];
                 let turnIndex = 0;
                 let gameActive = true;
 
-                // حلقة الأدوار (كل لاعب يأتي دوره ليختار صندوقاً يفجره)
+                // حلقة الأدوار للتفجير
                 while (gameActive) {
                     let alivePlayers = playersArr.filter(p => p.alive);
                     if (alivePlayers.length <= 1) break;
