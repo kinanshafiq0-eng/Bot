@@ -92,7 +92,6 @@ client.on('messageCreate', async message => {
         collector.on('end', async () => {
             let playersArr = Array.from(playersMap.values());
 
-            // شرط العدد الكافي: لاعب واحد على الأقل للاختباء
             if (playersArr.length < 1) {
                 activeGames.delete(guildId);
                 return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم وجود لاعبين كافيين.', embeds: [], components: [] });
@@ -344,7 +343,6 @@ client.on('messageCreate', async message => {
         collector.on('end', async () => {
             let playersArr = Array.from(playersMap.values());
 
-            // شرط العدد الكافي: يجب أن يكون هناك لاعبان (2) على الأقل لتبدأ لعبة الكراسي
             if (playersArr.length < 2) {
                 activeGames.delete(guildId);
                 return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم اكتمال اللاعبين (يجب 2 على الأقل).', embeds: [], components: [] });
@@ -367,32 +365,30 @@ client.on('messageCreate', async message => {
                     let redRoundLosers = []; 
                     let isRoundRed = Math.random() < 0.3; 
 
-                    // دالة رسم الأزرار: تبدأ عادية جداً (Secondary) بدون ألوان مخصصة إلا عند الحجز أو إظهار الألوان بعد 5 ثواني
                     const renderChairRows = (disabled = false, showColors = false) => {
                         let rows = [];
                         let currentRow = new ActionRowBuilder();
                         
                         for (let i = 1; i <= totalBoxes; i++) {
                             let isTaken = Object.values(roundState).includes(i);
-                            let btnStyle = ButtonStyle.Secondary; // افتراضي رمادي عادي بدون لون مميز بالبداية
+                            let btnStyle = ButtonStyle.Secondary; 
                             let btnLabel = `كرسي ${i}`;
                             let isDisabled = disabled;
 
                             if (showColors) {
                                 if (isRoundRed) {
-                                    btnStyle = ButtonStyle.Danger; // أحمر (فخ)
+                                    btnStyle = ButtonStyle.Danger; 
                                     btnLabel = `✕ ${i}`;
                                 } else if (isTaken) {
-                                    btnStyle = ButtonStyle.Success; // أخضر عند الحجز
+                                    btnStyle = ButtonStyle.Success; 
                                     btnLabel = `✓ ${i}`;
                                 } else {
-                                    btnStyle = ButtonStyle.Primary; // زرقاء م Remaining
+                                    btnStyle = ButtonStyle.Primary; 
                                     btnLabel = `كرسي ${i}`;
                                 }
                             } else {
-                                // قبل كشف الألوان (أثناء العد أو البداية)، تبقى الأزرار عادية
                                 if (isTaken) {
-                                    btnStyle = ButtonStyle.Success; // يظهر الأخضر لمن حجز مسبقاً إذا رغبت، أو تتركها Secondary
+                                    btnStyle = ButtonStyle.Success; 
                                     btnLabel = `✓ ${i}`;
                                 }
                             }
@@ -418,26 +414,26 @@ client.on('messageCreate', async message => {
                         .setDescription(`الباقون: **${alivePlayers.length}** | الكراسي المطلوبة: **${chairCount}**\n⏳ **الموسيقى تعمل.. استعد!**`)
                         .setColor(THEME_COLOR);
 
-                    // إرسال الرسالة والأزرار "عادية" بدون ألوان خاصة أول ثانيتين
+                    // مدة الجولة أصبحت 15 ثانية لتناسب المهلة الجديدة
                     let roundMsg = await message.channel.send({ 
                         content: `🎵 **بدأت الموسيقى.. الكراسي (${chairCount}) لـ (${alivePlayers.length}) مشارك!**`, 
                         embeds: [roundEmbed], 
                         components: renderChairRows(false, false) 
                     });
 
-                    let roundCollector = roundMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 7000 });
+                    let roundCollector = roundMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 15000 });
 
-                    // بعد مرور ثانيتين (عندما يتبقى 5 ثوانٍ من الـ 7 ثوانٍ)، نقوم بتحديث الرسالة لإظهار الألوان الحقيقية للأزرار
+                    // بعد مرور 10 ثوانٍ، يتم إظهار الألوان الحقيقية للأزرار
                     setTimeout(async () => {
                         try {
                             let revealDesc = isRoundRed 
                                 ? `⚠️ **تنبيه:** الجولة حمراء! تظهر الألوان الآن!` 
                                 : `الباقون: **${alivePlayers.length}** | الكراسي المتاحة تلونت! اسرع بالجلوس!`;
                             
-                            let revealEmbed = EmbedBuilder.from(roundEmbed).setDescription(`${revealDesc}\n⏳ **تبقى 5 ثوانٍ!**`);
+                            let revealEmbed = EmbedBuilder.from(roundEmbed).setDescription(`${revealDesc}\n⏳ **تبقى 5 ثوانٍ متبقية!**`);
                             await roundMsg.edit({ embeds: [revealEmbed], components: renderChairRows(false, true) }).catch(()=>{});
                         } catch (e) {}
-                    }, 2000);
+                    }, 10000);
 
                     roundCollector.on('collect', async i => {
                         let player = playersMap.get(i.user.id);
@@ -467,7 +463,7 @@ client.on('messageCreate', async message => {
                         await i.update({ components: renderChairRows(false, true) });
                     });
 
-                    await new Promise(res => setTimeout(res, 7000));
+                    await new Promise(res => setTimeout(res, 15000));
                     await roundMsg.edit({ components: renderChairRows(true, true) }).catch(()=>{});
 
                     let eliminatedInRound = [];
