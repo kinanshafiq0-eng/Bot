@@ -36,14 +36,7 @@ const client = new Client({
 // ================== [ قاعدة بيانات مؤقتة ] ==================
 const rouletteSessions = {};
 
-// ================== [ دالة رسم العجلة ] ==================
-/**
- * يرسم عجلة روليت على Canvas.
- * @param {Array} players - مصفوفة كائنات { displayName, username }.
- * @param {number} rotationDegrees - درجة دوران العجلة.
- * @param {number} highlightIndex - فهرس اللاعب الفائز (لتمييز شريحته).
- * @returns {Buffer} صورة PNG.
- */
+// ================== [ دالة رسم العجلة - مُحسَّنة لظهور الأسماء ] ==================
 function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   const size = 600;
   const canvas = createCanvas(size, size);
@@ -66,8 +59,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
 
   // --- رسم الشرائح ---
   for (let i = 0; i < numPlayers; i++) {
-    const startAngle =
-      i * anglePerSlice + (rotationDegrees * Math.PI) / 180 - Math.PI / 2;
+    const startAngle = i * anglePerSlice + (rotationDegrees * Math.PI) / 180 - Math.PI / 2;
     const endAngle = startAngle + anglePerSlice;
 
     // الشريحة
@@ -76,24 +68,23 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.arc(centerX, centerY, radius, startAngle, endAngle);
     ctx.closePath();
 
-    // لون الشريحة (ذهبي للفائز)
     ctx.fillStyle = i === highlightIndex ? '#ffd700' : colors[i % colors.length];
     ctx.fill();
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // --- اسم اللاعب ---
+    // --- اسم اللاعب (أبيض ناصع، خط كبير وواضح) ---
     const textAngle = startAngle + anglePerSlice / 2;
-    const textRadius = radius * 0.65; // المسافة من المركز
+    const textRadius = radius * 0.65;
     const textX = centerX + Math.cos(textAngle) * textRadius;
     const textY = centerY + Math.sin(textAngle) * textRadius;
 
     ctx.save();
     ctx.translate(textX, textY);
-    ctx.rotate(textAngle + Math.PI / 2); // تدوير النص مع الشريحة
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px "Arial", sans-serif';
+    ctx.rotate(textAngle + Math.PI / 2);
+    ctx.fillStyle = '#FFFFFF'; // أبيض ناصع
+    ctx.font = 'bold 18px "Arial", "Helvetica", sans-serif'; // خط كبير وواضح
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -117,7 +108,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.textBaseline = 'middle';
   ctx.fillText('🎡', centerX, centerY);
 
-  // --- المؤشر (أعلى العجلة) ---
+  // --- المؤشر ---
   ctx.beginPath();
   ctx.moveTo(centerX, centerY - radius - 5);
   ctx.lineTo(centerX - 25, centerY - radius - 40);
@@ -129,7 +120,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // --- إطار خارجي ذهبي ---
+  // --- إطار خارجي ---
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius + 18, 0, 2 * Math.PI);
   ctx.strokeStyle = '#ffd700';
@@ -140,12 +131,6 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
 }
 
 // ================== [ دالة جلب أسماء اللاعبين ] ==================
-/**
- * تحوّل مصفوفة IDs إلى كائنات تحوي أسماء العرض.
- * @param {Guild} guild - السيرفر.
- * @param {string[]} playerIds - مصفوفة معرفات المستخدمين.
- * @returns {Promise<Array>} مصفوفة كائنات { displayName, username }.
- */
 async function fetchPlayers(guild, playerIds) {
   const players = [];
   for (const id of playerIds) {
@@ -165,12 +150,11 @@ async function fetchPlayers(guild, playerIds) {
 // ================== [ أحداث البوت ] ==================
 client.once('ready', () => {
   console.log(`✅ Roulette Bot online as ${client.user.tag}`);
-  client.user.setActivity('🎡 !roulette', { type: ActivityType.Watching });
+  client.user.setActivity('🎡 !روليت', { type: ActivityType.Watching });
 });
 
 // ================== [ معالج الأوامر النصية ] ==================
 client.on('messageCreate', async (message) => {
-  // تجاهل الرسائل من البوتات أو خارج السيرفر
   if (message.author.bot || !message.guild) return;
   if (!message.content.startsWith('!')) return;
 
@@ -184,18 +168,15 @@ client.on('messageCreate', async (message) => {
       return message.reply('⚠️ هناك جلسة روليت نشطة بالفعل. استخدم `!روليت_سحب` أو `!روليت_الغاء`.');
     }
 
-    // إنشاء جلسة جديدة
     rouletteSessions[guildId] = {
       players: [],
       messageId: null,
       channelId: message.channel.id,
     };
 
-    // رسم العجلة فارغة
     const buffer = drawWheel([]);
     const attachment = new AttachmentBuilder(buffer, { name: 'wheel.png' });
 
-    // إنشاء الرسالة
     const embed = new EmbedBuilder()
       .setTitle('🎡 روليت السيرفر')
       .setDescription(
@@ -209,24 +190,12 @@ client.on('messageCreate', async (message) => {
       .setFooter({ text: '🎡 بوت الروليت | انتظر الدوران' })
       .setTimestamp();
 
-    // الأزرار
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder()
-        .setCustomId('roulette_join')
-        .setLabel('🎯 انضم')
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId('roulette_leave')
-        .setLabel('🚫 خروج')
-        .setStyle(ButtonStyle.Danger)
+      new ButtonBuilder().setCustomId('roulette_join').setLabel('🎯 انضم').setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId('roulette_leave').setLabel('🚫 خروج').setStyle(ButtonStyle.Danger)
     );
 
-    const sentMessage = await message.channel.send({
-      embeds: [embed],
-      components: [row],
-      files: [attachment],
-    });
-
+    const sentMessage = await message.channel.send({ embeds: [embed], components: [row], files: [attachment] });
     rouletteSessions[guildId].messageId = sentMessage.id;
     await message.delete().catch(() => {});
     return;
@@ -235,35 +204,19 @@ client.on('messageCreate', async (message) => {
   // ========== [ !روليت_سحب ] ==========
   if (command === 'روليت_سحب' || command === 'roulette_spin') {
     const session = rouletteSessions[guildId];
+    if (!session) return message.reply('⚠️ لا توجد جلسة روليت نشطة.');
+    if (session.players.length < 2) return message.reply('⚠️ يجب أن يكون هناك لاعبان على الأقل.');
 
-    // تحقق من وجود جلسة
-    if (!session) {
-      return message.reply('⚠️ لا توجد جلسة روليت نشطة. ابدأ واحدة بـ `!روليت_ابدأ`.');
-    }
-
-    // تحقق من عدد اللاعبين
-    if (session.players.length < 2) {
-      return message.reply('⚠️ يجب أن يكون هناك لاعبان على الأقل لبدء السحب.');
-    }
-
-    // جلب رسالة الجلسة
     const sessionMessage = await message.channel.messages.fetch(session.messageId).catch(() => null);
-    if (!sessionMessage) {
-      delete rouletteSessions[guildId];
-      return message.reply('❌ رسالة الروليت الأصلية غير موجودة. ابدأ جلسة جديدة.');
-    }
+    if (!sessionMessage) { delete rouletteSessions[guildId]; return message.reply('❌ رسالة الروليت غير موجودة.'); }
 
-    // تجهيز بيانات اللاعبين
     const players = await fetchPlayers(message.guild, session.players);
-    const playersListText = session.players
-      .map((id, index) => `**${index + 1}.** <@${id}>`)
-      .join('\n');
+    const playersListText = session.players.map((id, index) => `**${index + 1}.** <@${id}>`).join('\n');
 
-    // ===== المرحلة 1: العد التنازلي (3, 2, 1) =====
+    // عد تنازلي
     for (let count = 3; count >= 1; count--) {
       const buffer = drawWheel(players, 0);
       const attachment = new AttachmentBuilder(buffer, { name: 'wheel.png' });
-
       const embed = new EmbedBuilder()
         .setTitle('🎡 جاري السحب...')
         .setDescription(`${playersListText}\n\n🔄 **${count}**...`)
@@ -271,25 +224,18 @@ client.on('messageCreate', async (message) => {
         .setImage('attachment://wheel.png')
         .setFooter({ text: '🎡 استعد للدوران...' })
         .setTimestamp();
-
-      await sessionMessage.edit({
-        embeds: [embed],
-        components: [],
-        files: [attachment],
-      });
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await sessionMessage.edit({ embeds: [embed], components: [], files: [attachment] });
+      await new Promise(r => setTimeout(r, 1000));
     }
 
-    // ===== المرحلة 2: دوران العجلة (20 إطار) =====
+    // دوران العجلة
     const totalFrames = 20;
-    const totalDegrees = 360 * 3 + Math.floor(Math.random() * 360); // 3 لفات كاملة + عشوائي
+    const totalDegrees = 360 * 3 + Math.floor(Math.random() * 360);
     const degreesPerFrame = totalDegrees / totalFrames;
-
     for (let frame = 0; frame <= totalFrames; frame++) {
       const rotation = frame * degreesPerFrame;
       const buffer = drawWheel(players, rotation);
       const attachment = new AttachmentBuilder(buffer, { name: 'wheel.png' });
-
       const embed = new EmbedBuilder()
         .setTitle('🎡 العجلة تدور!')
         .setDescription(`${playersListText}\n\n🔄 العجلة تدور...`)
@@ -297,15 +243,11 @@ client.on('messageCreate', async (message) => {
         .setImage('attachment://wheel.png')
         .setFooter({ text: '🎡 جاري الدوران...' })
         .setTimestamp();
-
-      await sessionMessage.edit({
-        embeds: [embed],
-        files: [attachment],
-      });
-      await new Promise(resolve => setTimeout(resolve, 250));
+      await sessionMessage.edit({ embeds: [embed], files: [attachment] });
+      await new Promise(r => setTimeout(r, 250));
     }
 
-    // ===== المرحلة 3: إعلان الفائز =====
+    // إعلان الفائز
     const finalRotation = totalDegrees % 360;
     const numPlayers = session.players.length;
     const anglePerSlice = 360 / numPlayers;
@@ -313,10 +255,8 @@ client.on('messageCreate', async (message) => {
     const winnerIndex = Math.floor(normalizedAngle / anglePerSlice) % numPlayers;
     const winnerId = session.players[winnerIndex];
 
-    // رسم العجلة مع تمييز الفائز
     const finalBuffer = drawWheel(players, finalRotation, winnerIndex);
     const finalAttachment = new AttachmentBuilder(finalBuffer, { name: 'wheel.png' });
-
     const winnerEmbed = new EmbedBuilder()
       .setTitle('🏆 لدينا فائز!')
       .setDescription(`${playersListText}\n\n🎉 **الفائز:** <@${winnerId}>`)
@@ -324,26 +264,18 @@ client.on('messageCreate', async (message) => {
       .setImage('attachment://wheel.png')
       .setFooter({ text: '🎡 انتهى السحب' })
       .setTimestamp();
+    await sessionMessage.edit({ embeds: [winnerEmbed], files: [finalAttachment] });
 
-    await sessionMessage.edit({
-      embeds: [winnerEmbed],
-      files: [finalAttachment],
-    });
-
-    // رسالة تهنئة منفصلة
     await message.channel.send({
       embeds: [
         new EmbedBuilder()
           .setTitle('🎉 مبروك!')
-          .setDescription(
-            `🏆 **<@${winnerId}>** هو الفائز!\n\n🎊 حظ أوفر للمشاركين الآخرين في المرات القادمة.`
-          )
+          .setDescription(`🏆 **<@${winnerId}>** هو الفائز!\n\n🎊 حظ أوفر للبقية.`)
           .setColor(0x00ff00)
-          .setTimestamp(),
-      ],
+          .setTimestamp()
+      ]
     });
 
-    // حذف الجلسة
     delete rouletteSessions[guildId];
     return;
   }
@@ -351,153 +283,80 @@ client.on('messageCreate', async (message) => {
   // ========== [ !روليت_الغاء ] ==========
   if (command === 'روليت_الغاء' || command === 'roulette_cancel') {
     const session = rouletteSessions[guildId];
-
-    if (!session) {
-      return message.reply('⚠️ لا توجد جلسة روليت نشطة حالياً.');
-    }
-
+    if (!session) return message.reply('⚠️ لا توجد جلسة نشطة.');
     const sessionMessage = await message.channel.messages.fetch(session.messageId).catch(() => null);
     if (sessionMessage) {
       const buffer = drawWheel([]);
       const attachment = new AttachmentBuilder(buffer, { name: 'wheel.png' });
-
       const embed = EmbedBuilder.from(sessionMessage.embeds[0])
         .setTitle('🚫 جلسة ملغية')
         .setDescription('تم إلغاء جلسة الروليت.')
         .setColor(0xff0000)
         .setImage('attachment://wheel.png');
-
-      await sessionMessage.edit({
-        embeds: [embed],
-        components: [],
-        files: [attachment],
-      }).catch(() => {});
+      await sessionMessage.edit({ embeds: [embed], components: [], files: [attachment] }).catch(() => {});
     }
-
     delete rouletteSessions[guildId];
-    await message.reply('✅ تم إلغاء جلسة الروليت بنجاح.');
-    return;
-  }
-
-  // ========== [ !روليت ] ==========
-  if (command === 'روليت' || command === 'roulette') {
-    const embed = new EmbedBuilder()
-      .setTitle('🎡 أوامر الروليت')
-      .setColor(0xcc0000)
-      .setDescription(
-        `**!روليت_ابدأ** - بدء جلسة روليت جديدة\n` +
-        `**!روليت_سحب** - تدوير العجلة واختيار فائز\n` +
-        `**!روليت_الغاء** - إلغاء الجلسة الحالية\n\n` +
-        `🎯 يمكن للأعضاء الانضمام عبر الأزرار أسفل رسالة الروليت.`
-      )
-      .setFooter({ text: '🎡 بوت الروليت' })
-      .setTimestamp();
-    await message.channel.send({ embeds: [embed] });
+    await message.reply('✅ تم إلغاء الجلسة.');
     return;
   }
 });
 
-// ================== [ معالج الأزرار التفاعلية ] ==================
+// ================== [ أزرار التفاعل ] ==================
 client.on('interactionCreate', async (interaction) => {
   if (!interaction.isButton()) return;
-
   const guildId = interaction.guild.id;
   const session = rouletteSessions[guildId];
+  if (!session) return interaction.reply({ content: '⚠️ لا توجد جلسة نشطة.', ephemeral: true });
 
-  if (!session) {
-    return interaction.reply({
-      content: '⚠️ لا توجد جلسة روليت نشطة.',
-      ephemeral: true,
-    });
-  }
-
-  // ========== [ زر الانضمام ] ==========
   if (interaction.customId === 'roulette_join') {
     if (session.players.includes(interaction.user.id)) {
-      return interaction.reply({
-        content: '⚠️ أنت منضم بالفعل إلى الجلسة.',
-        ephemeral: true,
-      });
+      return interaction.reply({ content: '⚠️ أنت منضم بالفعل.', ephemeral: true });
     }
-
     session.players.push(interaction.user.id);
-
-    // تحديث رسالة الجلسة
-    const sessionMessage = await interaction.channel.messages.fetch(session.messageId).catch(() => null);
-    if (sessionMessage) {
+    const msg = await interaction.channel.messages.fetch(session.messageId).catch(() => null);
+    if (msg) {
       const players = await fetchPlayers(interaction.guild, session.players);
-      const buffer = drawWheel(players);
-      const attachment = new AttachmentBuilder(buffer, { name: 'wheel.png' });
-
-      const embed = EmbedBuilder.from(sessionMessage.embeds[0])
+      const buf = drawWheel(players);
+      const att = new AttachmentBuilder(buf, { name: 'wheel.png' });
+      const embed = EmbedBuilder.from(msg.embeds[0])
         .setDescription(
           `**${session.players.length} لاعبين مسجلين**\n\n` +
-          `اضغط على الزر أدناه للانضمام!\n` +
-          `لبدء السحب: \`!روليت_سحب\`\n` +
+          `اضغط للانضمام!\n` +
+          `للسحب: \`!روليت_سحب\`\n` +
           `للإلغاء: \`!روليت_الغاء\`\n\n` +
-          `**المشاركون:** ${session.players.map(id => `<@${id}>`).join(', ')}`
+          `**المشاركون:** ${session.players.map(p => `<@${p}>`).join(', ')}`
         )
         .setImage('attachment://wheel.png');
-
-      await sessionMessage.edit({
-        embeds: [embed],
-        files: [attachment],
-      });
+      await msg.edit({ embeds: [embed], files: [att] });
     }
-
-    return interaction.reply({
-      content: '✅ تم انضمامك إلى جلسة الروليت!',
-      ephemeral: true,
-    });
+    return interaction.reply({ content: '✅ انضممت!', ephemeral: true });
   }
 
-  // ========== [ زر الخروج ] ==========
   if (interaction.customId === 'roulette_leave') {
     if (!session.players.includes(interaction.user.id)) {
-      return interaction.reply({
-        content: '⚠️ أنت غير منضم إلى الجلسة.',
-        ephemeral: true,
-      });
+      return interaction.reply({ content: '⚠️ غير منضم.', ephemeral: true });
     }
-
     session.players = session.players.filter(id => id !== interaction.user.id);
-
-    // تحديث رسالة الجلسة
-    const sessionMessage = await interaction.channel.messages.fetch(session.messageId).catch(() => null);
-    if (sessionMessage) {
+    const msg = await interaction.channel.messages.fetch(session.messageId).catch(() => null);
+    if (msg) {
       const players = await fetchPlayers(interaction.guild, session.players);
-      const buffer = drawWheel(players);
-      const attachment = new AttachmentBuilder(buffer, { name: 'wheel.png' });
-
-      const participantsList = session.players.length > 0
-        ? session.players.map(id => `<@${id}>`).join(', ')
-        : 'لا أحد';
-
-      const embed = EmbedBuilder.from(sessionMessage.embeds[0])
+      const buf = drawWheel(players);
+      const att = new AttachmentBuilder(buf, { name: 'wheel.png' });
+      const participants = session.players.length > 0 ? session.players.map(p => `<@${p}>`).join(', ') : 'لا أحد';
+      const embed = EmbedBuilder.from(msg.embeds[0])
         .setDescription(
           `**${session.players.length} لاعبين مسجلين**\n\n` +
-          `اضغط على الزر أدناه للانضمام!\n` +
-          `لبدء السحب: \`!روليت_سحب\`\n` +
+          `اضغط للانضمام!\n` +
+          `للسحب: \`!روليت_سحب\`\n` +
           `للإلغاء: \`!روليت_الغاء\`\n\n` +
-          `**المشاركون:** ${participantsList}`
+          `**المشاركون:** ${participants}`
         )
         .setImage('attachment://wheel.png');
-
-      await sessionMessage.edit({
-        embeds: [embed],
-        files: [attachment],
-      });
+      await msg.edit({ embeds: [embed], files: [att] });
     }
-
-    return interaction.reply({
-      content: '🚫 تم خروجك من جلسة الروليت.',
-      ephemeral: true,
-    });
+    return interaction.reply({ content: '🚫 خرجت.', ephemeral: true });
   }
 });
 
 // ================== [ تشغيل البوت ] ==================
-client.login(TOKEN).catch((err) => {
-  console.error('❌ Failed to login:', err);
-  process.exit(1);
-});
+client.login(TOKEN).catch(err => { console.error('❌ فشل:', err); process.exit(1); });
