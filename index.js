@@ -841,7 +841,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 4. لعبة تخمين البلد من الصورة (الخريطة الجغرافية)
+    // 4. لعبة تخمين البلد من الصورة (الخريطة الجغرافية الصحيحة)
     // ==========================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -850,30 +850,37 @@ client.on('messageCreate', async message => {
 
         activeGames.add(guildId);
 
+        // قائمة الصور والبلدان والإحداثيات الصحيحة لكل صورة
         const guessLevels = [
             {
-                imageUrl: 'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?q=80&w=1000&auto=format&fit=crop',
-                country: 'الاردن',
-                lat: 31.95, lon: 35.91,
-                hint: 'معلم سياحي في الشرق الأوسط'
+                imageUrl: 'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?q=80&w=1000&auto=format&fit=crop', // جامع السلطان أحمد - إسطنبول
+                country: 'تركيا',
+                lat: 41.0082, lon: 28.9784,
+                hint: 'معلم تاريخي شهير في مدينة تبعد بين قارتين'
             },
             {
-                imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000&auto=format&fit=crop',
+                imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000&auto=format&fit=crop', // باريس
                 country: 'فرنسا',
-                lat: 48.85, lon: 2.35,
-                hint: 'عاصمة أوروبية شهيرة'
+                lat: 48.8566, lon: 2.3522,
+                hint: 'عاصمة النور والأناقة الأوروبية'
             },
             {
-                imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1000&auto=format&fit=crop',
+                imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1000&auto=format&fit=crop', // لندن
                 country: 'بريطانيا',
-                lat: 51.50, lon: -0.12,
-                hint: 'تتميز بطقس ممطر وجسر شهير'
+                lat: 51.5074, lon: -0.1278,
+                hint: 'تتميز بطقس ممطر وجسر شهير وساعاتها الكبرى'
             },
             {
-                imageUrl: 'https://images.unsplash.com/photo-1534430480872-3498386e7856?q=80&w=1000&auto=format&fit=crop',
+                imageUrl: 'https://images.unsplash.com/photo-1534430480872-3498386e7856?q=80&w=1000&auto=format&fit=crop', // طوكيو
                 country: 'اليابان',
-                lat: 35.67, lon: 139.65,
-                hint: 'بلاد الساموراي والتكنولوجيا'
+                lat: 35.6762, lon: 139.6503,
+                hint: 'بلاد الساموراي والتكنولوجيا المتقدمة'
+            },
+            {
+                imageUrl: 'https://images.unsplash.com/photo-1539650116574-8efeb43e2750?q=80&w=1000&auto=format&fit=crop', // برج إيفل زاوية أخرى أو باريس
+                country: 'فرنسا',
+                lat: 48.8584, lon: 2.2945,
+                hint: 'دولة تشتهر بالمعالم السياحية الشهيرة في أوروبا'
             }
         ];
 
@@ -889,7 +896,7 @@ client.on('messageCreate', async message => {
             'بريطانيا': { lat: 51.50, lon: -0.12 },
             'اليابان': { lat: 35.67, lon: 139.65 },
             'الامارات': { lat: 24.45, lon: 54.37 },
-            'تركيا': { lat: 39.93, lon: 32.85 },
+            'تركيا': { lat: 41.00, lon: 28.97 },
             'المانيا': { lat: 52.52, lon: 13.40 },
             'ايطاليا': { lat: 41.90, lon: 12.49 }
         };
