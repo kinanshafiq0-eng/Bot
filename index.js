@@ -1,4 +1,3 @@
-require('dotenv').config();
 const { 
     Client, 
     GatewayIntentBits, 
@@ -18,10 +17,10 @@ const client = new Client({
     ]
 });
 
-const THEME_COLOR = '#8B0000'; // الثيم اللوني الداكن
+const THEME_COLOR = '#8B0000'; // الثيم اللوني الداكن (أحمر داكن وأسود)
 
 client.on('ready', () => {
-    console.log(`✅ Hide and Seek Turn-based Bot Logged in as ${client.user.tag}!`);
+    console.log(`✅ Hide and Seek Bot Logged in as ${client.user.tag}!`);
     client.user.setActivity('!اختباء | نظام الأدوار', { type: 3 });
 });
 
@@ -36,7 +35,7 @@ client.on('messageCreate', async message => {
         const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
 
         const embed = new EmbedBuilder()
-            .setTitle('🫣 لعبة الاختباء (نظام الأدوار والتفجير)')
+            .setTitle('🫣 لعبة الاختباء (25 صندوقاً - نظام الأدوار)')
             .setDescription(`اضغط على زر **انضمام** في الشات العام للمشاركة!\n\n⏳ **تبدأ اللعبة تلقائياً بعد:** <t:${endTime}:R>`)
             .setColor(THEME_COLOR)
             .addFields({ name: `👥 المشاركون (0/${MAX_PLAYERS}):`, value: 'لا يوجد مشاركين حتى الآن.' });
@@ -146,7 +145,7 @@ client.on('messageCreate', async message => {
                 }
 
                 await new Promise(res => setTimeout(res, 22000));
-                await message.channel.send(`💣 **بدأت مرحلة التفجير بالأدوار!** كل لاعب سيأتي دوره لاختيار صندوق وتفجيره في الشات العام 🧨`);
+                await message.channel.send(`💣 **بدأت مرحلة التفجير بالأدوار!** يأتي دور كل لاعب لاختيار صندوق وتفجيره في الشات العام 🧨`);
 
                 let explodedBoxes = [];
                 let turnIndex = 0;
@@ -157,12 +156,11 @@ client.on('messageCreate', async message => {
                     let alivePlayers = playersArr.filter(p => p.alive);
                     if (alivePlayers.length <= 1) break;
 
-                    // تحديد اللاعب صاحب الدور الحالي
                     let currentPlayer = alivePlayers[turnIndex % alivePlayers.length];
 
                     let turnEmbed = new EmbedBuilder()
                         .setTitle('🎯 دور التفجير!')
-                        .setDescription(`دور اللاعب: <@${currentPlayer.id}> (**${currentPlayer.name}**)\nاختر صندوقاً من الأزرار أدناه لتفجيره واكتشاف ما داخله!\n\n⏳ **لديك 20 ثانية للاختيار..**`)
+                        .setDescription(`دور اللاعب: <@${currentPlayer.id}> (**${currentPlayer.name}**)\nاختر صندوقاً من الأزرار أدناه لتفجيره!\n\n⏳ **لديك 20 ثانية للاختيار..**`)
                         .setColor(THEME_COLOR);
 
                     let turnMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك الآن! 🧨`, embeds: [turnEmbed], components: renderBoxesRows(false, explodedBoxes) });
@@ -185,7 +183,6 @@ client.on('messageCreate', async message => {
 
                         explodedBoxes.push(targetBox);
 
-                        // التحقق إذا كان هناك شخص مختبئ في هذا الصندوق
                         let caughtPlayers = playersArr.filter(p => p.alive && p.hidingSpot === targetBox);
                         let resultText = `💥 قام <@${currentPlayer.id}> بتفجير الصندوق رقم **[ ${targetBox} ]**!\n`;
 
@@ -203,7 +200,6 @@ client.on('messageCreate', async message => {
 
                     turnCollector.on('end', async () => {
                         if (!actionTaken) {
-                            // إذا انتهى وقت اللاعب ولم يتر الاختيار، يفجر البوت صندوقاً عشوائياً نيابة عنه
                             let available = [];
                             for(let i=1; i<=25; i++) if(!explodedBoxes.includes(i)) available.push(i);
                             if (available.length > 0) {
@@ -220,7 +216,6 @@ client.on('messageCreate', async message => {
                         }
                     });
 
-                    // انتظار انتهاء وقت تفجير هذه الجولة قبل الانتقال للاعب التالي
                     await new Promise(res => setTimeout(res, 22000));
 
                     let remainingAlive = playersArr.filter(p => p.alive);
