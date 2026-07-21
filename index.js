@@ -25,10 +25,10 @@ app.listen(port, () => console.log(`✅ Web server on port ${port}`));
 const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) { console.error('❌ DISCORD_TOKEN missing'); process.exit(1); }
 
-// --- تنزيل الخط تلقائياً إذا لم يكن موجوداً ---
 const fontPath = path.join(__dirname, 'Cairo-Regular.ttf');
 const fontUrl = 'https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Regular.ttf';
 
+// --- تنزيل الخط تلقائياً ---
 async function ensureFont() {
   if (fs.existsSync(fontPath)) {
     console.log('✅ Font file exists');
@@ -52,15 +52,26 @@ async function ensureFont() {
   });
 }
 
-// تسجيل الخط بعد التأكد من وجوده
+// --- تسجيل الخط ---
+function registerArabicFont() {
+  if (fs.existsSync(fontPath)) {
+    try {
+      registerFont(fontPath, { family: 'Cairo' });
+      console.log('✅ Arabic font registered');
+      return true;
+    } catch (e) {
+      console.error('⚠️ Font registration failed:', e.message);
+    }
+  } else {
+    console.warn('⚠️ Font file missing. Arabic names may not display correctly.');
+  }
+  return false;
+}
+
+// --- تجهيز الخط قبل تشغيل البوت ---
 (async () => {
   await ensureFont();
-  try {
-    registerFont(fontPath, { family: 'Cairo' });
-    console.log('✅ Arabic font registered');
-  } catch (e) {
-    console.error('⚠️ Font registration failed:', e.message);
-  }
+  registerArabicFont();
 })();
 
 const client = new Client({
@@ -103,13 +114,14 @@ function getGuildConfig(guildId) {
   return db.config[guildId];
 }
 
-// ================== [ Roulette Canvas ] ==================
+// ================== [ Roulette Canvas – تم تحسين رسم الأسماء ] ==================
 function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   const size = 600;
   const canvas = createCanvas(size, size);
   const ctx = canvas.getContext('2d');
-  const centerX = size / 2, centerY = size / 2, radius = 240;
+  const centerX = size / 2, centerY = size / 2, radius = 230;
 
+  // خلفية داكنة
   ctx.fillStyle = DARK_BG;
   ctx.fillRect(0, 0, size, size);
 
@@ -121,6 +133,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     const startAngle = i * anglePerSlice + (rotationDegrees * Math.PI) / 180 - Math.PI / 2;
     const endAngle = startAngle + anglePerSlice;
 
+    // الشريحة
     ctx.beginPath();
     ctx.moveTo(centerX, centerY);
     ctx.arc(centerX, centerY, radius, startAngle, endAngle);
@@ -131,49 +144,57 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.lineWidth = 3;
     ctx.stroke();
 
+    // اسم اللاعب (تم التصحيح: مسافة أقل وخط أكثر وضوحاً)
     const textAngle = startAngle + anglePerSlice / 2;
-    const textX = centerX + Math.cos(textAngle) * radius * 0.65;
-    const textY = centerY + Math.sin(textAngle) * radius * 0.65;
+    const textRadius = radius * 0.55; // أقرب إلى المركز لضمان الظهور
+    const textX = centerX + Math.cos(textAngle) * textRadius;
+    const textY = centerY + Math.sin(textAngle) * textRadius;
 
     ctx.save();
     ctx.translate(textX, textY);
+    // تدوير النص لمتابعة الشريحة (عمودي)
     ctx.rotate(textAngle + Math.PI / 2);
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 16px "Cairo", Arial';
+    // استخدام الخط العربي إن تم تسجيله، وإلا Arial
+    ctx.font = 'bold 17px "Cairo", Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    let name = players[i]?.displayName || `لاعب ${i+1}`;
-    if (name.length > 10) name = name.slice(0,9)+'…';
+
+    let name = players[i]?.displayName || players[i]?.username || `لاعب ${i + 1}`;
+    if (name.length > 10) name = name.substring(0, 9) + '…';
     ctx.fillText(name, 0, 0);
     ctx.restore();
   }
 
+  // الدائرة المركزية
   ctx.beginPath();
-  ctx.arc(centerX, centerY, 55, 0, 2*Math.PI);
+  ctx.arc(centerX, centerY, 55, 0, 2 * Math.PI);
   ctx.fillStyle = '#2c3e50';
   ctx.fill();
-  ctx.strokeStyle = '#fff';
+  ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 4;
   ctx.stroke();
-  ctx.fillStyle = '#fff';
-  ctx.font = 'bold 28px Arial';
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px "Cairo", Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('🎡', centerX, centerY);
 
+  // المؤشر الأحمر
   ctx.beginPath();
-  ctx.moveTo(centerX, centerY - radius -5);
-  ctx.lineTo(centerX-25, centerY - radius -40);
-  ctx.lineTo(centerX+25, centerY - radius -40);
+  ctx.moveTo(centerX, centerY - radius - 5);
+  ctx.lineTo(centerX - 25, centerY - radius - 40);
+  ctx.lineTo(centerX + 25, centerY - radius - 40);
   ctx.closePath();
   ctx.fillStyle = '#ff0000';
   ctx.fill();
-  ctx.strokeStyle = '#fff';
+  ctx.strokeStyle = '#ffffff';
   ctx.lineWidth = 3;
   ctx.stroke();
 
+  // إطار أحمر خارجي
   ctx.beginPath();
-  ctx.arc(centerX, centerY, radius+18, 0, 2*Math.PI);
+  ctx.arc(centerX, centerY, radius + 18, 0, 2 * Math.PI);
   ctx.strokeStyle = '#cc0000';
   ctx.lineWidth = 8;
   ctx.stroke();
@@ -185,17 +206,17 @@ async function fetchPlayers(guild, ids) {
   const arr = [];
   for (const id of ids) {
     const m = await guild.members.fetch(id).catch(() => null);
-    arr.push(m ? { displayName: m.displayName } : { displayName: 'غير معروف' });
+    arr.push(m ? { displayName: m.displayName, username: m.user.username } : { displayName: 'غير معروف' });
   }
   return arr;
 }
 
 function createTTTButtons(board) {
   const rows = [];
-  for (let i=0; i<3; i++) {
+  for (let i = 0; i < 3; i++) {
     const row = new ActionRowBuilder();
-    for (let j=0; j<3; j++) {
-      const idx = i*3+j;
+    for (let j = 0; j < 3; j++) {
+      const idx = i * 3 + j;
       const label = board[idx] || '⬛';
       row.addComponents(
         new ButtonBuilder()
@@ -248,7 +269,7 @@ client.on('messageCreate', async (message) => {
         `🕵️ **مافيا** \`!مافيا\`\n\n`+
         `⚙️ **للمشرفين:** \`!تعيين صورة_عامة <رابط>\` لتعيين صورة عامة`
       )
-      .setFooter({ text: 'جميع الألعاب بثيم الأسود والأحمر الداكن' });
+      .setFooter({ text: 'ثيم أحمر وأسود' });
     if (serverImg) embed.setThumbnail(serverImg);
     return message.channel.send({ embeds: [embed] });
   }
@@ -294,6 +315,7 @@ client.on('messageCreate', async (message) => {
     return message.delete().catch(()=>{});
   }
 
+  // ========== [ سحب الروليت ] ==========
   if (cmd === 'سحب' || cmd === 'spin') {
     const session = db.roulette[guildId];
     if (!session || session.players.length < 2) return message.reply('⚠️ جلسة غير متاحة أو تحتاج لاعبَين على الأقل.');
@@ -303,6 +325,7 @@ client.on('messageCreate', async (message) => {
     const players = await fetchPlayers(message.guild, session.players);
     const listText = session.players.map((id,i)=>`**${i+1}.** <@${id}>`).join('\n');
 
+    // عد تنازلي
     for (let c=3; c>=1; c--) {
       const b = drawWheel(players);
       const a = new AttachmentBuilder(b,{name:'wheel.png'});
@@ -312,6 +335,7 @@ client.on('messageCreate', async (message) => {
       await new Promise(r=>setTimeout(r,1000));
     }
 
+    // دوران العجلة
     const totalDeg = 360*3+Math.floor(Math.random()*360);
     for (let f=0; f<=20; f++) {
       const rot = f*(totalDeg/20);
@@ -323,6 +347,7 @@ client.on('messageCreate', async (message) => {
       await new Promise(r=>setTimeout(r,250));
     }
 
+    // الفائز
     const finalRot = totalDeg % 360;
     const anglePerSlice = 360 / session.players.length;
     const normalized = (360 - (finalRot % 360)) % 360;
@@ -358,28 +383,18 @@ client.on('messageCreate', async (message) => {
     return message.reply('✅ ألغيت.');
   }
 
-  // ========== [ ريبيكا (سلوتس) ] ==========
+  // ========== [ ريبيكا ] ==========
   if (cmd === 'ريبيكا' || cmd === 'replica') {
     const symbols = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣', '⭐'];
-    const slot1 = symbols[Math.floor(Math.random() * symbols.length)];
-    const slot2 = symbols[Math.floor(Math.random() * symbols.length)];
-    const slot3 = symbols[Math.floor(Math.random() * symbols.length)];
-    let resultText = '';
-    let color = MAIN_COLOR;
-    if (slot1 === slot2 && slot2 === slot3) {
-      resultText = '🎉 فوز كبير! (x3)';
-      color = 0x00ff00;
-    } else if (slot1 === slot2 || slot2 === slot3 || slot1 === slot3) {
-      resultText = '🎈 فوز صغير! (x2)';
-      color = 0xffaa00;
-    } else {
-      resultText = '😔 خسارة';
-      color = 0xff0000;
-    }
+    const s = [symbols[Math.floor(Math.random()*symbols.length)], symbols[Math.floor(Math.random()*symbols.length)], symbols[Math.floor(Math.random()*symbols.length)]];
+    let result, col;
+    if (s[0]===s[1] && s[1]===s[2]) { result = '🎉 فوز كبير!'; col = 0x00ff00; }
+    else if (s[0]===s[1] || s[1]===s[2] || s[0]===s[2]) { result = '🎈 فوز صغير!'; col = 0xffaa00; }
+    else { result = '😔 خسارة'; col = 0xff0000; }
     const embed = new EmbedBuilder()
       .setTitle('🎰 ريبيكا')
-      .setDescription(`**${slot1} | ${slot2} | ${slot3}**\n\n${resultText}`)
-      .setColor(color)
+      .setDescription(`**${s[0]} | ${s[1]} | ${s[2]}**\n\n${result}`)
+      .setColor(col)
       .setFooter({ text: 'ريبيكا | العب مرة أخرى' });
     if (serverImg) embed.setThumbnail(serverImg);
     return message.channel.send({ embeds: [embed] });
@@ -389,13 +404,11 @@ client.on('messageCreate', async (message) => {
   if (cmd === 'اختباء' || cmd === 'hide') {
     if (db.hideSeek[guildId]) return message.reply('⚠️ لعبة اختباء جارية.');
     db.hideSeek[guildId] = { players: [], phase: 'joining', hiderId: null, votes: {}, messageId: null };
-
     const embed = new EmbedBuilder()
       .setTitle('🙈 اختباء')
-      .setDescription('انضم للعبة! عند البداية، سيختار البوت مختبئاً.\nالآخرون يتناقشون ويصوتون على المشتبه به.\nاستخدم `!تصويت @شخص` للتصويت.')
+      .setDescription('انضم للعبة! عند البداية، سيختار البوت مختبئاً.\nالآخرون يتناقشون ويصوتون.\nاستخدم `!تصويت @شخص` للتصويت.')
       .setColor(MAIN_COLOR);
     if (serverImg) embed.setThumbnail(serverImg);
-
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('join_hide').setLabel('🙈 انضم').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('start_hide').setLabel('▶️ ابدأ').setStyle(ButtonStyle.Success)
@@ -414,7 +427,6 @@ client.on('messageCreate', async (message) => {
     if (game.votes[message.author.id]) return message.reply('⚠️ صوتت بالفعل.');
     game.votes[message.author.id] = target.id;
     message.reply(`✅ صوتت لـ ${target}.`);
-
     if (Object.keys(game.votes).length >= game.players.length - 1) {
       const counts = {};
       Object.values(game.votes).forEach(id => counts[id] = (counts[id]||0)+1);
@@ -422,7 +434,7 @@ client.on('messageCreate', async (message) => {
       for (const [id, cnt] of Object.entries(counts)) if (cnt > max) { max = cnt; suspect = id; }
       const embed = new EmbedBuilder()
         .setTitle(suspect === game.hiderId ? '🎉 الباحثون فازوا!' : '😈 المختبئ فاز!')
-        .setDescription(`المختبئ كان <@${game.hiderId}>.\n${suspect === game.hiderId ? 'تم كشفه!' : 'لم يتم كشفه!'}`)
+        .setDescription(`المختبئ كان <@${game.hiderId}>.`)
         .setColor(suspect === game.hiderId ? 0x00ff00 : 0xff0000);
       if (serverImg) embed.setThumbnail(serverImg);
       message.channel.send({ embeds: [embed] });
@@ -436,13 +448,11 @@ client.on('messageCreate', async (message) => {
   if (cmd === 'كراسي' || cmd === 'chairs') {
     if (db.musicalChairs[guildId]) return message.reply('⚠️ لعبة كراسي جارية.');
     db.musicalChairs[guildId] = { players: [], messageId: null, active: false };
-
     const embed = new EmbedBuilder()
       .setTitle('🪑 كراسي')
       .setDescription('انضم للعبة! عند البداية، سيتم إقصاء لاعب عشوائي كل جولة حتى يبقى واحد.')
       .setColor(MAIN_COLOR);
     if (serverImg) embed.setThumbnail(serverImg);
-
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('join_chairs').setLabel('🪑 انضم').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('start_chairs').setLabel('▶️ ابدأ').setStyle(ButtonStyle.Success)
@@ -458,21 +468,13 @@ client.on('messageCreate', async (message) => {
     const opponent = message.mentions.members.first();
     if (!opponent || opponent.id === message.author.id) return message.reply('⚠️ منشن خصمك.');
     if (db.ticTacToe[guildId]) return message.reply('⚠️ لعبة XO جارية.');
-
     const board = Array(9).fill(null);
-    db.ticTacToe[guildId] = {
-      players: [message.author.id, opponent.id],
-      turn: message.author.id,
-      board,
-      messageId: null,
-    };
-
+    db.ticTacToe[guildId] = { players: [message.author.id, opponent.id], turn: message.author.id, board, messageId: null };
     const embed = new EmbedBuilder()
       .setTitle('❌⭕ اكس او')
       .setDescription(`<@${message.author.id}> (X) vs <@${opponent.id}> (O)\nدور <@${message.author.id}>`)
       .setColor(MAIN_COLOR);
     if (serverImg) embed.setThumbnail(serverImg);
-
     const rows = createTTTButtons(board);
     const msg = await message.channel.send({ embeds: [embed], components: rows });
     db.ticTacToe[guildId].messageId = msg.id;
@@ -484,13 +486,11 @@ client.on('messageCreate', async (message) => {
   if (cmd === 'مافيا' || cmd === 'mafia') {
     if (db.mafia[guildId]) return message.reply('⚠️ لعبة مافيا جارية.');
     db.mafia[guildId] = { players: [], phase: 'joining', roles: {}, nightKill: null, detectiveCheck: null, doctorSave: null, votes: {}, messageId: null };
-
     const embed = new EmbedBuilder()
       .setTitle('🕵️ مافيا')
       .setDescription('انضم للعبة (5 لاعبين فأكثر).\nستوزع الأدوار تلقائياً.\nمافيا - محقق - طبيب - مواطنين.')
       .setColor(MAIN_COLOR);
     if (serverImg) embed.setThumbnail(serverImg);
-
     const row = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId('join_mafia').setLabel('🕵️ انضم').setStyle(ButtonStyle.Danger),
       new ButtonBuilder().setCustomId('start_mafia').setLabel('▶️ ابدأ').setStyle(ButtonStyle.Success)
@@ -509,7 +509,7 @@ client.on('interactionCreate', async (interaction) => {
   const config = getGuildConfig(guildId);
   const serverImg = getServerImage(interaction.guild, config);
 
-  // ---- Roulette ----
+  // --- Roulette Join/Leave ---
   if (interaction.customId === 'join_roulette') {
     const session = db.roulette[guildId];
     if (!session) return interaction.reply({ content: '⚠️ لا جلسة.', ephemeral: true });
@@ -550,7 +550,7 @@ client.on('interactionCreate', async (interaction) => {
     return interaction.reply({ content: '🚫 خرجت.', ephemeral: true });
   }
 
-  // ---- Hide & Seek ----
+  // --- Hide & Seek ---
   if (interaction.customId === 'join_hide') {
     const game = db.hideSeek[guildId];
     if (!game || game.phase !== 'joining') return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
@@ -581,7 +581,7 @@ client.on('interactionCreate', async (interaction) => {
     saveDB();
   }
 
-  // ---- Chairs ----
+  // --- Chairs ---
   if (interaction.customId === 'join_chairs') {
     const game = db.musicalChairs[guildId];
     if (!game || game.active) return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
@@ -621,7 +621,7 @@ client.on('interactionCreate', async (interaction) => {
     saveDB();
   }
 
-  // ---- Tic Tac Toe ----
+  // --- Tic Tac Toe ---
   if (interaction.customId.startsWith('ttt_')) {
     const game = db.ticTacToe[guildId];
     if (!game) return interaction.reply({ content: '⚠️ لا لعبة.', ephemeral: true });
@@ -630,7 +630,6 @@ client.on('interactionCreate', async (interaction) => {
     if (game.board[idx] !== null) return interaction.reply({ content: '⚠️ مشغول.', ephemeral: true });
     const symbol = game.turn === game.players[0] ? 'X' : 'O';
     game.board[idx] = symbol;
-
     const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
     let winner = null;
     for (const [a,b,c] of wins) if (game.board[a] && game.board[a]===game.board[b] && game.board[a]===game.board[c]) winner = game.board[a];
@@ -651,7 +650,7 @@ client.on('interactionCreate', async (interaction) => {
     saveDB();
   }
 
-  // ---- Mafia ----
+  // --- Mafia ---
   if (interaction.customId === 'join_mafia') {
     const game = db.mafia[guildId];
     if (!game || game.phase !== 'joining') return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
