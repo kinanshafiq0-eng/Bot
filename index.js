@@ -9,7 +9,11 @@ const {
     ButtonStyle, 
     ComponentType 
 } = require('discord.js');
-const { createCanvas } = require('canvas');
+const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
+const path = require('path');
+
+// إذا كان عندك ملف خط مرفق في المشروع، يمكنك تسجيله هكذا لضمان عدم ظهور المربعات:
+// GlobalFonts.registerFromPath(path.join(__dirname, 'font.ttf'), 'CustomFont');
 
 const client = new Client({
     intents: [
@@ -19,7 +23,6 @@ const client = new Client({
     ]
 });
 
-// دالة رسم العجلة مع إظهار الأرقام (1, 2, 3...) حصراً داخل الشرائح لضمان عدم ظهور المربعات
 async function generateRouletteImage(playersCount, winnerIndex, rotationOffset = 0) {
     const width = 600;
     const height = 600;
@@ -30,13 +33,13 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
     const centerY = height / 2;
     const radius = 250;
 
-    const colors = ['#e53935', '#212121', '#1565c0', '#2e7d32', '#6a1b9a', '#f57f17', '#00838f', '#ad1457']; 
+    const colors = ['#e53935', '#1e1e1e', '#1565c0', '#2e7d32', '#6a1b9a', '#f57f17']; 
     const sliceAngle = (2 * Math.PI) / playersCount;
 
     const baseAngle = - (winnerIndex * sliceAngle + sliceAngle / 2);
     const offsetAngle = baseAngle + rotationOffset;
 
-    // 1. رسم الشرائح والألوان
+    // 1. رسم الشرائح
     for (let i = 0; i < playersCount; i++) {
         const startAngle = i * sliceAngle + offsetAngle;
         const endAngle = (i + 1) * sliceAngle + offsetAngle;
@@ -54,7 +57,7 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
         ctx.stroke();
     }
 
-    // 2. رسم الأرقام (1, 2, 3...) في منتصف كل شريحة لضمان ظهورها بوضوح تام
+    // 2. رسم الأرقام باستخدام خط قياسي آمن
     for (let i = 0; i < playersCount; i++) {
         const startAngle = i * sliceAngle + offsetAngle;
         const endAngle = (i + 1) * sliceAngle + offsetAngle;
@@ -65,15 +68,19 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
         const textY = centerY + Math.sin(middleAngle) * textRadius;
 
         ctx.save();
+        ctx.translate(textX, textY);
+        // تدوير الرقم ليتبع زاوية الشريحة بشكل احترافي
+        ctx.rotate(middleAngle + Math.PI / 2);
+
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 24px Arial, sans-serif';
+        ctx.font = 'bold 22px sans-serif';
         
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 6;
         
-        ctx.fillText(`${i + 1}`, textX, textY);
+        ctx.fillText(`${i + 1}`, 0, 0);
         ctx.restore();
     }
 
@@ -90,10 +97,10 @@ async function generateRouletteImage(playersCount, winnerIndex, rotationOffset =
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px Arial, sans-serif';
+    ctx.font = 'bold 16px sans-serif';
     ctx.fillText('SPIN', centerX, centerY);
 
-    // السهم الجانبي لتحديد الفائز
+    // السهم
     ctx.beginPath();
     ctx.moveTo(centerX + radius + 5, centerY);
     ctx.lineTo(centerX + radius + 35, centerY - 15);
@@ -122,7 +129,7 @@ client.on('messageCreate', async message => {
 
         const embed = new EmbedBuilder()
             .setTitle('🎰 عجلة الحظ (Roulette)')
-            .setDescription(`اضغط على زر **انضمام** وسيتم إعطاؤك رقماً على العجلة!\n⏳ **تبدأ اللعبة تلقائياً:** <t:${endTime}:R>`)
+            .setDescription(`اضغط على زر **انضمام** ليتم إعطاؤك رقماً على العجلة!\n⏳ **تبدأ اللعبة تلقائياً:** <t:${endTime}:R>`)
             .setColor('#e53935')
             .addFields({ name: `👥 المشاركون (0/${MAX_PLAYERS}):`, value: 'لا يوجد مشاركين حتى الآن.' });
 
@@ -142,7 +149,7 @@ client.on('messageCreate', async message => {
 
             if (interaction.customId === 'join') {
                 if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
-                    return interaction.reply({ content: '⚠️ عذراً، العدد مكتمل (15 لاعب كحد أقصى)!', ephemeral: true });
+                    return interaction.reply({ content: '⚠️ عذراً، العدد مكتمل!', ephemeral: true });
                 }
 
                 if (!playersMap.has(userId)) {
@@ -151,7 +158,7 @@ client.on('messageCreate', async message => {
                 }
 
                 const playerObj = playersMap.get(userId);
-                await interaction.reply({ content: `✅ تم انضمامك بنجاح! رقمك على العجلة هو: **#${playerObj.number}**`, ephemeral: true });
+                await interaction.reply({ content: `✅ تم انضمامك! رقمك على العجلة: **#${playerObj.number}**`, ephemeral: true });
 
             } else if (interaction.customId === 'leave') {
                 if (playersMap.has(userId)) {
@@ -160,7 +167,7 @@ client.on('messageCreate', async message => {
                     for (let [id, data] of playersMap.entries()) {
                         data.number = counter++;
                     }
-                    await interaction.reply({ content: '❌ لقد انسحبت من العجلة وتم إعادة ترتيب الأرقام.', ephemeral: true });
+                    await interaction.reply({ content: '❌ لقد انسحبت وتم إعادة ترتيب الأرقام.', ephemeral: true });
                 } else {
                     return interaction.reply({ content: '⚠️ أنت لست منضم أصلاً!', ephemeral: true });
                 }
@@ -201,7 +208,7 @@ client.on('messageCreate', async message => {
                 const winnerObj = playersArray[winnerIndex];
 
                 try {
-                    await gameMessage.edit({ content: '🎡 **جارِ تدوير العجلة والأرقام تتحرك...**', embeds: [], components: [] });
+                    await gameMessage.edit({ content: '🎡 **جارِ تدوير العجلة...**', embeds: [], components: [] });
                     
                     const rotations = [Math.PI * 6, Math.PI * 4, Math.PI * 2, Math.PI];
                     for (let rot of rotations) {
@@ -220,7 +227,7 @@ client.on('messageCreate', async message => {
                     
                     const finalEmbed = new EmbedBuilder()
                         .setTitle('🎰 نتائج عجلة الحظ')
-                        .setDescription(`🎉 الفائز هو صاحب الرقم **#${winnerObj.number}** وهو اللاعب: **${winnerObj.name}** 🎯`)
+                        .setDescription(`🎉 الفائز هو صاحب الرقم **#${winnerObj.number}**\n👤 الاسم: **${winnerObj.name}** 🎯`)
                         .setColor('#ffd700')
                         .addFields({ name: `👥 قائمة المشاركين النهائية:`, value: finalPlayersList });
 
