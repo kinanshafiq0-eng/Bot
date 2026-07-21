@@ -1,7 +1,7 @@
 {
   "name": "discord-bot",
   "version": "1.0.0",
-  "description": "بوت ديسكورد متكامل مع ألعاب متعددة وصور من Wikipedia",
+  "description": "بوت ديسكورد متكامل مع ألعاب متعددة وصور معالم حقيقية",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
