@@ -8,8 +8,9 @@ const {
   AttachmentBuilder,
   ActivityType,
 } = require('discord.js');
-const { createCanvas } = require('@napi-rs/canvas');
+const { createCanvas, registerFont } = require('@napi-rs/canvas');
 const express = require('express');
+const path = require('path');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -24,6 +25,14 @@ if (!TOKEN) {
   process.exit(1);
 }
 
+// تسجيل الخط العربي (يجب أن يكون الملف موجوداً في المجلد)
+try {
+  registerFont(path.join(__dirname, 'Cairo-Regular.ttf'), { family: 'Cairo' });
+  console.log('✅ Arabic font registered successfully');
+} catch (e) {
+  console.error('⚠️ Failed to register Arabic font:', e.message);
+}
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -36,7 +45,7 @@ const client = new Client({
 // ================== [ قاعدة بيانات مؤقتة ] ==================
 const rouletteSessions = {};
 
-// ================== [ دالة رسم العجلة - مُحسَّنة لظهور الأسماء ] ==================
+// ================== [ دالة رسم العجلة ] ==================
 function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   const size = 600;
   const canvas = createCanvas(size, size);
@@ -74,7 +83,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // --- اسم اللاعب (أبيض ناصع، خط كبير وواضح) ---
+    // --- اسم اللاعب (خط عربي، أبيض) ---
     const textAngle = startAngle + anglePerSlice / 2;
     const textRadius = radius * 0.65;
     const textX = centerX + Math.cos(textAngle) * textRadius;
@@ -83,12 +92,12 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.save();
     ctx.translate(textX, textY);
     ctx.rotate(textAngle + Math.PI / 2);
-    ctx.fillStyle = '#FFFFFF'; // أبيض ناصع
-    ctx.font = 'bold 18px "Arial", "Helvetica", sans-serif'; // خط كبير وواضح
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 16px "Cairo", "Arial", sans-serif'; // استخدام الخط العربي
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
-    let name = players[i]?.displayName || players[i]?.username || `Player ${i + 1}`;
+    let name = players[i]?.displayName || players[i]?.username || `لاعب ${i + 1}`;
     if (name.length > 10) name = name.substring(0, 9) + '…';
     ctx.fillText(name, 0, 0);
     ctx.restore();
@@ -103,7 +112,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.lineWidth = 4;
   ctx.stroke();
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 28px Arial';
+  ctx.font = 'bold 28px "Cairo", Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText('🎡', centerX, centerY);
@@ -141,7 +150,7 @@ async function fetchPlayers(guild, playerIds) {
         username: member.user.username,
       });
     } else {
-      players.push({ displayName: 'Unknown', username: `ID: ${id}` });
+      players.push({ displayName: 'غير معروف', username: `ID: ${id}` });
     }
   }
   return players;
