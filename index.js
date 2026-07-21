@@ -1,699 +1,439 @@
-const {
-  Client,
-  GatewayIntentBits,
-  EmbedBuilder,
-  ActionRowBuilder,
-  ButtonBuilder,
-  ButtonStyle,
-  AttachmentBuilder,
-  ActivityType,
-  PermissionsBitField,
+require('dotenv').config();
+const { 
+    Client, 
+    GatewayIntentBits, 
+    EmbedBuilder, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    ButtonStyle,
+    ComponentType,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle,
+    StringSelectMenuBuilder
 } = require('discord.js');
-const { createCanvas, GlobalFonts } = require('@napi-rs/canvas');
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-const app = express();
-const port = process.env.PORT || 3000;
-
-// ================== [ Web Server ] ==================
-app.get('/', (req, res) => res.send('🟢 Games Bot is online'));
-app.listen(port, () => console.log(`✅ Web server on port ${port}`));
-
-// ================== [ Bot Init ] ==================
-const TOKEN = process.env.DISCORD_TOKEN;
-if (!TOKEN) { console.error('❌ DISCORD_TOKEN missing'); process.exit(1); }
-
-// --- Arabic Font Handling ---
-const fontPath = path.join(__dirname, 'Cairo-Regular.ttf');
-let arabicFontLoaded = false;
-
-async function downloadFont() {
-  if (fs.existsSync(fontPath)) {
-    console.log('✅ Font file already exists');
-    return;
-  }
-  const urls = [
-    'https://cdn.jsdelivr.net/gh/googlefonts/cairo@main/static/Cairo-Regular.ttf',
-    'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Regular.ttf',
-    'https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Regular.ttf',
-  ];
-  for (const url of urls) {
-    try {
-      console.log(`⬇️ Trying to download font from: ${url}`);
-      const response = await fetch(url);
-      if (!response.ok) continue;
-      const buffer = Buffer.from(await response.arrayBuffer());
-      fs.writeFileSync(fontPath, buffer);
-      console.log('✅ Font downloaded successfully');
-      return;
-    } catch (e) {
-      console.log(`❌ Failed: ${e.message}`);
-      try { if (fs.existsSync(fontPath)) fs.unlinkSync(fontPath); } catch {}
-    }
-  }
-  console.log('❌ Could not download any Arabic font. Wheel will show English names.');
-}
-
-function registerFont() {
-  try {
-    if (fs.existsSync(fontPath)) {
-      const fontBuffer = fs.readFileSync(fontPath);
-      GlobalFonts.register(fontBuffer, 'Cairo');
-      arabicFontLoaded = true;
-      console.log('✅ Arabic font registered successfully');
-    } else {
-      console.warn('⚠️ Font file missing. Arabic names will not display on wheel.');
-    }
-  } catch (e) {
-    console.error('⚠️ Font registration error:', e.message);
-    arabicFontLoaded = false;
-  }
-}
-
-(async () => {
-  await downloadFont();
-  registerFont();
-})();
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-  ],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+        GatewayIntentBits.DirectMessages
+    ]
 });
 
-// ================== [ Database ] ==================
-const db = {
-  config: {},
-  roulette: {},
-  hideSeek: {},
-  musicalChairs: {},
-  ticTacToe: {},
-  mafia: {},
-};
-function saveDB() { try { fs.writeFileSync('./db.json', JSON.stringify(db)); } catch(e){} }
-function loadDB() { try { if (fs.existsSync('./db.json')) Object.assign(db, JSON.parse(fs.readFileSync('./db.json', 'utf8'))); } catch(e){} }
-loadDB();
-setInterval(saveDB, 300000);
+const THEME_COLOR = '#8B0000'; // الأسود والأحمر الداكن
 
-// ================== [ Theme & Helpers ] ==================
-const MAIN_COLOR = 0xcc0000;
-const DARK_BG = '#1a1a1a';
-
-function getServerImage(guild, config = {}) {
-  if (config.generalImage) return config.generalImage;
-  if (guild.bannerURL({ size: 1024 })) return guild.bannerURL({ size: 1024 });
-  if (guild.iconURL({ size: 1024 })) return guild.iconURL({ size: 1024 });
-  return null;
-}
-
-function getGuildConfig(guildId) {
-  if (!db.config[guildId]) db.config[guildId] = { generalImage: null };
-  return db.config[guildId];
-}
-
-// ================== [ Roulette Canvas ] ==================
-function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
-  const size = 600;
-  const canvas = createCanvas(size, size);
-  const ctx = canvas.getContext('2d');
-  const centerX = size / 2, centerY = size / 2, radius = 230;
-
-  ctx.fillStyle = DARK_BG;
-  ctx.fillRect(0, 0, size, size);
-
-  const colors = ['#e74c3c', '#f1c40f', '#2ecc71', '#3498db', '#9b59b6', '#e67e22', '#1abc9c', '#e84393'];
-  const numPlayers = players.length || 1;
-  const anglePerSlice = (2 * Math.PI) / numPlayers;
-
-  for (let i = 0; i < numPlayers; i++) {
-    const startAngle = i * anglePerSlice + (rotationDegrees * Math.PI) / 180 - Math.PI / 2;
-    const endAngle = startAngle + anglePerSlice;
-
-    ctx.beginPath();
-    ctx.moveTo(centerX, centerY);
-    ctx.arc(centerX, centerY, radius, startAngle, endAngle);
-    ctx.closePath();
-    ctx.fillStyle = i === highlightIndex ? '#ffd700' : colors[i % colors.length];
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3;
-    ctx.stroke();
-
-    const textAngle = startAngle + anglePerSlice / 2;
-    const textRadius = radius * 0.55;
-    const textX = centerX + Math.cos(textAngle) * textRadius;
-    const textY = centerY + Math.sin(textAngle) * textRadius;
-
-    ctx.save();
-    ctx.translate(textX, textY);
-    ctx.rotate(textAngle + Math.PI / 2);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = arabicFontLoaded ? 'bold 17px "Cairo", Arial, sans-serif' : 'bold 17px Arial, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    let name;
-    if (arabicFontLoaded) {
-      name = players[i]?.displayName || players[i]?.username || `لاعب ${i + 1}`;
-      if (name.length > 10) name = name.substring(0, 9) + '…';
-    } else {
-      name = players[i]?.username?.substring(0, 10) || `P${i + 1}`;
-    }
-    ctx.fillText(name, 0, 0);
-    ctx.restore();
-  }
-
-  // center circle
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, 55, 0, 2 * Math.PI);
-  ctx.fillStyle = '#2c3e50';
-  ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 4;
-  ctx.stroke();
-  ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 28px "Cairo", Arial';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('🎡', centerX, centerY);
-
-  // pointer
-  ctx.beginPath();
-  ctx.moveTo(centerX, centerY - radius - 5);
-  ctx.lineTo(centerX - 25, centerY - radius - 40);
-  ctx.lineTo(centerX + 25, centerY - radius - 40);
-  ctx.closePath();
-  ctx.fillStyle = '#ff0000';
-  ctx.fill();
-  ctx.strokeStyle = '#ffffff';
-  ctx.lineWidth = 3;
-  ctx.stroke();
-
-  // outer ring
-  ctx.beginPath();
-  ctx.arc(centerX, centerY, radius + 18, 0, 2 * Math.PI);
-  ctx.strokeStyle = '#cc0000';
-  ctx.lineWidth = 8;
-  ctx.stroke();
-
-  return canvas.toBuffer('image/png');
-}
-
-async function fetchPlayers(guild, ids) {
-  const arr = [];
-  for (const id of ids) {
-    const m = await guild.members.fetch(id).catch(() => null);
-    arr.push(m ? { displayName: m.displayName, username: m.user.username } : { displayName: 'غير معروف', username: `ID: ${id}` });
-  }
-  return arr;
-}
-
-function createTTTButtons(board) {
-  const rows = [];
-  for (let i = 0; i < 3; i++) {
-    const row = new ActionRowBuilder();
-    for (let j = 0; j < 3; j++) {
-      const idx = i * 3 + j;
-      const label = board[idx] || '⬛';
-      row.addComponents(
-        new ButtonBuilder()
-          .setCustomId(`ttt_${idx}`)
-          .setLabel(label)
-          .setStyle(board[idx] ? ButtonStyle.Danger : ButtonStyle.Secondary)
-          .setDisabled(!!board[idx])
-      );
-    }
-    rows.push(row);
-  }
-  return rows;
-}
-
-function shuffle(array) {
-  for (let i = array.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [array[i], array[j]] = [array[j], array[i]];
-  }
-  return array;
-}
-
-// ================== [ Ready ] ==================
-client.once('ready', () => {
-  console.log(`✅ ${client.user.tag} ready`);
-  client.user.setActivity('🎲 !ألعاب', { type: ActivityType.Playing });
+client.on('ready', () => {
+    console.log(`✅ Professional Gaming Bot Logged in as ${client.user.tag}!`);
+    client.user.setActivity('!ألعاب | مركز الألعاب التفاعلي', { type: 3 });
 });
 
-// ================== [ Commands ] ==================
-client.on('messageCreate', async (message) => {
-  if (message.author.bot || !message.guild) return;
-  if (!message.content.startsWith('!')) return;
-  const args = message.content.slice(1).trim().split(/ +/);
-  const cmd = args.shift().toLowerCase();
-  const guildId = message.guild.id;
-  const config = getGuildConfig(guildId);
-  const serverImg = getServerImage(message.guild, config);
+// لوحة تحكم رئيسية تشبه البوتات الكبرى (ProBot/Emobot style)
+client.on('messageCreate', async message => {
+    if (message.author.bot) return;
+    const prefix = '!';
 
-  // ========== [ Games List ] ==========
-  if (cmd === 'ألعاب' || cmd === 'العاب' || cmd === 'games') {
-    const embed = new EmbedBuilder()
-      .setTitle('🎮 قائمة الألعاب')
-      .setColor(MAIN_COLOR)
-      .setDescription(
-        `🎡 **روليت** \`!روليت\`\n`+
-        `🎰 **ريبيكا** \`!ريبيكا\`\n`+
-        `🙈 **اختباء** \`!اختباء\`\n`+
-        `🪑 **كراسي** \`!كراسي\`\n`+
-        `❌⭕ **اكس او** \`!اكس_او @خصم\`\n`+
-        `🕵️ **مافيا** \`!مافيا\`\n\n`+
-        `⚙️ **للمشرفين:** \`!تعيين صورة_عامة <رابط>\` لتعيين صورة عامة`
-      )
-      .setFooter({ text: 'ثيم أحمر وأسود' });
-    if (serverImg) embed.setThumbnail(serverImg);
-    return message.channel.send({ embeds: [embed] });
-  }
+    if (message.content === prefix + 'ألعاب' || message.content === prefix + 'games') {
+        const embed = new EmbedBuilder()
+            .setTitle('🎮 مركز ألعاب التحدي والمرح المظلم')
+            .setDescription('أهلاً بك في نظام الألعاب الاحترافي.\nاختر اللعبة التي تود خوض غمارها من القائمة أدناه أو عبر الأوامر السريعة:')
+            .setColor(THEME_COLOR)
+            .addFields(
+                { name: '📝 `!ريبيكا`', value: 'حرف، حيوان، نبات، جماد، بلاد.', inline: true },
+                { name: '🫣 `!اختباء`', value: 'الاختباء السري في 25 صندوقاً وتفجيرها.', inline: true },
+                { name: '✊ `!حجرة`', value: 'حجرة ورقة مقص التكتيكية.', inline: true },
+                { name: '🪑 `!كراسي`', value: 'الكراسي الموسيقية الحماسية.', inline: true },
+                { name: '🎯 `!روليت`', value: 'الروليت الروسية الخطرة.', inline: true },
+                { name: '🏆 `!بطولة_اكس_او`', value: 'بطولة إكس أو التكتيكية.', inline: true },
+                { name: '🕵️‍♂️ `!مافيا`', value: 'لعبة المافيا وكشف الجواسيس.', inline: true }
+            )
+            .setFooter({ text: 'نظام الألعاب الآلي - يبدأ تلقائياً فور اكتمال الوقت المحدد' });
 
-  // ========== [ تعيين صورة عامة ] ==========
-  if (cmd === 'تعيين' && args[0] === 'صورة_عامة') {
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageGuild)) {
-      return message.reply('❌ تحتاج صلاحية إدارة السيرفر.');
-    }
-    const url = args.slice(1).join(' ');
-    if (!url) {
-      db.config[guildId].generalImage = null;
-      saveDB();
-      return message.reply('✅ تم إزالة الصورة العامة.');
-    }
-    db.config[guildId].generalImage = url;
-    saveDB();
-    return message.reply('✅ تم تعيين الصورة العامة.');
-  }
+        const selectMenu = new StringSelectMenuBuilder()
+            .setCustomId('game_select_menu')
+            .setPlaceholder('🎯 اختر لعبة لبدئها فوراً...')
+            .addOptions([
+                { label: 'لعبة ريبيكا (الحروف)', description: 'اختبر سرعة بديهتك في الحروف الأربعة', value: 'rebecca', emoji: '📝' },
+                { label: 'لعبة الاختباء السرية', description: 'اختبئ في الصناديق ونافس على البقاء', value: 'hide', emoji: '🫣' },
+                { label: 'حجرة ورقة مقص', description: 'المواجهة السريعة الكلاسيكية', value: 'rps', emoji: '✊' },
+                { label: 'الكراسي الموسيقية', description: 'اسرع واجلس قبل نفاذ الكراسي', value: 'chairs', emoji: '🪑' },
+                { label: 'الروليت الروسية', description: 'اختبار حظ مرعب بالمسدس', value: 'roulette', emoji: '🎯' },
+                { label: 'بطولة إكس أو', description: 'تحدي تكتيكي ثنائي الذكاء', value: 'tictactoe', emoji: '🏆' },
+                { label: 'لعبة المافيا', description: 'اكتشف الجاسوس السري بين أصدقائك', value: 'mafia', emoji: '🕵️‍♂️' }
+            ]);
 
-  // ========== [ ROULETTE ] ==========
-  if (cmd === 'روليت' || cmd === 'roulette') {
-    if (db.roulette[guildId]) return message.reply('⚠️ هناك جلسة روليت نشطة.');
-    db.roulette[guildId] = { players: [], messageId: null, channelId: message.channel.id };
-
-    const buf = drawWheel([]);
-    const att = new AttachmentBuilder(buf, { name: 'wheel.png' });
-    const embed = new EmbedBuilder()
-      .setTitle('🎡 روليت السيرفر')
-      .setDescription('**0 لاعبين**\nاضغط على الزر للانضمام!\n`!سحب` لبدء السحب\n`!إلغاء` للإلغاء')
-      .setColor(MAIN_COLOR)
-      .setImage('attachment://wheel.png')
-      .setFooter({ text: '🎡 استعد' });
-    if (serverImg) embed.setThumbnail(serverImg);
-
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('join_roulette').setLabel('🎯 انضم').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('leave_roulette').setLabel('🚫 خروج').setStyle(ButtonStyle.Secondary)
-    );
-    const msg = await message.channel.send({ embeds: [embed], components: [row], files: [att] });
-    db.roulette[guildId].messageId = msg.id;
-    saveDB();
-    return message.delete().catch(()=>{});
-  }
-
-  // ========== [ Spin Roulette ] ==========
-  if (cmd === 'سحب' || cmd === 'spin') {
-    const session = db.roulette[guildId];
-    if (!session || session.players.length < 2) return message.reply('⚠️ جلسة غير متاحة أو تحتاج لاعبَين على الأقل.');
-    const msg = await message.channel.messages.fetch(session.messageId).catch(()=>null);
-    if (!msg) { delete db.roulette[guildId]; saveDB(); return message.reply('❌ انتهت الجلسة.'); }
-
-    const players = await fetchPlayers(message.guild, session.players);
-    const listText = session.players.map((id,i)=>`**${i+1}.** <@${id}>`).join('\n');
-
-    for (let c=3; c>=1; c--) {
-      const b = drawWheel(players);
-      const a = new AttachmentBuilder(b,{name:'wheel.png'});
-      const embed = new EmbedBuilder().setTitle('🎡 جاري السحب').setDescription(`${listText}\n\n🔄 **${c}**...`).setColor(0xffaa00).setImage('attachment://wheel.png');
-      if (serverImg) embed.setThumbnail(serverImg);
-      await msg.edit({ embeds: [embed], components: [], files:[a] });
-      await new Promise(r=>setTimeout(r,1000));
+        const row = new ActionRowBuilder().addComponents(selectMenu);
+        return message.reply({ embeds: [embed], components: [row] });
     }
 
-    const totalDeg = 360*3+Math.floor(Math.random()*360);
-    for (let f=0; f<=20; f++) {
-      const rot = f*(totalDeg/20);
-      const b = drawWheel(players, rot);
-      const a = new AttachmentBuilder(b,{name:'wheel.png'});
-      const embed = new EmbedBuilder().setTitle('🎡 العجلة تدور!').setDescription(`${listText}\n\n🔄 تدور...`).setColor(0xffaa00).setImage('attachment://wheel.png');
-      if (serverImg) embed.setThumbnail(serverImg);
-      await msg.edit({ embeds: [embed], files:[a] });
-      await new Promise(r=>setTimeout(r,250));
-    }
-
-    const finalRot = totalDeg % 360;
-    const anglePerSlice = 360 / session.players.length;
-    const normalized = (360 - (finalRot % 360)) % 360;
-    const winIdx = Math.floor(normalized / anglePerSlice) % session.players.length;
-    const winner = session.players[winIdx];
-
-    const finalBuf = drawWheel(players, finalRot, winIdx);
-    const finalAtt = new AttachmentBuilder(finalBuf,{name:'wheel.png'});
-    const finalEmbed = new EmbedBuilder().setTitle('🏆 لدينا فائز!').setDescription(`${listText}\n\n🎉 **<@${winner}>**`).setColor(0x00ff00).setImage('attachment://wheel.png');
-    if (serverImg) finalEmbed.setThumbnail(serverImg);
-    await msg.edit({ embeds: [finalEmbed], files:[finalAtt] });
-
-    const congratsEmbed = new EmbedBuilder().setTitle('🎉 مبروك!').setDescription(`🏆 **<@${winner}>** فاز!`).setColor(0x00ff00);
-    if (serverImg) congratsEmbed.setThumbnail(serverImg);
-    await message.channel.send({ embeds: [congratsEmbed] });
-
-    delete db.roulette[guildId];
-    saveDB();
-    return;
-  }
-
-  if (cmd === 'إلغاء' || cmd === 'cancel') {
-    const session = db.roulette[guildId];
-    if (!session) return message.reply('⚠️ لا جلسة.');
-    const msg = await message.channel.messages.fetch(session.messageId).catch(()=>null);
-    if (msg) {
-      const embed = new EmbedBuilder().setTitle('🚫 ألغيت').setColor(0xff0000).setDescription('تم الإلغاء');
-      if (serverImg) embed.setThumbnail(serverImg);
-      await msg.edit({ embeds: [embed], components:[] });
-    }
-    delete db.roulette[guildId];
-    saveDB();
-    return message.reply('✅ ألغيت.');
-  }
-
-  // ========== [ Replica (Slot) ] ==========
-  if (cmd === 'ريبيكا' || cmd === 'replica') {
-    const symbols = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣', '⭐'];
-    const s = [symbols[Math.floor(Math.random()*symbols.length)], symbols[Math.floor(Math.random()*symbols.length)], symbols[Math.floor(Math.random()*symbols.length)]];
-    let result, col;
-    if (s[0]===s[1] && s[1]===s[2]) { result = '🎉 فوز كبير!'; col = 0x00ff00; }
-    else if (s[0]===s[1] || s[1]===s[2] || s[0]===s[2]) { result = '🎈 فوز صغير!'; col = 0xffaa00; }
-    else { result = '😔 خسارة'; col = 0xff0000; }
-    const embed = new EmbedBuilder()
-      .setTitle('🎰 ريبيكا')
-      .setDescription(`**${s[0]} | ${s[1]} | ${s[2]}**\n\n${result}`)
-      .setColor(col)
-      .setFooter({ text: 'ريبيكا | العب مرة أخرى' });
-    if (serverImg) embed.setThumbnail(serverImg);
-    return message.channel.send({ embeds: [embed] });
-  }
-
-  // ========== [ Hide and Seek ] ==========
-  if (cmd === 'اختباء' || cmd === 'hide') {
-    if (db.hideSeek[guildId]) return message.reply('⚠️ لعبة اختباء جارية.');
-    db.hideSeek[guildId] = { players: [], phase: 'joining', hiderId: null, votes: {}, messageId: null };
-    const embed = new EmbedBuilder()
-      .setTitle('🙈 اختباء')
-      .setDescription('انضم للعبة! عند البداية، سيختار البوت مختبئاً.\nالآخرون يتناقشون ويصوتون.\nاستخدم `!تصويت @شخص` للتصويت.')
-      .setColor(MAIN_COLOR);
-    if (serverImg) embed.setThumbnail(serverImg);
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('join_hide').setLabel('🙈 انضم').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('start_hide').setLabel('▶️ ابدأ').setStyle(ButtonStyle.Success)
-    );
-    const msg = await message.channel.send({ embeds: [embed], components: [row] });
-    db.hideSeek[guildId].messageId = msg.id;
-    saveDB();
-    return message.delete().catch(()=>{});
-  }
-
-  if (cmd === 'تصويت' || cmd === 'vote') {
-    const game = db.hideSeek[guildId];
-    if (!game || game.phase !== 'voting') return message.reply('⚠️ لا تصويت الآن.');
-    const target = message.mentions.members.first();
-    if (!target || !game.players.includes(target.id)) return message.reply('⚠️ منشن لاعب صحيح.');
-    if (game.votes[message.author.id]) return message.reply('⚠️ صوتت بالفعل.');
-    game.votes[message.author.id] = target.id;
-    message.reply(`✅ صوتت لـ ${target}.`);
-    if (Object.keys(game.votes).length >= game.players.length - 1) {
-      const counts = {};
-      Object.values(game.votes).forEach(id => counts[id] = (counts[id]||0)+1);
-      let max = 0, suspect = null;
-      for (const [id, cnt] of Object.entries(counts)) if (cnt > max) { max = cnt; suspect = id; }
-      const embed = new EmbedBuilder()
-        .setTitle(suspect === game.hiderId ? '🎉 الباحثون فازوا!' : '😈 المختبئ فاز!')
-        .setDescription(`المختبئ كان <@${game.hiderId}>.`)
-        .setColor(suspect === game.hiderId ? 0x00ff00 : 0xff0000);
-      if (serverImg) embed.setThumbnail(serverImg);
-      message.channel.send({ embeds: [embed] });
-      delete db.hideSeek[guildId];
-      saveDB();
-    }
-    return;
-  }
-
-  // ========== [ Musical Chairs ] ==========
-  if (cmd === 'كراسي' || cmd === 'chairs') {
-    if (db.musicalChairs[guildId]) return message.reply('⚠️ لعبة كراسي جارية.');
-    db.musicalChairs[guildId] = { players: [], messageId: null, active: false };
-    const embed = new EmbedBuilder()
-      .setTitle('🪑 كراسي')
-      .setDescription('انضم للعبة! عند البداية، سيتم إقصاء لاعب عشوائي كل جولة حتى يبقى واحد.')
-      .setColor(MAIN_COLOR);
-    if (serverImg) embed.setThumbnail(serverImg);
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('join_chairs').setLabel('🪑 انضم').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('start_chairs').setLabel('▶️ ابدأ').setStyle(ButtonStyle.Success)
-    );
-    const msg = await message.channel.send({ embeds: [embed], components: [row] });
-    db.musicalChairs[guildId].messageId = msg.id;
-    saveDB();
-    return message.delete().catch(()=>{});
-  }
-
-  // ========== [ Tic Tac Toe ] ==========
-  if (cmd === 'اكس_او' || cmd === 'xo') {
-    const opponent = message.mentions.members.first();
-    if (!opponent || opponent.id === message.author.id) return message.reply('⚠️ منشن خصمك.');
-    if (db.ticTacToe[guildId]) return message.reply('⚠️ لعبة XO جارية.');
-    const board = Array(9).fill(null);
-    db.ticTacToe[guildId] = { players: [message.author.id, opponent.id], turn: message.author.id, board, messageId: null };
-    const embed = new EmbedBuilder()
-      .setTitle('❌⭕ اكس او')
-      .setDescription(`<@${message.author.id}> (X) vs <@${opponent.id}> (O)\nدور <@${message.author.id}>`)
-      .setColor(MAIN_COLOR);
-    if (serverImg) embed.setThumbnail(serverImg);
-    const rows = createTTTButtons(board);
-    const msg = await message.channel.send({ embeds: [embed], components: rows });
-    db.ticTacToe[guildId].messageId = msg.id;
-    saveDB();
-    return message.delete().catch(()=>{});
-  }
-
-  // ========== [ Mafia ] ==========
-  if (cmd === 'مافيا' || cmd === 'mafia') {
-    if (db.mafia[guildId]) return message.reply('⚠️ لعبة مافيا جارية.');
-    db.mafia[guildId] = { players: [], phase: 'joining', roles: {}, nightKill: null, detectiveCheck: null, doctorSave: null, votes: {}, messageId: null };
-    const embed = new EmbedBuilder()
-      .setTitle('🕵️ مافيا')
-      .setDescription('انضم للعبة (5 لاعبين فأكثر).\nستوزع الأدوار تلقائياً.\nمافيا - محقق - طبيب - مواطنين.')
-      .setColor(MAIN_COLOR);
-    if (serverImg) embed.setThumbnail(serverImg);
-    const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId('join_mafia').setLabel('🕵️ انضم').setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId('start_mafia').setLabel('▶️ ابدأ').setStyle(ButtonStyle.Success)
-    );
-    const msg = await message.channel.send({ embeds: [embed], components: [row] });
-    db.mafia[guildId].messageId = msg.id;
-    saveDB();
-    return message.delete().catch(()=>{});
-  }
+    // التعامل مع القائمة المنسدلة لتحويل المستخدم للعبة المطلوبة
+    // (ملاحظة: يتم توجيه الأوامر الداخلية مباشرة بناءً على اختيار القائمة أو الأوامر الكتابية)
 });
 
-// ================== [ Interactions ] ==================
-client.on('interactionCreate', async (interaction) => {
-  if (!interaction.isButton() && !interaction.isStringSelectMenu()) return;
-  const guildId = interaction.guild.id;
-  const config = getGuildConfig(guildId);
-  const serverImg = getServerImage(interaction.guild, config);
-
-  // --- Roulette ---
-  if (interaction.customId === 'join_roulette') {
-    const session = db.roulette[guildId];
-    if (!session) return interaction.reply({ content: '⚠️ لا جلسة.', ephemeral: true });
-    if (session.players.includes(interaction.user.id)) return interaction.reply({ content: '⚠️ منضم.', ephemeral: true });
-    session.players.push(interaction.user.id);
-    const msg = await interaction.channel.messages.fetch(session.messageId).catch(()=>null);
-    if (msg) {
-      const players = await fetchPlayers(interaction.guild, session.players);
-      const buf = drawWheel(players);
-      const att = new AttachmentBuilder(buf,{name:'wheel.png'});
-      const embed = EmbedBuilder.from(msg.embeds[0])
-        .setDescription(`**${session.players.length} لاعبين**\nاضغط للانضمام!\n\`!سحب\` للبدء\n**المشاركون:** ${session.players.map(p=>`<@${p}>`).join(', ')}`)
-        .setImage('attachment://wheel.png');
-      if (serverImg) embed.setThumbnail(serverImg);
-      await msg.edit({ embeds: [embed], files: [att] });
+// تفاعل القائمة المنسدلة
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isStringSelectMenu()) return;
+    if (interaction.customId === 'game_select_menu') {
+        const choice = interaction.values[0];
+        await interaction.reply({ content: `🚀 تم استلام طلبك! جارٍ إطلاق لعبة **${choice}**...`, ephemeral: true });
+        
+        // محاكاة إطلاق الأمر تلقائياً في الشات
+        if (choice === 'rebecca') triggerRebecca(interaction.message);
+        if (choice === 'hide') triggerHide(interaction.message);
+        if (choice === 'rps') triggerRPS(interaction.message);
+        if (choice === 'chairs') triggerChairs(interaction.message);
+        if (choice === 'roulette') triggerRoulette(interaction.message);
+        if (choice === 'tictactoe') triggerTTT(interaction.message);
+        if (choice === 'mafia') triggerMafia(interaction.message);
     }
-    saveDB();
-    return interaction.reply({ content: '✅ انضممت.', ephemeral: true });
-  }
+});
 
-  if (interaction.customId === 'leave_roulette') {
-    const session = db.roulette[guildId];
-    if (!session || !session.players.includes(interaction.user.id)) return interaction.reply({ content: '⚠️ غير منضم.', ephemeral: true });
-    session.players = session.players.filter(id=>id!==interaction.user.id);
-    const msg = await interaction.channel.messages.fetch(session.messageId).catch(()=>null);
-    if (msg) {
-      const players = await fetchPlayers(interaction.guild, session.players);
-      const buf = drawWheel(players);
-      const att = new AttachmentBuilder(buf,{name:'wheel.png'});
-      const part = session.players.length ? session.players.map(p=>`<@${p}>`).join(', ') : 'لا أحد';
-      const embed = EmbedBuilder.from(msg.embeds[0])
-        .setDescription(`**${session.players.length} لاعبين**\n**المشاركون:** ${part}`)
-        .setImage('attachment://wheel.png');
-      if (serverImg) embed.setThumbnail(serverImg);
-      await msg.edit({ embeds: [embed], files: [att] });
-    }
-    saveDB();
-    return interaction.reply({ content: '🚫 خرجت.', ephemeral: true });
-  }
+// ==========================================
+// الدوال البرمجية للألعاب (تعمل تلقائياً)
+// ==========================================
 
-  // --- Hide & Seek ---
-  if (interaction.customId === 'join_hide') {
-    const game = db.hideSeek[guildId];
-    if (!game || game.phase !== 'joining') return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
-    if (game.players.includes(interaction.user.id)) return interaction.reply({ content: '⚠️ منضم.', ephemeral: true });
-    game.players.push(interaction.user.id);
-    interaction.reply({ content: '✅ انضممت.', ephemeral: true });
-    saveDB();
-  }
+async function triggerRebecca(message) {
+    const playersMap = new Map();
+    const durationSeconds = 15;
+    const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
 
-  if (interaction.customId === 'start_hide') {
-    const game = db.hideSeek[guildId];
-    if (!game || game.phase !== 'joining') return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
-    if (game.players.length < 3) return interaction.reply({ content: '⚠️ تحتاج 3 لاعبين.', ephemeral: true });
-    game.phase = 'voting';
-    game.hiderId = game.players[Math.floor(Math.random() * game.players.length)];
-    game.votes = {};
-    const msg = await interaction.channel.messages.fetch(game.messageId).catch(()=>null);
-    if (msg) {
-      const embed = new EmbedBuilder()
-        .setTitle('🙈 بدأت!')
-        .setDescription(`تم اختيار المختبئ.\nتناقشوا وصوتوا.\nاستخدم \`!تصويت @شخص\`\nاللاعبون: ${game.players.map(p=>`<@${p}>`).join(', ')}`)
-        .setColor(MAIN_COLOR);
-      if (serverImg) embed.setThumbnail(serverImg);
-      await msg.edit({ embeds: [embed], components: [] });
-    }
-    try { await interaction.guild.members.cache.get(game.hiderId)?.send('🕵️ أنت المختبئ!'); } catch(e){}
-    interaction.reply({ content: '✅ بدأت.', ephemeral: true });
-    saveDB();
-  }
-
-  // --- Chairs ---
-  if (interaction.customId === 'join_chairs') {
-    const game = db.musicalChairs[guildId];
-    if (!game || game.active) return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
-    if (game.players.includes(interaction.user.id)) return interaction.reply({ content: '⚠️ منضم.', ephemeral: true });
-    game.players.push(interaction.user.id);
-    interaction.reply({ content: '✅ انضممت.', ephemeral: true });
-    saveDB();
-  }
-
-  if (interaction.customId === 'start_chairs') {
-    const game = db.musicalChairs[guildId];
-    if (!game || game.active) return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
-    if (game.players.length < 3) return interaction.reply({ content: '⚠️ تحتاج 3+.', ephemeral: true });
-    game.active = true;
-    interaction.reply('✅ بدأت!');
-    const msg = await interaction.channel.messages.fetch(game.messageId).catch(()=>null);
-    if (!msg) return;
-    let remaining = [...game.players];
-    while (remaining.length > 1) {
-      const eliminated = remaining.splice(Math.floor(Math.random() * remaining.length), 1)[0];
-      const embed = new EmbedBuilder()
-        .setTitle('🪑 كراسي')
-        .setDescription(`**المتبقون:** ${remaining.map(p=>`<@${p}>`).join(', ')}\n\n❌ **أقصي:** <@${eliminated}>`)
-        .setColor(MAIN_COLOR);
-      if (serverImg) embed.setThumbnail(serverImg);
-      await msg.edit({ embeds: [embed] });
-      await new Promise(r=>setTimeout(r,3000));
-    }
-    const winner = remaining[0];
     const embed = new EmbedBuilder()
-      .setTitle('🏆 الفائز')
-      .setDescription(`🎉 **<@${winner}>** ربح!`)
-      .setColor(0x00ff00);
-    if (serverImg) embed.setThumbnail(serverImg);
-    await msg.edit({ embeds: [embed], components: [] });
-    delete db.musicalChairs[guildId];
-    saveDB();
-  }
+        .setTitle('📝 لعبة ريبيكا (حرف، حيوان، نبات، جماد، بلاد)')
+        .setDescription(`اضغط على زر **انضمام** للمشاركة!\n\n⏳ **تبدأ اللعبة تلقائياً بعد:** <t:${endTime}:R>`)
+        .setColor(THEME_COLOR);
 
-  // --- Tic Tac Toe ---
-  if (interaction.customId.startsWith('ttt_')) {
-    const game = db.ticTacToe[guildId];
-    if (!game) return interaction.reply({ content: '⚠️ لا لعبة.', ephemeral: true });
-    if (interaction.user.id !== game.turn) return interaction.reply({ content: '⚠️ ليس دورك.', ephemeral: true });
-    const idx = parseInt(interaction.customId.split('_')[1]);
-    if (game.board[idx] !== null) return interaction.reply({ content: '⚠️ مشغول.', ephemeral: true });
-    const symbol = game.turn === game.players[0] ? 'X' : 'O';
-    game.board[idx] = symbol;
-    const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-    let winner = null;
-    for (const [a,b,c] of wins) if (game.board[a] && game.board[a]===game.board[b] && game.board[a]===game.board[c]) winner = game.board[a];
-    if (winner || !game.board.includes(null)) {
-      const desc = winner ? `🏆 **${winner === 'X' ? `<@${game.players[0]}>` : `<@${game.players[1]}>`}** فاز!` : '🤝 تعادل';
-      const embed = new EmbedBuilder().setTitle('XO').setDescription(desc).setColor(MAIN_COLOR);
-      if (serverImg) embed.setThumbnail(serverImg);
-      await interaction.update({ embeds: [embed], components: [] });
-      delete db.ticTacToe[guildId];
-      saveDB();
-      return;
-    }
-    game.turn = game.turn === game.players[0] ? game.players[1] : game.players[0];
-    const rows = createTTTButtons(game.board);
-    const embed = new EmbedBuilder().setTitle('XO').setDescription(`دور <@${game.turn}>`).setColor(MAIN_COLOR);
-    if (serverImg) embed.setThumbnail(serverImg);
-    await interaction.update({ embeds: [embed], components: rows });
-    saveDB();
-  }
+    const joinBtn = new ButtonBuilder().setCustomId('rebecca_join').setLabel('انضمام 🟢').setStyle(ButtonStyle.Danger);
+    const gameMessage = await message.channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(joinBtn)] });
 
-  // --- Mafia ---
-  if (interaction.customId === 'join_mafia') {
-    const game = db.mafia[guildId];
-    if (!game || game.phase !== 'joining') return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
-    if (game.players.includes(interaction.user.id)) return interaction.reply({ content: '⚠️ منضم.', ephemeral: true });
-    game.players.push(interaction.user.id);
-    interaction.reply({ content: '✅ انضممت.', ephemeral: true });
-    saveDB();
-  }
-
-  if (interaction.customId === 'start_mafia') {
-    const game = db.mafia[guildId];
-    if (!game || game.phase !== 'joining') return interaction.reply({ content: '⚠️ لا يمكن.', ephemeral: true });
-    if (game.players.length < 5) return interaction.reply({ content: '⚠️ تحتاج 5+.', ephemeral: true });
-    const shuffled = shuffle([...game.players]);
-    const mafiaCount = Math.max(1, Math.floor(shuffled.length / 3));
-    const mafia = shuffled.slice(0, mafiaCount);
-    const detective = shuffled[mafiaCount];
-    const doctor = shuffled[mafiaCount + 1];
-    game.roles = {};
-    shuffled.forEach(id => {
-      if (mafia.includes(id)) game.roles[id] = 'mafia';
-      else if (id === detective) game.roles[id] = 'detective';
-      else if (id === doctor) game.roles[id] = 'doctor';
-      else game.roles[id] = 'citizen';
+    const collector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+    collector.on('collect', async i => {
+        playersMap.set(i.user.id, { id: i.user.id, name: i.user.username, answers: null });
+        await i.reply({ content: '✅ انضممت للعبة ريبيكا!', ephemeral: true });
     });
-    game.phase = 'night';
-    for (const id of game.players) {
-      try {
-        const member = await interaction.guild.members.fetch(id);
-        const roleName = game.roles[id] === 'mafia' ? 'مافيا' : game.roles[id] === 'detective' ? 'محقق' : game.roles[id] === 'doctor' ? 'طبيب' : 'مواطن';
-        let extra = '';
-        if (game.roles[id] === 'mafia') extra = '\nزملاؤك: ' + mafia.filter(i=>i!==id).map(i=>`<@${i}>`).join(', ');
-        await member.send(`دورك: **${roleName}**${extra}`);
-      } catch(e) {}
-    }
-    const msg = await interaction.channel.messages.fetch(game.messageId).catch(()=>null);
-    if (msg) {
-      const embed = new EmbedBuilder().setTitle('🕵️ مافيا - الليل').setDescription('الليل حل. المافيا تختار ضحية (خاص). المحقق يتحقق. الطبيب يحمي.').setColor(MAIN_COLOR);
-      if (serverImg) embed.setThumbnail(serverImg);
-      await msg.edit({ embeds: [embed], components: [] });
-    }
-    interaction.reply('✅ بدأت! تفقد الخاص.');
-    saveDB();
-  }
-});
 
-// ================== [ Login ] ==================
-client.login(TOKEN).catch(e => { console.error('❌ Login failed:', e); process.exit(1); });
+    collector.on('end', async () => {
+        let playersArr = Array.from(playersMap.values());
+        if (playersArr.length < 1) return gameMessage.edit({ content: '❌ إلغاء لعدم وجود لاعبين.', embeds: [], components: [] });
+
+        const letters = ['أ', 'ب', 'ت', 'ج', 'ح', 'خ', 'د', 'ر', 'س', 'ش', 'ع', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي'];
+        const chosenLetter = letters[Math.floor(Math.random() * letters.length)];
+
+        const startEmbed = new EmbedBuilder()
+            .setTitle('📝 انطلقت لعبة ريبيكا تلقائياً!')
+            .setDescription(`الحرف المطلوب: ** \` ${chosenLetter} \` **\n\n⏳ **لديك 45 ثانية للإجابة عبر الزر أدناه!**`)
+            .setColor(THEME_COLOR);
+
+        const ansBtn = new ButtonBuilder().setCustomId('rebecca_modal_btn').setLabel('اكتب إجاباتك ✍️').setStyle(ButtonStyle.Danger);
+        await gameMessage.edit({ content: '🎮 **بدأت الجولة!**', embeds: [startEmbed], components: [new ActionRowBuilder().addComponents(ansBtn)] });
+
+        let btnCol = gameMessage.createMessageComponentCollector({ componentType: ComponentType.Button, time: 45000 });
+        btnCol.on('collect', async i => {
+            if (!playersMap.has(i.user.id)) return i.reply({ content: '⚠️ أنت لست مشاركاً!', ephemeral: true });
+            const modal = new ModalBuilder().setCustomId(`modal_${i.user.id}`).setTitle(`إجابات ريبيكا (${chosenLetter})`);
+            modal.addComponents(
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('animal').setLabel('حيوان').setStyle(TextInputStyle.Short).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('plant').setLabel('نبات').setStyle(TextInputStyle.Short).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('object').setLabel('جماد').setStyle(TextInputStyle.Short).setRequired(true)),
+                new ActionRowBuilder().addComponents(new TextInputBuilder().setCustomId('country').setLabel('بلاد').setStyle(TextInputStyle.Short).setRequired(true))
+            );
+            await i.showModal(modal);
+            try {
+                let sub = await i.awaitModalSubmit({ filter: m => m.user.id === i.user.id, time: 40000 });
+                playersMap.get(i.user.id).answers = {
+                    animal: sub.fields.getTextInputValue('animal'),
+                    plant: sub.fields.getTextInputValue('plant'),
+                    object: sub.fields.getTextInputValue('object'),
+                    country: sub.fields.getTextInputValue('country')
+                };
+                await sub.reply({ content: '✅ تم استلام إجاباتك السرية!', ephemeral: true });
+            } catch(e) {}
+        });
+
+        setTimeout(async () => {
+            let desc = `الحرف: ** \` ${chosenLetter} \` **\n\n`;
+            playersArr.forEach(p => {
+                desc += p.answers ? `👤 **${p.name}**:\n حيوان: ${p.answers.animal} | نبات: ${p.answers.plant} | جماد: ${p.answers.object} | بلاد: ${p.answers.country}\n\n` : `👤 **${p.name}**: ❌ لم يجب.\n\n`;
+            });
+            await message.channel.send({ embeds: [new EmbedBuilder().setTitle('📊 نتائج ريبيكا').setDescription(desc).setColor(THEME_COLOR)] });
+            await gameMessage.edit({ content: '🎉 **انتهت اللعبة!**', components: [] }).catch(()=>{});
+        }, 46000);
+    });
+}
+
+async function triggerHide(message) {
+    const playersMap = new Map();
+    const durationSeconds = 15;
+    const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+
+    const embed = new EmbedBuilder()
+        .setTitle('🫣 لعبة الاختباء المظلمة (25 صندوقاً)')
+        .setDescription(`اضغط على زر **انضمام** للمشاركة!\n\n⏳ **تبدأ اللعبة تلقائياً بعد:** <t:${endTime}:R>`)
+        .setColor(THEME_COLOR);
+
+    const joinBtn = new ButtonBuilder().setCustomId('hide_join').setLabel('انضمام 🟢').setStyle(ButtonStyle.Danger);
+    const gameMessage = await message.channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(joinBtn)] });
+
+    const collector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+    collector.on('collect', async i => {
+        playersMap.set(i.user.id, { id: i.user.id, name: i.user.username, alive: true, hidingSpot: null });
+        await i.reply({ content: '✅ انضممت للاختباء!', ephemeral: true });
+    });
+
+    collector.on('end', async () => {
+        let playersArr = Array.from(playersMap.values());
+        if (playersArr.length < 1) return gameMessage.edit({ content: '❌ إلغاء لعدم وجود لاعبين.', embeds: [], components: [] });
+
+        await gameMessage.edit({ content: `🎮 **انطلقت مرحلة الاختباء تلقائياً!**`, embeds: [new EmbedBuilder().setTitle('🫣 اختر صندوقاً سرياً').setDescription('تفقد رسائلك الخاصة (DM)').setColor(THEME_COLOR)], components: [] });
+
+        for (let player of playersArr) {
+            try {
+                let userObj = await message.client.users.fetch(player.id);
+                let rows = [];
+                for(let r=0; r<5; r++) {
+                    let comps = [];
+                    for(let c=0; c<5; c++) {
+                        let num = r*5 + c + 1;
+                        comps.push(new ButtonBuilder().setCustomId(`b_${num}`).setLabel(`${num}`).setStyle(ButtonStyle.Secondary));
+                    }
+                    rows.push(new ActionRowBuilder().addComponents(comps));
+                }
+                let boxMsg = await userObj.send({ content: '🫣 اختر صندوقاً من 1 إلى 25 لتختبئ فيه (سري تماماً ولا يراه غيرك):', components: rows });
+                let boxCollector = boxMsg.createMessageComponentCollector({ time: 20000 });
+                let chosen = false;
+
+                boxCollector.on('collect', async bi => {
+                    player.hidingSpot = parseInt(bi.customId.split('_')[1]);
+                    chosen = true;
+                    // الاختباء السري يظهر للمستخدم في الشات الخاص به (Ephemeral)
+                    await bi.update({ content: `🤫 **تم تأكيد اختبائك السري في الصندوق رقم: ${player.hidingSpot}**`, components: [] });
+                    boxCollector.stop();
+                });
+
+                boxCollector.on('end', () => {
+                    if (!chosen) player.hidingSpot = Math.floor(Math.random() * 25) + 1;
+                });
+            } catch(e) {
+                player.hidingSpot = Math.floor(Math.random() * 25) + 1;
+            }
+        }
+
+        await new Promise(res => setTimeout(res, 22000));
+        await message.channel.send(`💣 **بدأت عملية التفجير في الظلام!**`);
+
+        let explodedBoxes = [];
+        while(true) {
+            let alive = playersArr.filter(p => p.alive);
+            if (alive.length <= 1) break;
+            let available = [];
+            for(let i=1; i<=25; i++) if(!explodedBoxes.includes(i)) available.push(i);
+            if (available.length === 0) break;
+
+            let target = available[Math.floor(Math.random() * available.length)];
+            explodedBoxes.push(target);
+            await new Promise(res => setTimeout(res, 2500));
+
+            let caught = playersArr.filter(p => p.alive && p.hidingSpot === target);
+            for(let cp of caught) {
+                cp.alive = false;
+                // إعلان خسارة وخروج اللاعب فقط بدون ذكر تفاصيل المربع المفجر
+                await message.channel.send(`💥 **خسارة!** تم إقصاء اللاعب **${cp.name}** من اللعبة! ❌`);
+            }
+        }
+
+        let surviving = playersArr.filter(p => p.alive);
+        let finalDesc = surviving.length === 1 ? `👑 البطل الناجي:\n\n✨ **${surviving[0].name}** ✨` : `🤝 تعادل الناجين!`;
+        await message.channel.send({ embeds: [new EmbedBuilder().setTitle('🏆 نهاية لعبة الاختباء').setDescription(finalDesc).setColor(THEME_COLOR)] });
+    });
+}
+
+async function triggerRPS(message) {
+    const gameMsg = await message.channel.send({ embeds: [new EmbedBuilder().setTitle('✊ لعبة حجرة ورقة مقص').setDescription('⏳ **انطلقت اللعبة تلقائياً!**\nاختر حركتك:').setColor(THEME_COLOR)], components: [
+        new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('rps_rock').setLabel('حجرة ✊').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('rps_paper').setLabel('ورقة 📄').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('rps_scissors').setLabel('مقص ✂️').setStyle(ButtonStyle.Primary)
+        )
+    ]});
+
+    let choices = {};
+    const collector = gameMsg.createMessageComponentCollector({ time: 15000 });
+    collector.on('collect', async i => {
+        choices[i.user.id] = { name: i.user.username, choice: i.customId.split('_')[1] };
+        await i.reply({ content: `✅ تم تسجيل خيارك!`, ephemeral: true });
+    });
+
+    collector.on('end', async () => {
+        let entries = Object.values(choices);
+        if (entries.length < 1) return gameMsg.edit({ content: '❌ انتهى الوقت ولم يلعب أحد.', embeds: [], components: [] });
+        
+        let botChoice = ['rock', 'paper', 'scissors'][Math.floor(Math.random() * 3)];
+        let resText = `خيار البوت كان: **${botChoice}**\n\n`;
+        entries.forEach(e => { resText += `👤 **${e.name}** اختار: \`${e.choice}\`\n`; });
+
+        await gameMsg.edit({ embeds: [new EmbedBuilder().setTitle('🎯 نتائج حجرة ورقة مقص').setDescription(resText).setColor(THEME_COLOR)], components: [] });
+    });
+}
+
+async function triggerChairs(message) {
+    const playersMap = new Map();
+    const durationSeconds = 15;
+    const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+
+    const embed = new EmbedBuilder()
+        .setTitle('🪑 لعبة الكراسي الموسيقية')
+        .setDescription(`اضغط **انضمام** للمشاركة!\n\n⏳ **تبدأ اللعبة تلقائياً بعد:** <t:${endTime}:R>`)
+        .setColor(THEME_COLOR);
+
+    const gameMsg = await message.channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('chair_join').setLabel('انضمام 🟢').setStyle(ButtonStyle.Danger))] });
+
+    const collector = gameMsg.createMessageComponentCollector({ time: durationSeconds * 1000 });
+    collector.on('collect', async i => {
+        playersMap.set(i.user.id, i.user.username);
+        await i.reply({ content: '✅ انضممت للكراسي!', ephemeral: true });
+    });
+
+    collector.on('end', async () => {
+        let players = Array.from(playersMap.keys());
+        if (players.length < 1) return gameMsg.edit({ content: '❌ تم الإلغاء.', embeds: [], components: [] });
+
+        let chairsCount = Math.max(1, players.length - 1);
+        await gameMsg.edit({ content: '🎵 **توقفت الموسيقى! اسرع واجلس!**', embeds: [], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('sit').setLabel('اجلس بسرعة 🪑').setStyle(ButtonStyle.Danger))] });
+
+        let seated = new Set();
+        let sitCol = gameMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 5000 });
+        sitCol.on('collect', async i => {
+            if (players.includes(i.user.id) && seated.size < chairsCount) {
+                seated.add(i.user.id);
+                await i.reply({ content: '🪑 حصلت على كرسي!', ephemeral: true });
+            } else {
+                await i.reply({ content: '❌ متأخر!', ephemeral: true });
+            }
+        });
+
+        sitCol.on('end', async () => {
+            let losers = players.filter(id => !seated.has(id));
+            let loserNames = losers.map(id => playersMap.get(id)).join(', ');
+            let winnerNames = Array.from(seated).map(id => playersMap.get(id)).join(', ');
+            await message.channel.send({ embeds: [new EmbedBuilder().setTitle('🪑 نتائج الكراسي').setDescription(`✨ الجالسون: **${winnerNames || 'لا أحد'}**\n💀 الخارجون: **${loserNames || 'لا أحد'}**`).setColor(THEME_COLOR)] });
+        });
+    });
+}
+
+async function triggerRoulette(message) {
+    const gameMsg = await message.channel.send({ embeds: [new EmbedBuilder().setTitle('🎯 الروليت الروسية الخطرة').setDescription('⏳ **انطلقت اللعبة تلقائياً!**\nاضغط على الزر لتجربة حظك في السحب!').setColor(THEME_COLOR)], components: [
+        new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('trigger').setLabel('اسحب الزناد 🔫').setStyle(ButtonStyle.Danger))
+    ]});
+
+    let bullet = Math.floor(Math.random() * 6) + 1;
+    let count = 0;
+    let collector = gameMsg.createMessageComponentCollector({ time: 20000 });
+
+    collector.on('collect', async i => {
+        count++;
+        if (count === bullet) {
+            collector.stop();
+            await i.update({ embeds: [new EmbedBuilder().setTitle('💥 بانغ!').setDescription(`💀 **${i.user.username}** سحب الزناد وكانت الرصاصة من نصيبه!`).setColor(THEME_COLOR)], components: [] });
+        } else {
+            await i.reply({ content: '✅ نجوت هذه المرة.. مرر المسدس!', ephemeral: true });
+        }
+    });
+}
+
+async function triggerTTT(message) {
+    const waitingEmbed = new EmbedBuilder()
+        .setTitle('🏆 بطولة إكس أو التكتيكية')
+        .setDescription('⏳ في انتظار منافس للانضمام...\n**تبدأ اللعبة تلقائياً خلال 15 ثانية!**')
+        .setColor(THEME_COLOR);
+
+    const gameMsg = await message.channel.send({ embeds: [waitingEmbed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('ttt_join').setLabel('انضمام كمنافس 🟢').setStyle(ButtonStyle.Danger))] });
+    let players = [];
+
+    const collector = gameMsg.createMessageComponentCollector({ time: 15000 });
+    collector.on('collect', async i => {
+        if (players.length < 2 && !players.includes(i.user.id)) {
+            players.push(i.user.id);
+            await i.reply({ content: '✅ انضممت للبطولة!', ephemeral: true });
+            if (players.length === 2) collector.stop('ready');
+        }
+    });
+
+    collector.on('end', async () => {
+        if (players.length < 2) return gameMsg.edit({ content: '❌ إلغاء لعدم اكتمال اللاعبين.', embeds: [], components: [] });
+
+        let board = Array(9).fill(null);
+        let turnIndex = 0;
+
+        const getRows = () => {
+            let rows = [];
+            for(let r=0; r<3; r++) {
+                let comps = [];
+                for(let c=0; c<3; c++) {
+                    let idx = r*3 + c;
+                    let val = board[idx];
+                    comps.push(new ButtonBuilder().setCustomId(`t_${idx}`).setLabel(val === 'X' ? '❌' : val === 'O' ? '⭕' : `${idx+1}`).setStyle(val ? ButtonStyle.Secondary : ButtonStyle.Danger).setDisabled(val !== null));
+                }
+                rows.push(new ActionRowBuilder().addComponents(comps));
+            }
+            return rows;
+        };
+
+        await gameMsg.edit({ content: '🎮 **بدأت مواجهة البطولة تلقائياً!**', embeds: [new EmbedBuilder().setTitle('🏆 بطولة إكس أو').setDescription(`دور: <@${players[turnIndex]}>`).setColor(THEME_COLOR)], components: getRows() });
+
+        let playCol = gameMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 60000 });
+        playCol.on('collect', async i => {
+            if (i.user.id !== players[turnIndex]) return i.reply({ content: '⚠️ ليس دورك!', ephemeral: true });
+            let idx = parseInt(i.customId.split('_')[1]);
+            board[idx] = turnIndex === 0 ? 'X' : 'O';
+
+            let wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+            let winner = wins.find(w => board[w[0]] && board[w[0]] === board[w[1]] && board[w[0]] === board[w[2]]);
+
+            if (winner) {
+                playCol.stop();
+                return i.update({ embeds: [new EmbedBuilder().setTitle('🏆 نهاية البطولة').setDescription(`🎉 الفائز: <@${players[turnIndex]}>`).setColor(THEME_COLOR)], components: getRows() });
+            }
+
+            turnIndex = turnIndex === 0 ? 1 : 0;
+            await i.update({ embeds: [new EmbedBuilder().setTitle('🏆 بطولة إكس أو').setDescription(`دور: <@${players[turnIndex]}>`).setColor(THEME_COLOR)], components: getRows() });
+        });
+    });
+}
+
+async function triggerMafia(message) {
+    const playersMap = new Map();
+    const durationSeconds = 15;
+    const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+
+    const embed = new EmbedBuilder()
+        .setTitle('🕵️‍♂️ لعبة المافيا السرية')
+        .setDescription(`اضغط على زر **انضمام** للمشاركة!\n\n⏳ **تبدأ اللعبة تلقائياً بعد:** <t:${endTime}:R>`)
+        .setColor(THEME_COLOR);
+
+    const gameMsg = await message.channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId('mafia_join').setLabel('انضمام 🟢').setStyle(ButtonStyle.Danger))] });
+
+    const collector = gameMsg.createMessageComponentCollector({ time: durationSeconds * 1000 });
+    collector.on('collect', async i => {
+        playersMap.set(i.user.id, { id: i.user.id, name: i.user.username, role: 'مواطن' });
+        await i.reply({ content: '✅ انضممت للمافيا!', ephemeral: true });
+    });
+
+    collector.on('end', async () => {
+        let playersArr = Array.from(playersMap.values());
+        if (playersArr.length < 3) return gameMsg.edit({ content: '❌ تحتاج اللعبة إلى 3 لاعبين على الأقل.', embeds: [], components: [] });
+
+        let mafiaIdx = Math.floor(Math.random() * playersArr.length);
+        playersArr[mafiaIdx].role = 'مافيا';
+
+        for (let p of playersArr) {
+            try {
+                let u = await message.client.users.fetch(p.id);
+                await u.send({ embeds: [new EmbedBuilder().setTitle('🕵️‍♂️ هويتك السرية').setDescription(`دورك في هذه الجولة هو: **${p.role}**`).setColor(THEME_COLOR)] });
+            } catch(e) {}
+        }
+
+        await gameMsg.edit({ content: '🕵️‍♂️ **توزعت الأدوار في الظلام!** تحقق من رسائلك الخاصة واكتشف من هو المافيا في الشات!', embeds: [new EmbedBuilder().setTitle('🕵️‍♂️ مرحلة النقاش').setDescription('ناقشوا واكتشفوا من هو المافيا بينكم!').setColor(THEME_COLOR)], components: [] });
+    });
+}
+
+client.login(process.env.TOKEN);
