@@ -19,14 +19,17 @@ const client = new Client({
 const THEME_COLOR = '#0A0A0A'; // أسود فخم مطفي
 
 client.on('ready', () => {
-    console.log(`✅ Hide and Seek Bot Logged in as ${client.user.tag}!`);
-    client.user.setActivity('!اختباء | ساحة الظلام', { type: 3 });
+    console.log(`✅ Bot Logged in as ${client.user.tag}!`);
+    client.user.setActivity('!اختباء أو !كراسي | ساحة الظلام', { type: 3 });
 });
 
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
     const prefix = '!';
 
+    // ==========================================
+    // 1. لعبة الاختباء (مطابقة تماماً لما طلبتها)
+    // ==========================================
     if (message.content === prefix + 'اختباء' || message.content === prefix + 'hide') {
         const playersMap = new Map();
         const MAX_PLAYERS = 15;
@@ -154,7 +157,6 @@ client.on('messageCreate', async message => {
                         .setDescription(`دور البطل: <@${currentPlayer.id}>\nاختر صندوقاً لتفجيره.\n⏳ **الوقت:** 10 ثوانٍ`)
                         .setColor(THEME_COLOR);
 
-                    // منشن صاحب الدور خارجي للارسال والتنبيه
                     let turnMsg = await message.channel.send({ content: `<@${currentPlayer.id}> دورك الآن:`, embeds: [turnEmbed], components: renderBoxesRows(false, boxStatusMap) });
 
                     let turnCollector = turnMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 10000 });
@@ -186,7 +188,7 @@ client.on('messageCreate', async message => {
 
                         if (caughtPlayers.length > 0) {
                             let pingList = caughtPlayers.map(cp => `<@${cp.id}>`).join(' ');
-                            pingContent = `🚨 **خسارة وإقصاء:** ${pingList}`; // منشن خارجي حقيقي يصل للتنبيهات
+                            pingContent = `🚨 **خسارة وإقصاء:** ${pingList}`;
                             for (let cp of caughtPlayers) {
                                 cp.alive = false;
                                 resultText += `تم كشف وإقصاء: <@${cp.id}>\n`;
@@ -260,6 +262,222 @@ client.on('messageCreate', async message => {
                     .setDescription(`👑 الناجون:\n` + survivingPlayers.map(p => `<@${p.id}>`).join('\n'));
                     let pings = survivingPlayers.map(p => `<@${p.id}>`).join(' ');
                     await message.channel.send({ content: `👑 الناجون: ${pings}`, embeds: [finalEmbed] });
+                }
+
+            } catch (error) {
+                console.error(error);
+            }
+        });
+    }
+
+    // ==========================================
+    // 2. لعبة الكراسي الموسيقية الجديدة
+    // ==========================================
+    if (message.content === prefix + 'كراسي' || message.content === prefix + 'chairs') {
+        const playersMap = new Map();
+        const MAX_PLAYERS = 15;
+        const durationSeconds = 15; 
+        const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+
+        const embed = new EmbedBuilder()
+            .setTitle('◆ لُعبة الكراسي الموسيقية')
+            .setDescription(`انضم إلى الساحة، والبقاء للأسرع.\n\n⏳ **تبدأ المواجهة خلال:** <t:${endTime}:R>`)
+            .setColor(THEME_COLOR)
+            .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
+
+        const joinBtn = new ButtonBuilder().setCustomId('chair_join').setLabel('دخول').setStyle(ButtonStyle.Secondary);
+        const leaveBtn = new ButtonBuilder().setCustomId('chair_leave').setLabel('انسحاب').setStyle(ButtonStyle.Secondary);
+        const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn);
+
+        const gameMessage = await message.reply({ embeds: [embed], components: [row] });
+        const collector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+
+        collector.on('collect', async interaction => {
+            const userId = interaction.user.id;
+            const playerName = interaction.user.displayName || interaction.user.username;
+
+            if (interaction.customId === 'chair_join') {
+                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
+                    return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
+                }
+                if (!playersMap.has(userId)) {
+                    playersMap.set(userId, { id: userId, name: playerName, alive: true });
+                }
+                await interaction.reply({ content: 'تم انضمامك.', ephemeral: true });
+            } else if (interaction.customId === 'chair_leave') {
+                if (playersMap.has(userId)) {
+                    playersMap.delete(userId);
+                    await interaction.reply({ content: 'تم انسحابك.', ephemeral: true });
+                } else {
+                    return interaction.reply({ content: 'أنت لست منضماً.', ephemeral: true });
+                }
+            }
+
+            const playersArray = Array.from(playersMap.values());
+            const playersList = playersArray.length > 0 
+                ? playersArray.map(p => `• ${p.name}`).join('\n') 
+                : '`لا توجد أسماء...`';
+
+            const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `• المُنضمون (${playersMap.size}/${MAX_PLAYERS})`, value: playersList });
+            await gameMessage.edit({ embeds: [updatedEmbed] });
+        });
+
+        collector.on('end', async () => {
+            let playersArr = Array.from(playersMap.values());
+
+            if (playersArr.length < 2) {
+                return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم اكتمال اللاعبين (يجب 2 على الأقل).', embeds: [], components: [] });
+            }
+
+            try {
+                let roundNumber = 1;
+                let gameActive = true;
+
+                while (gameActive) {
+                    let alivePlayers = playersArr.filter(p => p.alive);
+                    if (alivePlayers.length <= 1) break;
+
+                    let chairCount = alivePlayers.length - 1;
+                    if (chairCount < 1) chairCount = 1;
+
+                    let totalBoxes = 9; 
+                    let chairIndices = [];
+                    while(chairIndices.length < chairCount) {
+                        let rand = Math.floor(Math.random() * totalBoxes) + 1;
+                        if(!chairIndices.includes(rand)) chairIndices.push(rand);
+                    }
+
+                    let roundState = {}; 
+                    let redBoxes = []; 
+                    
+                    while(redBoxes.length < 2 && redBoxes.length < totalBoxes - chairCount) {
+                        let randRed = Math.floor(Math.random() * totalBoxes) + 1;
+                        if(!chairIndices.includes(randRed) && !redBoxes.includes(randRed)) {
+                            redBoxes.push(randRed);
+                        }
+                    }
+
+                    const renderChairRows = (disabled = false) => {
+                        let rows = [];
+                        for (let r = 0; r < 3; r++) {
+                            let rowComponents = [];
+                            for (let c = 0; c < 3; c++) {
+                                let boxNum = r * 3 + c + 1;
+                                let isTaken = Object.values(roundState).includes(boxNum);
+                                let isRed = redBoxes.includes(boxNum);
+
+                                let btnStyle = ButtonStyle.Secondary;
+                                let btnLabel = `كرسي ${boxNum}`;
+                                let isDisabled = disabled;
+
+                                if (isRed) {
+                                    btnStyle = ButtonStyle.Danger; // أحمر (ممنوع)
+                                    btnLabel = `✕ ${boxNum}`;
+                                    isDisabled = true;
+                                } else if (isTaken) {
+                                    btnStyle = ButtonStyle.Success; // أخضر (تم الجلوس)
+                                    btnLabel = `✓ ${boxNum}`;
+                                } else {
+                                    btnStyle = ButtonStyle.Primary; // أزرق (مسموح الجلوس)
+                                }
+
+                                rowComponents.push(
+                                    new ButtonBuilder()
+                                        .setCustomId(`chair_${boxNum}`)
+                                        .setLabel(btnLabel)
+                                        .setStyle(btnStyle)
+                                        .setDisabled(isDisabled || isTaken)
+                                );
+                            }
+                            rows.push(new ActionRowBuilder().addComponents(rowComponents));
+                        }
+                        return rows;
+                    };
+
+                    let roundEmbed = new EmbedBuilder()
+                        .setTitle(`◇ الجولة رقم ${roundNumber}`)
+                        .setDescription(`الباقون: **${alivePlayers.length}** | الكراسي المتاحة: **${chairCount}**\nسرع بالجلوس على كرسي أزرق! الحذر من الكراسي الحمراء!\n⏳ **الوقت:** 8 ثوانٍ`)
+                        .setColor(THEME_COLOR);
+
+                    let roundMsg = await message.channel.send({ 
+                        content: `🎵 **بدأت الموسيقى.. اسرعوا بحجز الكراسي!**`, 
+                        embeds: [roundEmbed], 
+                        components: renderChairRows(false) 
+                    });
+
+                    let roundCollector = roundMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: 8000 });
+
+                    roundCollector.on('collect', async i => {
+                        let player = playersMap.get(i.user.id);
+                        if (!player || !player.alive) {
+                            return i.reply({ content: 'لست مشاركاً أو تم إقصاؤك.', ephemeral: true });
+                        }
+                        if (Object.keys(roundState).includes(i.user.id)) {
+                            return i.reply({ content: 'لقد جلست مسبقاً!', ephemeral: true });
+                        }
+
+                        let targetBox = parseInt(i.customId.split('_')[1]);
+                        if (redBoxes.includes(targetBox)) {
+                            return i.reply({ content: 'هذا الكرسي أحمر وخطر! لا يمكنك الجلوس عليه.', ephemeral: true });
+                        }
+                        if (Object.values(roundState).includes(targetBox)) {
+                            return i.reply({ content: 'هذا الكرسي محجوز مسبقاً!', ephemeral: true });
+                        }
+
+                        if (!chairIndices.includes(targetBox)) {
+                            return i.reply({ content: 'هذا المكان ليس كرسياً صحيحاً!', ephemeral: true });
+                        }
+
+                        roundState[i.user.id] = targetBox;
+                        await i.update({ components: renderChairRows(false) });
+                    });
+
+                    await new Promise(res => setTimeout(res, 9000));
+                    await roundMsg.edit({ components: renderChairRows(true) }).catch(()=>{});
+
+                    let eliminatedInRound = [];
+                    for (let player of alivePlayers) {
+                        if (roundState[player.id] === undefined) {
+                            player.alive = false;
+                            eliminatedInRound.push(player);
+                        }
+                    }
+
+                    let pingContent = "";
+                    let resultDesc = `🏁 انتهت الجولة ${roundNumber}\n`;
+
+                    if (eliminatedInRound.length > 0) {
+                        let pings = eliminatedInRound.map(p => `<@${p.id}>`).join(' ');
+                        pingContent = `❌ **إقصاء لعدم حصولهم على كرسي:** ${pings}`;
+                        resultDesc += eliminatedInRound.map(p => `• خروج: <@${p.id}>`).join('\n');
+                    } else {
+                        resultDesc += `• نجا الجميع في هذه الجولة!`;
+                    }
+
+                    await message.channel.send({
+                        content: pingContent || null,
+                        embeds: [new EmbedBuilder().setDescription(resultDesc).setColor(THEME_COLOR)]
+                    });
+
+                    let remainingAlive = playersArr.filter(p => p.alive);
+                    if (remainingAlive.length <= 1) {
+                        gameActive = false;
+                        break;
+                    }
+
+                    roundNumber++;
+                    await new Promise(res => setTimeout(res, 2000));
+                }
+
+                let winner = playersArr.find(p => p.alive);
+                if (winner) {
+                    let winEmbed = new EmbedBuilder()
+                        .setTitle('◆ نهاية لعبة الكراسي')
+                        .setDescription(`👑 الناجي الفائز بالمركز الأول:\n<@${winner.id}> ✨`)
+                        .setColor(THEME_COLOR);
+                    await message.channel.send({ content: `👑 مبارك الفوز بالمركز الأخير <@${winner.id}>!`, embeds: [winEmbed] });
+                } else {
+                    await message.channel.send({ content: `◆ انتهت اللعبة بدون فائز.` });
                 }
 
             } catch (error) {
