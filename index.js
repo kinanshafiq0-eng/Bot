@@ -1,6 +1,7 @@
 // ============================================================
 // index.js - البوت الكامل مع جميع الألعاب الأربعة
-// تم إضافة Wikimedia Commons للحصول على صور حقيقية للمدن في لعبة التخمين
+// (اختباء، كراسي، ريبيكا، تخمين البلد)
+// مع صور من Wikipedia (مضمونة الظهور، بدون مفتاح API)
 // ============================================================
 
 const { 
@@ -155,20 +156,26 @@ const rebeccaDatabase = {
 };
 
 // ============================================================
-// قاعدة بيانات الدول مع أعلام وتلميحات
+// توليد قاعدة بيانات الدول مع معلومات أساسية
+// (بدون صور، سيتم جلب الصور من Wikipedia أثناء اللعب)
 // ============================================================
 const countryNames = rebeccaDatabase['بلاد'];
 const countryData = countryNames.map(name => {
+    const cleanName = name.replace(/\s/g, '').toLowerCase();
     return {
         name: name,
+        lat: (Math.random() * 180 - 90).toFixed(2),
+        lon: (Math.random() * 360 - 180).toFixed(2),
         hint: `بلد من دول العالم، حاول تخمينه من الصورة.`,
-        flag: `https://flagcdn.com/${name.substring(0,2)}.svg`
+        flag: `https://flagcdn.com/${cleanName.substring(0,2)}.svg`
     };
 });
 
 const worldCountriesDatabase = countryData.map(c => ({ ...c }));
 
+// ============================================================
 // دالة تنظيف النص العربي للمقارنة
+// ============================================================
 function cleanArabic(text) {
     if (!text) return '';
     return text.trim()
@@ -179,112 +186,107 @@ function cleanArabic(text) {
 }
 
 // ============================================================
-// دالة جلب صورة من Wikimedia Commons
+// دالة جلب صورة من Wikipedia (بدون مفتاح API)
 // ============================================================
-async function getWikimediaImage(cityName) {
+const englishNames = {
+    'الاردن': 'Jordan',
+    'فلسطين': 'Palestine',
+    'مصر': 'Egypt',
+    'السعودية': 'Saudi Arabia',
+    'الإمارات': 'United Arab Emirates',
+    'فرنسا': 'France',
+    'بريطانيا': 'United Kingdom',
+    'اليابان': 'Japan',
+    'تركيا': 'Turkey',
+    'ايطاليا': 'Italy',
+    'المانيا': 'Germany',
+    'اسبانيا': 'Spain',
+    'امريكا': 'United States',
+    'كندا': 'Canada',
+    'البرازيل': 'Brazil',
+    'الصين': 'China',
+    'الهند': 'India',
+    'كوريا الجنوبية': 'South Korea',
+    'الأرجنتين': 'Argentina',
+    'المكسيك': 'Mexico',
+    'إندونيسيا': 'Indonesia',
+    'هندوراس': 'Honduras',
+    'كوريا الشمالية': 'North Korea',
+    'السويد': 'Sweden',
+    'نرويج': 'Norway',
+    'الجزائر': 'Algeria',
+    'المغرب': 'Morocco',
+    'تونس': 'Tunisia',
+    'العراق': 'Iraq',
+    'سوريا': 'Syria',
+    'لبنان': 'Lebanon',
+    'الكويت': 'Kuwait',
+    'قطر': 'Qatar',
+    'البحرين': 'Bahrain',
+    'عمان': 'Oman',
+    'اليونان': 'Greece',
+    'هولندا': 'Netherlands',
+    'سويسرا': 'Switzerland',
+    'البرتغال': 'Portugal',
+    'بلجيكا': 'Belgium',
+    'روسيا': 'Russia',
+    'أوكرانيا': 'Ukraine',
+    'بولندا': 'Poland',
+    'رومانيا': 'Romania',
+    'كازاخستان': 'Kazakhstan',
+    'أوزبكستان': 'Uzbekistan',
+    'باكستان': 'Pakistan',
+    'نيجيريا': 'Nigeria',
+    'جنوب أفريقيا': 'South Africa',
+    'كينيا': 'Kenya',
+    'إثيوبيا': 'Ethiopia',
+    'تنزانيا': 'Tanzania',
+    'فيتنام': 'Vietnam',
+    'تايلاند': 'Thailand',
+    'ماليزيا': 'Malaysia',
+    'الفلبين': 'Philippines',
+    'بيرو': 'Peru',
+    'تشيلي': 'Chile',
+    'كولومبيا': 'Colombia',
+    'فنزويلا': 'Venezuela',
+    'نيوزيلندا': 'New Zealand',
+    'أستراليا': 'Australia',
+    'إيران': 'Iran',
+    'أفغانستان': 'Afghanistan',
+    'نيبال': 'Nepal',
+    'بنغلاديش': 'Bangladesh',
+    'ميانمار': 'Myanmar',
+    'سريلانكا': 'Sri Lanka',
+    'ليبيا': 'Libya',
+    'السودان': 'Sudan',
+    'اليمن': 'Yemen',
+    'الصومال': 'Somalia',
+    'جيبوتي': 'Djibouti',
+    'إريتريا': 'Eritrea',
+    'غانا': 'Ghana',
+    'السنغال': 'Senegal',
+    'مالي': 'Mali',
+    'النيجر': 'Niger',
+    'تشاد': 'Chad',
+    'الكاميرون': 'Cameroon'
+};
+
+async function getWikipediaImage(cityName) {
     try {
-        // تحويل الاسم إلى الإنجليزية (مهم للبحث)
-        const englishNames = {
-            'الاردن': 'Jordan',
-            'فلسطين': 'Palestine',
-            'مصر': 'Egypt',
-            'السعودية': 'Saudi Arabia',
-            'الإمارات': 'United Arab Emirates',
-            'فرنسا': 'France',
-            'بريطانيا': 'United Kingdom',
-            'اليابان': 'Japan',
-            'تركيا': 'Turkey',
-            'ايطاليا': 'Italy',
-            'المانيا': 'Germany',
-            'اسبانيا': 'Spain',
-            'امريكا': 'United States',
-            'كندا': 'Canada',
-            'البرازيل': 'Brazil',
-            'الصين': 'China',
-            'الهند': 'India',
-            'كوريا الجنوبية': 'South Korea',
-            'الأرجنتين': 'Argentina',
-            'المكسيك': 'Mexico',
-            'إندونيسيا': 'Indonesia',
-            'هندوراس': 'Honduras',
-            'كوريا الشمالية': 'North Korea',
-            'السويد': 'Sweden',
-            'نرويج': 'Norway',
-            'الجزائر': 'Algeria',
-            'المغرب': 'Morocco',
-            'تونس': 'Tunisia',
-            'العراق': 'Iraq',
-            'سوريا': 'Syria',
-            'لبنان': 'Lebanon',
-            'الكويت': 'Kuwait',
-            'قطر': 'Qatar',
-            'البحرين': 'Bahrain',
-            'عمان': 'Oman',
-            'اليونان': 'Greece',
-            'هولندا': 'Netherlands',
-            'سويسرا': 'Switzerland',
-            'البرتغال': 'Portugal',
-            'بلجيكا': 'Belgium',
-            'روسيا': 'Russia',
-            'أوكرانيا': 'Ukraine',
-            'بولندا': 'Poland',
-            'رومانيا': 'Romania',
-            'كازاخستان': 'Kazakhstan',
-            'أوزبكستان': 'Uzbekistan',
-            'باكستان': 'Pakistan',
-            'نيجيريا': 'Nigeria',
-            'جنوب أفريقيا': 'South Africa',
-            'كينيا': 'Kenya',
-            'إثيوبيا': 'Ethiopia',
-            'تنزانيا': 'Tanzania',
-            'فيتنام': 'Vietnam',
-            'تايلاند': 'Thailand',
-            'ماليزيا': 'Malaysia',
-            'الفلبين': 'Philippines',
-            'بيرو': 'Peru',
-            'تشيلي': 'Chile',
-            'كولومبيا': 'Colombia',
-            'فنزويلا': 'Venezuela',
-            'نيوزيلندا': 'New Zealand',
-            'أستراليا': 'Australia',
-            'إيران': 'Iran',
-            'أفغانستان': 'Afghanistan',
-            'نيبال': 'Nepal',
-            'بنغلاديش': 'Bangladesh',
-            'ميانمار': 'Myanmar',
-            'سريلانكا': 'Sri Lanka',
-            'ليبيا': 'Libya',
-            'السودان': 'Sudan',
-            'اليمن': 'Yemen',
-            'الصومال': 'Somalia',
-            'جيبوتي': 'Djibouti',
-            'إريتريا': 'Eritrea',
-            'غانا': 'Ghana',
-            'السنغال': 'Senegal',
-            'مالي': 'Mali',
-            'النيجر': 'Niger',
-            'تشاد': 'Chad',
-            'الكاميرون': 'Cameroon'
-        };
-
         const searchTerm = englishNames[cityName] || cityName;
-        const url = `https://commons.wikimedia.org/w/api.php?action=query&generator=images&prop=imageinfo&iiprop=url&titles=${encodeURIComponent(searchTerm)}&format=json`;
-
-        const response = await axios.get(url);
+        const url = `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&titles=${encodeURIComponent(searchTerm)}&origin=*`;
+        const response = await axios.get(url, { timeout: 10000 });
         const pages = response.data.query?.pages;
         if (!pages) return null;
-
-        // البحث عن أول صورة
         for (const pageId in pages) {
-            const images = pages[pageId].imageinfo;
-            if (images && images.length > 0) {
-                const imageUrl = images[0].url;
-                if (imageUrl) return imageUrl;
+            const page = pages[pageId];
+            if (page.original && page.original.source) {
+                return page.original.source;
             }
         }
         return null;
     } catch (error) {
-        console.error('❌ فشل جلب صورة من Wikimedia:', error.message);
+        console.error(`❌ فشل جلب صورة من Wikipedia لـ ${cityName}:`, error.message);
         return null;
     }
 }
@@ -304,14 +306,14 @@ async function fetchImageBuffer(url) {
         return Buffer.from(response.data);
     } catch (error) {
         console.error('❌ فشل تحميل الصورة من الرابط:', url, error.message);
-        // Fallback إلى Picsum
+        // صورة احتياطية (صورة فارغة مع نص)
         const fallbackUrl = 'https://picsum.photos/seed/fallback' + Date.now() + '/800/600';
         try {
             const fallbackResponse = await axios.get(fallbackUrl, { responseType: 'arraybuffer' });
             return Buffer.from(fallbackResponse.data);
         } catch (e) {
             console.error('❌ فشل حتى تحميل الصورة الاحتياطية:', e.message);
-            return Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]); // JPEG minimal
+            return Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]); // Minimal JPEG
         }
     }
 }
@@ -992,7 +994,7 @@ client.on('messageCreate', async message => {
     }
 
     // ============================================================
-    // 4. لعبة تخمين البلد (مع Wikimedia Commons)
+    // 4. لعبة تخمين البلد (مع صور من Wikipedia)
     // ============================================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -1078,17 +1080,14 @@ client.on('messageCreate', async message => {
                 for (let round = 1; round <= 6; round++) {
                     let countryObj = gameRoundsData[round - 1];
 
-                    // جلب الصورة من Wikimedia Commons
-                    let imageUrl = await getWikimediaImage(countryObj.name);
+                    // جلب الصورة من Wikipedia
+                    let imageUrl = await getWikipediaImage(countryObj.name);
                     let imageBuffer;
-
                     if (imageUrl) {
-                        // تحميل الصورة من Wikimedia
                         imageBuffer = await fetchImageBuffer(imageUrl);
                     } else {
-                        // استخدام صورة احتياطية إذا فشل
-                        console.log(`⚠️ لم نجد صورة لـ ${countryObj.name}، نستخدم صورة احتياطية.`);
-                        imageBuffer = await fetchImageBuffer('https://picsum.photos/seed/fallback/800/600');
+                        // إذا فشل Wikipedia، استخدم صورة احتياطية
+                        imageBuffer = await fetchImageBuffer('https://picsum.photos/seed/fallback' + Date.now() + '/800/600');
                     }
 
                     let attachment = new AttachmentBuilder(imageBuffer, { name: 'country.jpg' });
@@ -1096,7 +1095,7 @@ client.on('messageCreate', async message => {
                     let roundTimeSeconds = 25;
                     let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
 
-                    // إرسال الرسالة مع الصورة (بدون إمبيد)
+                    // إرسال الصورة كمرفق مع رسالة نصية
                     let roundMsg = await message.channel.send({
                         content: `◆ **لعبة تخمين البلد الجغرافي (الجولة ${round}/6)**\nلديك ${roundTimeSeconds} ثانية لتخمين اسم الدولة من الصورة!\n💡 تلميح: \`${countryObj.hint}\`\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`,
                         files: [attachment]
