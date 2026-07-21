@@ -1,3 +1,4 @@
+// index.js
 const { 
     Client, 
     GatewayIntentBits, 
@@ -5,8 +6,12 @@ const {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
-    ComponentType
+    ComponentType,
+    AttachmentBuilder
 } = require('discord.js');
+
+// استيراد node-fetch (تأكد من تثبيته: npm install node-fetch@2)
+const fetch = require('node-fetch');
 
 const client = new Client({
     intents: [
@@ -158,7 +163,7 @@ const rebeccaDatabase = {
 };
 
 // ==========================================
-// قاعدة بيانات الدول مع صور ثابتة من ويكيبيديا (معالم مشهورة)
+// قاعدة بيانات الدول مع صور من ويكيبيديا (معالم مشهورة)
 // ==========================================
 const countryData = [
     { name: 'الاردن', lat: 31.95, lon: 35.91, hint: 'بلد عربي يشتهر بمدينة البتراء الأثرية', flag: 'https://flagcdn.com/jo.svg', image: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/26/Al-Khazneh_%28Petra%29.jpg/800px-Al-Khazneh_%28Petra%29.jpg' },
@@ -245,7 +250,6 @@ const countryData = [
 
 const worldCountriesDatabase = countryData.map(c => ({ ...c }));
 
-// دالة لتنظيف الحروف العربية
 function cleanArabic(text) {
     if (!text) return '';
     return text.trim()
@@ -928,7 +932,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 4. لعبة تخمين البلد (مع صور ثابتة من ويكيبيديا)
+    // 4. لعبة تخمين البلد (مع تحميل الصور عبر Buffer)
     // ==========================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -995,7 +999,6 @@ client.on('messageCreate', async message => {
 
             await gameMessage.edit({ content: '🚀 **بدأت لعبة التخمين الجغرافي الشاملة (6 جولات)!**', components: [] }).catch(()=>{});
 
-            // سحب 6 دول عشوائية
             let shuffledCountries = [...worldCountriesDatabase].sort(() => 0.5 - Math.random());
             let gameRoundsData = shuffledCountries.slice(0, 6);
 
@@ -1014,7 +1017,12 @@ client.on('messageCreate', async message => {
             try {
                 for (let round = 1; round <= 6; round++) {
                     let countryObj = gameRoundsData[round - 1];
-                    let randomImage = countryObj.image; // صورة ثابتة من ويكيبيديا
+                    let imageUrl = countryObj.image;
+
+                    // تحميل الصورة وتحويلها إلى Buffer
+                    let response = await fetch(imageUrl);
+                    let buffer = await response.buffer();
+                    let attachment = new AttachmentBuilder(buffer, { name: 'country.jpg' });
 
                     let roundTimeSeconds = 25;
                     let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
@@ -1023,10 +1031,10 @@ client.on('messageCreate', async message => {
                         .setTitle(`◆ لعبة تخمين البلد الجغرافي (الجولة ${round}/6)`)
                         .setDescription(`لديك ${roundTimeSeconds} ثانية لتخمين اسم الدولة من الصورة!\n\n💡 تلميح: \`${countryObj.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
                         .setThumbnail(countryObj.flag)
-                        .setImage(randomImage)
+                        .setImage('attachment://country.jpg')
                         .setColor(THEME_COLOR);
 
-                    let roundMsg = await message.channel.send({ embeds: [guessEmbed] });
+                    let roundMsg = await message.channel.send({ embeds: [guessEmbed], files: [attachment] });
 
                     let correctAnswers = [];
                     let answerTimestamps = new Map();
@@ -1037,7 +1045,6 @@ client.on('messageCreate', async message => {
                     chatCollector.on('collect', m => {
                         let userAns = cleanArabic(m.content);
 
-                        // البحث عن أي دولة تطابق النص (فوري) لعرض العلم مع المنشن
                         let matchedCountry = worldCountriesDatabase.find(c => cleanArabic(c.name) === userAns);
                         if (matchedCountry) {
                             const replyEmbed = new EmbedBuilder()
@@ -1047,7 +1054,6 @@ client.on('messageCreate', async message => {
                             message.channel.send({ embeds: [replyEmbed] }).catch(() => {});
                         }
 
-                        // التحقق من صحة الإجابة بالنسبة للدولة المطلوبة في الجولة
                         let isCorrect = (cleanArabic(countryObj.name) === userAns);
                         if (isCorrect && !answerTimestamps.has(m.author.id)) {
                             answerTimestamps.set(m.author.id, Date.now());
@@ -1086,7 +1092,6 @@ client.on('messageCreate', async message => {
                     await new Promise(res => setTimeout(res, 3000));
                 }
 
-                // الترتيب النهائي
                 let finalPlayersArr = Array.from(playersMap.values());
                 finalPlayersArr.sort((a, b) => b.score - a.score);
 
@@ -1111,7 +1116,8 @@ client.on('messageCreate', async message => {
                 await message.channel.send({ embeds: [finalEmbed] });
 
             } catch (error) {
-                console.error(error);
+                console.error('❌ خطأ في لعبة التخمين:', error);
+                await message.channel.send('❌ حدث خطأ أثناء تحميل الصور، يرجى المحاولة مرة أخرى.');
             } finally {
                 activeGames.delete(guildId);
             }
@@ -1119,4 +1125,4 @@ client.on('messageCreate', async message => {
     }
 });
 
-client.login(process.env.TOKEN);
+client.login(process.env.DISCORD_TOKEN);
