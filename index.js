@@ -5,7 +5,10 @@ const {
     ActionRowBuilder, 
     ButtonBuilder, 
     ButtonStyle,
-    ComponentType
+    ComponentType,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle
 } = require('discord.js');
 
 const client = new Client({
@@ -23,7 +26,7 @@ const activeGames = new Set();
 
 client.on('ready', () => {
     console.log(`✅ Bot Logged in as ${client.user.tag}!`);
-    client.user.setActivity('!اختباء أو !كراسي | ساحة الظلام', { type: 3 });
+    client.user.setActivity('!اختباء أو !كراسي أو !ريبيكا | ساحة الظلام', { type: 3 });
 });
 
 client.on('messageCreate', async message => {
@@ -414,9 +417,8 @@ client.on('messageCreate', async message => {
                         .setDescription(`الباقون: **${alivePlayers.length}** | الكراسي المطلوبة: **${chairCount}**\n⏳ **الموسيقى تعمل.. الأزرار سمراء (تنتظر 15 ثانية)!**`)
                         .setColor(THEME_COLOR);
 
-                    // إجمالي الوقت للجولة زاد ليصبح 25 ثانية (15 ثانية انتظار سمراء + 10 ثواني تفاعل بعد ظهور الألوان)
                     let totalRoundTime = 25000;
-                    let revealDelay = 15000; // 15 ثانية انتظار
+                    let revealDelay = 15000; 
 
                     let roundMsg = await message.channel.send({ 
                         content: `🎵 **بدأت الموسيقى.. الكراسي (${chairCount}) لـ (${alivePlayers.length}) مشارك!**`, 
@@ -426,7 +428,6 @@ client.on('messageCreate', async message => {
 
                     let roundCollector = roundMsg.createMessageComponentCollector({ componentType: ComponentType.Button, time: totalRoundTime });
 
-                    // بعد مرور 15 ثانية كاملة، تتلون الأزرار
                     setTimeout(async () => {
                         try {
                             let revealDesc = isRoundRed 
@@ -531,6 +532,197 @@ client.on('messageCreate', async message => {
             } catch (error) {
                 console.error(error);
             } finally {
+                activeGames.delete(guildId);
+            }
+        });
+    }
+
+    // ==========================================
+    // 3. لعبة ريبيكا (Rebecca) - اسم، حيوان، نبات، جماد، بلاد
+    // ==========================================
+    if (message.content === prefix + 'ريبيكا' || message.content === prefix + 'rebecca') {
+        if (activeGames.has(guildId)) {
+            return message.reply({ content: '⚠️ توجد لعبة أخرى تعمل حالياً في السيرفر! انتظر حتى تنتهي.', ephemeral: true });
+        }
+
+        activeGames.add(guildId);
+
+        const playersMap = new Map();
+        const MAX_PLAYERS = 15;
+        const durationSeconds = 15; 
+        const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
+
+        const embed = new EmbedBuilder()
+            .setTitle('◆ لُعبة ريبيكا (اسم - حيوان - نبات - جماد - بلاد)')
+            .setDescription(`انضم إلى التحدي المعرفي!\n\n⏳ **تبدأ اللعبة خلال:** <t:${endTime}:R>`)
+            .setColor(THEME_COLOR)
+            .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
+
+        const joinBtn = new ButtonBuilder().setCustomId('rebecca_join').setLabel('دخول').setStyle(ButtonStyle.Secondary);
+        const leaveBtn = new ButtonBuilder().setCustomId('rebecca_leave').setLabel('انسحاب').setStyle(ButtonStyle.Secondary);
+        const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn);
+
+        const gameMessage = await message.reply({ embeds: [embed], components: [row] });
+        const collector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
+
+        collector.on('collect', async interaction => {
+            const userId = interaction.user.id;
+            const playerName = interaction.user.displayName || interaction.user.username;
+
+            if (interaction.customId === 'rebecca_join') {
+                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
+                    return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
+                }
+                if (!playersMap.has(userId)) {
+                    playersMap.set(userId, { id: userId, name: playerName });
+                }
+                await interaction.reply({ content: 'تم انضمامك.', ephemeral: true });
+            } else if (interaction.customId === 'rebecca_leave') {
+                if (playersMap.has(userId)) {
+                    playersMap.delete(userId);
+                    await interaction.reply({ content: 'تم انسحابك.', ephemeral: true });
+                } else {
+                    return interaction.reply({ content: 'أنت لست منضماً.', ephemeral: true });
+                }
+            }
+
+            const playersArray = Array.from(playersMap.values());
+            const playersList = playersArray.length > 0 
+                ? playersArray.map(p => `• ${p.name}`).join('\n') 
+                : '`لا توجد أسماء...`';
+
+            const updatedEmbed = EmbedBuilder.from(embed).setFields({ name: `• المُنضمون (${playersMap.size}/${MAX_PLAYERS})`, value: playersList });
+            await gameMessage.edit({ embeds: [updatedEmbed] });
+        });
+
+        collector.on('end', async () => {
+            let playersArr = Array.from(playersMap.values());
+
+            if (playersArr.length < 1) {
+                activeGames.delete(guildId);
+                return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم وجود لاعبين كافيين.', embeds: [], components: [] });
+            }
+
+            try {
+                // اختيار حرف عشوائي باللغة العربية
+                const arabicLetters = ['أ', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض', 'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'هـ', 'و', 'ي'];
+                const randomLetter = arabicLetters[Math.floor(Math.random() * arabicLetters.length)];
+
+                // اختيار شخص عشوائي من المتسابقين
+                const chosenPlayer = playersArr[Math.floor(Math.random() * playersArr.length)];
+
+                const announceEmbed = new EmbedBuilder()
+                    .setTitle('◆ تحدي ريبيكا')
+                    .setDescription(`🎯 **الحرف المختار:** \`${randomLetter}\`\n👤 **اللاعب المستهدف:** <@${chosenPlayer.id}>\n\n⏳ **لديك 20 ثانية لملء الحقول عبر النافذة!**`)
+                    .setColor(THEME_COLOR);
+
+                await message.channel.send({ content: `🚨 دور اللاعب <@${chosenPlayer.id}>!`, embeds: [announceEmbed] });
+
+                // إنشاء نافذة تفاعلية (Modal) للاعب المستهدف
+                const modalId = `rebecca_modal_${chosenPlayer.id}_${Date.now()}`;
+                const modal = new ModalBuilder()
+                    .setCustomId(modalId)
+                    .setTitle('لعبة ريبيكا - الحرف: ' + randomLetter);
+
+                const nameInput = new TextInputBuilder()
+                    .setCustomId('r_name')
+                    .setLabel('اسم بحرف ' + randomLetter)
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                const animalInput = new TextInputBuilder()
+                    .setCustomId('r_animal')
+                    .setLabel('حيوان بحرف ' + randomLetter)
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                const plantInput = new TextInputBuilder()
+                    .setCustomId('r_plant')
+                    .setLabel('نبات بحرف ' + randomLetter)
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                const inanimateInput = new TextInputBuilder()
+                    .setCustomId('r_inanimate')
+                    .setLabel('جماد بحرف ' + randomLetter)
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                const countryInput = new TextInputBuilder()
+                    .setCustomId('r_country')
+                    .setLabel('بلاد بحرف ' + randomLetter)
+                    .setStyle(TextInputStyle.Short)
+                    .setRequired(true);
+
+                modal.addComponents(
+                    new ActionRowBuilder().addComponents(nameInput),
+                    new ActionRowBuilder().addComponents(animalInput),
+                    new ActionRowBuilder().addComponents(plantInput),
+                    new ActionRowBuilder().addComponents(inanimateInput),
+                    new ActionRowBuilder().addComponents(countryInput)
+                );
+
+                // إرسال زر لفتح النافذة
+                const btnRow = new ActionRowBuilder().addComponents(
+                    new ButtonBuilder()
+                        .setCustomId(`open_modal_${chosenPlayer.id}`)
+                        .setLabel('اضغط لفتح لوحة الإجابة')
+                        .setStyle(ButtonStyle.Primary)
+                );
+
+                const promptMsg = await message.channel.send({ content: `<@${chosenPlayer.id}> اضغط الزر بالأسفل للإجابة:`, components: [btnRow] });
+
+                const filter = i => i.user.id === chosenPlayer.id;
+                const modalCollector = promptMsg.createMessageComponentCollector({ filter, time: 20000 });
+
+                let answered = false;
+
+                modalCollector.on('collect, async i => {
+                    if (i.customId === `open_modal_${chosenPlayer.id}`) {
+                        await i.showModal(modal);
+
+                        try {
+                            const modalSubmit = await i.awaitModalSubmit({
+                                filter: mi => mi.customId === modalId && mi.user.id === chosenPlayer.id,
+                                time: 25000
+                            });
+
+                            answered = true;
+                            const ansName = modalSubmit.fields.getTextInputValue('r_name');
+                            const ansAnimal = modalSubmit.fields.getTextInputValue('r_animal');
+                            const ansPlant = modalSubmit.fields.getTextInputValue('r_plant');
+                            const ansInanimate = modalSubmit.fields.getTextInputValue('r_inanimate');
+                            const ansCountry = modalSubmit.fields.getTextInputValue('r_country');
+
+                            const resultEmbed = new EmbedBuilder()
+                                .setTitle('◆ نتيجة ريبيكا')
+                                .setDescription(`أبدع اللاعب <@${chosenPlayer.id}> وأتم التحدي بنجاح للحرف \`${randomLetter}\`!`)
+                                .addFields(
+                                    { name: '• اسم', value: `\`${ansName}\``, inline: true },
+                                    { name: '• حيوان', value: `\`${ansAnimal}\``, inline: true },
+                                    { name: '• نبات', value: `\`${ansPlant}\``, inline: true },
+                                    { name: '• جماد', value: `\`${ansInanimate}\``, inline: true },
+                                    { name: '• بلاد', value: `\`${ansCountry}\``, inline: true }
+                                )
+                                .setColor(THEME_COLOR);
+
+                            await modalSubmit.reply({ embeds: [resultEmbed] });
+                            promptMsg.delete().catch(() => {});
+                        } catch (err) {
+                            // انتهى وقت إدخال الـ Modal
+                        }
+                    }
+                });
+
+                modalCollector.on('end', async () => {
+                    if (!answered) {
+                        promptMsg.edit({ content: `⏰ انتهى الوقت ولم يقم <@${chosenPlayer.id}> بالإجابة!`, components: [] }).catch(() => {});
+                    }
+                    activeGames.delete(guildId);
+                });
+
+            } catch (error) {
+                console.error(error);
                 activeGames.delete(guildId);
             }
         });
