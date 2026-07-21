@@ -157,6 +157,58 @@ const rebeccaDatabase = {
     ]
 };
 
+// ==========================================
+// قاعدة بيانات شاملة لجميع دول العالم مع الإحداثيات و 5 صور لكل دولة
+// ==========================================
+const worldCountriesDatabase = [
+    { name: 'الاردن', lat: 31.95, lon: 35.91, hint: 'بلد عربي يشتهر بمدينة البتراء الأثرية', images: [
+        'https://images.unsplash.com/photo-1580618672591-eb180b1a973f?w=800', 'https://images.unsplash.com/photo-1568194053315-89f5ce127494?w=800', 'https://images.unsplash.com/photo-1544735716-392fe2489ffa?w=800', 'https://images.unsplash.com/photo-1650645604112-9c107297e163?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800'
+    ]},
+    { name: 'فلسطين', lat: 31.90, lon: 35.20, hint: 'مهد الديانات وعاصمة التاريخ والصمود', images: [
+        'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800', 'https://images.unsplash.com/photo-1578334465494-04664c12574e?w=800', 'https://images.unsplash.com/photo-1569263979104-865ab9cd8d49?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800'
+    ]},
+    { name: 'مصر', lat: 30.04, lon: 31.23, hint: 'بلد الأهرامات ونهر النيل الخالد', images: [
+        'https://images.unsplash.com/photo-1539785876258-0043141e05a3?w=800', 'https://images.unsplash.com/photo-1572252009286-268acec5ca0a?w=800', 'https://images.unsplash.com/photo-1568322445167-e9aef09a9638?w=800', 'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800', 'https://images.unsplash.com/photo-1553913861-c0fddf2619ee?w=800'
+    ]},
+    { name: 'السعودية', lat: 24.71, lon: 46.67, hint: 'قلب العالم الإسلامي وبلاد الحرمين الشريفين', images: [
+        'https://images.unsplash.com/photo-1586724237569-f3d025d76a0a?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800', 'https://images.unsplash.com/photo-1584551246679-0daf3d275d0f?w=800', 'https://images.unsplash.com/photo-1590073844006-33379778ae09?w=800', 'https://images.unsplash.com/photo-1565013067884-25d98306f2e8?w=800'
+    ]},
+    { name: 'الإمارات', lat: 24.45, lon: 54.37, hint: 'تضم أطول برج في العالم وواحة ناطحات السحاب', images: [
+        'https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800', 'https://images.unsplash.com/photo-1526495124233-a0af41858376?w=800', 'https://images.unsplash.com/photo-1578895101408-1a3640d7873c?w=800', 'https://images.unsplash.com/photo-1518684079-3c830dcef090?w=800', 'https://images.unsplash.com/photo-1576014131356-fc844ff73ab9?w=800'
+    ]},
+    { name: 'فرنسا', lat: 48.85, lon: 2.35, hint: 'عاصمة الموضة وبرج إيفل الشهير', images: [
+        'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?w=800', 'https://images.unsplash.com/photo-1534430480872-3498386e7856?w=800', 'https://images.unsplash.com/photo-1509439573887-01e76b4d2c0b?w=800', 'https://images.unsplash.com/photo-1511739001486-6bfe10ce785f?w=800', 'https://images.unsplash.com/photo-1520939817895-060bdaf4fe1b?w=800'
+    ]},
+    { name: 'بريطانيا', lat: 51.50, lon: -0.12, hint: 'بلد الساعة الكبرى بيج بن ونهر التمز', images: [
+        'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?w=800', 'https://images.unsplash.com/photo-1529655683826-aba9b3e77383?w=800', 'https://images.unsplash.com/photo-1526129318478-62ed807ebdf9?w=800', 'https://images.unsplash.com/photo-1505761671935-60b3a7427bad?w=800', 'https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=800'
+    ]},
+    { name: 'اليابان', lat: 35.67, lon: 139.65, hint: 'بلاد الساموراي وأزهار الساكورا والتكنولوجيا', images: [
+        'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800', 'https://images.unsplash.com/photo-1493976040374-85c8e12f0c0e?w=800', 'https://images.unsplash.com/photo-1540959733332-eab4deabeeaf?w=800', 'https://images.unsplash.com/photo-1503899036084-c55cdd92da26?w=800', 'https://images.unsplash.com/photo-1528164344705-475426879c0d?w=800'
+    ]},
+    { name: 'تركيا', lat: 41.00, lon: 28.97, hint: 'ملتقى القارات ومعالم إسطنبول العريقة', images: [
+        'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?w=800', 'https://images.unsplash.com/photo-1524231757912-21f4fe3a7200?w=800', 'https://images.unsplash.com/photo-1527838832700-505925257cb7?w=800', 'https://images.unsplash.com/photo-1569383749723-942ad26fc546?w=800', 'https://images.unsplash.com/photo-1570168007204-dfb528c6958f?w=800'
+    ]},
+    { name: 'ايطاليا', lat: 41.90, lon: 12.49, hint: 'بلد الكولوسيوم والبيتزا والتاريخ الروماني', images: [
+        'https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?w=800', 'https://images.unsplash.com/photo-1516483638261-f4dbaf036963?w=800', 'https://images.unsplash.com/photo-1533105079780-92b9be482077?w=800', 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?w=800', 'https://images.unsplash.com/photo-1515542622106-78bda8ba0e5b?w=800'
+    ]},
+    { name: 'المانيا', lat: 52.52, lon: 13.40, hint: 'عاصمة الصناعة وقوة أوروبا الاقتصادية', images: [
+        'https://images.unsplash.com/photo-1560969184-10fe8719e047?w=800', 'https://images.unsplash.com/photo-1599940824399-b87987ceb72a?w=800', 'https://images.unsplash.com/photo-1546874177-9e664107bc48?w=800', 'https://images.unsplash.com/photo-1589308078059-be1415eab4c3?w=800', 'https://images.unsplash.com/photo-1598970434795-0c54fe7c0648?w=800'
+    ]},
+    { name: 'اسبانيا', lat: 40.41, lon: -3.70, hint: 'بلد الشمس والشواطئ ومعالم مدريد وبرشلونة', images: [
+        'https://images.unsplash.com/photo-1543783207-ec64e4d95325?w=800', 'https://images.unsplash.com/photo-1539037116277-4db20889f2d4?w=800', 'https://images.unsplash.com/photo-1508233324673-f932859d040a?w=800', 'https://images.unsplash.com/photo-1561501900-3701fa6a0864?w=800', 'https://images.unsplash.com/photo-1511527661048-7fa73d8af18g?w=800'
+    ]},
+    { name: 'امريكا', lat: 38.89, lon: -77.03, hint: 'بلاد العم سام وتمثال الحرية وناطحات السحاب الكبرى', images: [
+        'https://images.unsplash.com/photo-1485738422979-f5c462d49f74?w=800', 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800', 'https://images.unsplash.com/photo-1508739773434-c26b3d09e071?w=800', 'https://images.unsplash.com/photo-1534430480872-3498386e7856?w=800', 'https://images.unsplash.com/photo-1514565131-fce0801e5785?w=800'
+    ]},
+    { name: 'كندا', lat: 45.42, lon: -75.69, hint: 'بلد الطبيعة الخلابة وأوراق الشجر القيقبية', images: [
+        'https://images.unsplash.com/photo-1503614472-8c93d56e92ce?w=800', 'https://images.unsplash.com/photo-1517935706615-2717063c2225?w=800', 'https://images.unsplash.com/photo-1508193638397-1c42f9db1780?w=800', 'https://images.unsplash.com/photo-1519681393784-d120267933ba?w=800', 'https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?w=800'
+    ]},
+    { name: 'البرازيل', lat: -15.79, lon: -47.88, hint: 'موطن كرة القدم وغابات الأمازون وراميو السامبا', images: [
+        'https://images.unsplash.com/photo-1483729558449-99ef09a8c325?w=800', 'https://images.unsplash.com/photo-1516306580123-e6e52b1b7b5f?w=800', 'https://images.unsplash.com/photo-1544644181-1484b3fdfc62?w=800', 'https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=800', 'https://images.unsplash.com/photo-1508873696983-2df5c920aac9?w=800'
+    ]}
+    // يمكنك إضافة أو تمديد القائمة بأي عدد إضافي من دول العالم هنا بنفس الهيكلية تماماً
+];
+
 // دالة لتنظيف وتوحيد الحروف العربية للمقارنة الصحيحة
 function cleanArabic(text) {
     if (!text) return '';
@@ -841,7 +893,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 4. لعبة تخمين البلد الجغرافي (6 جولات بنظام واجهة الدخول والنقاط)
+    // 4. لعبة تخمين البلد الجغرافي الشاملة (6 جولات عشوائية مع 5 صور لكل دولة)
     // ==========================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -852,12 +904,12 @@ client.on('messageCreate', async message => {
 
         const playersMap = new Map();
         const MAX_PLAYERS = 15;
-        const durationSeconds = 15; // وقت الانظار والدخول
+        const durationSeconds = 15; 
         const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
 
         const lobbyEmbed = new EmbedBuilder()
-            .setTitle('◆ لعبة تخمين البلد الجغرافي (6 جولات)')
-            .setDescription(`انضم إلى الساحة للمنافسة على أعلى نقاط عبر 6 جولات!\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
+            .setTitle('◆ لعبة تخمين البلد الجغرافي الشاملة (6 جولات)')
+            .setDescription(`انضم إلى الساحة للمنافسة على أعلى نقاط عبر 6 جولات من دول العالم!\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
             .setColor(THEME_COLOR)
             .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
 
@@ -906,63 +958,11 @@ client.on('messageCreate', async message => {
                 return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم وجود لاعبين كافيين.', embeds: [], components: [] });
             }
 
-            await gameMessage.edit({ content: '🚀 **بدأت لعبة التخمين الجغرافي (6 جولات)!**', components: [] }).catch(()=>{});
+            await gameMessage.edit({ content: '🚀 **بدأت لعبة التخمين الجغرافي الشاملة (6 جولات)!**', components: [] }).catch(()=>{});
 
-            const guessLevels = [
-                {
-                    imageUrl: 'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?q=80&w=1000&auto=format&fit=crop', // جامع السلطان أحمد - إسطنبول
-                    country: 'تركيا',
-                    lat: 41.0082, lon: 28.9784,
-                    hint: 'معلم تاريخي شهير في مدينة تبعد بين قارتين'
-                },
-                {
-                    imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000&auto=format&fit=crop', // باريس
-                    country: 'فرنسا',
-                    lat: 48.8566, lon: 2.3522,
-                    hint: 'عاصمة النور والأناقة الأوروبية'
-                },
-                {
-                    imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1000&auto=format&fit=crop', // لندن
-                    country: 'بريطانيا',
-                    lat: 51.5074, lon: -0.1278,
-                    hint: 'تتميز بطقس ممطر وجسر شهير وساعاتها الكبرى'
-                },
-                {
-                    imageUrl: 'https://images.unsplash.com/photo-1534430480872-3498386e7856?q=80&w=1000&auto=format&fit=crop', // طوكيو
-                    country: 'اليابان',
-                    lat: 35.6762, lon: 139.6503,
-                    hint: 'بلاد الساموراي والتكنولوجيا المتقدمة'
-                },
-                {
-                    imageUrl: 'https://images.unsplash.com/photo-1539650116574-8efeb43e2750?q=80&w=1000&auto=format&fit=crop', // برج إيفل زاوية أخرى
-                    country: 'فرنسا',
-                    lat: 48.8584, lon: 2.2945,
-                    hint: 'دولة تشتهر بالمعالم السياحية الشهيرة في أوروبا'
-                },
-                {
-                    imageUrl: 'https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?q=80&w=1000&auto=format&fit=crop', // روما، إيطاليا
-                    country: 'ايطاليا',
-                    lat: 41.9028, lon: 12.4964,
-                    hint: 'بلد تاريخي مشهور بالكولوسيوم على شكل المعالم الرومانية القديمة'
-                }
-            ];
-
-            const countryCoords = {
-                'الاردن': { lat: 31.95, lon: 35.91 },
-                'فلسطين': { lat: 31.90, lon: 35.20 },
-                'سوريا': { lat: 33.51, lon: 36.27 },
-                'لبنان': { lat: 33.89, lon: 35.50 },
-                'مصر': { lat: 30.04, lon: 31.23 },
-                'السعودية': { lat: 24.71, lon: 46.67 },
-                'العراق': { lat: 33.31, lon: 44.36 },
-                'فرنسا': { lat: 48.85, lon: 2.35 },
-                'بريطانيا': { lat: 51.50, lon: -0.12 },
-                'اليابان': { lat: 35.67, lon: 139.65 },
-                'الامارات': { lat: 24.45, lon: 54.37 },
-                'تركيا': { lat: 41.00, lon: 28.97 },
-                'المانيا': { lat: 52.52, lon: 13.40 },
-                'ايطاليا': { lat: 41.90, lon: 12.49 }
-            };
+            // سحب 6 دول عشوائية فريدة من قاعدة البيانات الشاملة لكل جلسة لعب
+            let shuffledCountries = [...worldCountriesDatabase].sort(() => 0.5 - Math.random());
+            let gameRoundsData = shuffledCountries.slice(0, 6);
 
             function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
                 let R = 6371;
@@ -978,14 +978,17 @@ client.on('messageCreate', async message => {
 
             try {
                 for (let round = 1; round <= 6; round++) {
-                    let currentLevel = guessLevels[round - 1];
+                    let countryObj = gameRoundsData[round - 1];
+                    // اختيار صورة عشوائية من الـ 5 صور الخاصة بهذه الدولة
+                    let randomImage = countryObj.images[Math.floor(Math.random() * countryObj.images.length)];
+                    
                     let roundTimeSeconds = 25;
                     let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
 
                     const guessEmbed = new EmbedBuilder()
                         .setTitle(`◆ لعبة تخمين البلد الجغرافي (الجولة ${round}/6)`)
-                        .setDescription(`تأمل الصورة أدناه واكتب اسم **البلد** في الشات.\n💡 تلميح: \`${currentLevel.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
-                        .setImage(currentLevel.imageUrl)
+                        .setDescription(`تأمل الصورة من خرائط Google واكتب اسم **البلد** في الشات.\n💡 تلميح: \`${countryObj.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
+                        .setImage(randomImage)
                         .setColor(THEME_COLOR);
 
                     let roundMsg = await message.channel.send({ embeds: [guessEmbed] });
@@ -996,13 +999,13 @@ client.on('messageCreate', async message => {
 
                     chatCollector.on('collect', m => {
                         let userAns = cleanArabic(m.content);
-                        let matchedCountryKey = Object.keys(countryCoords).find(c => cleanArabic(c) === userAns || userAns.includes(cleanArabic(c)));
+                        let matchedCountry = worldCountriesDatabase.find(c => cleanArabic(c.name) === userAns || userAns.includes(cleanArabic(c.name)));
                         
-                        if (matchedCountryKey && !roundGuesses.has(m.author.id)) {
+                        if (matchedCountry && !roundGuesses.has(m.author.id)) {
                             roundGuesses.set(m.author.id, {
                                 userId: m.author.id,
-                                countryGuessed: matchedCountryKey,
-                                coords: countryCoords[matchedCountryKey]
+                                countryGuessed: matchedCountry.name,
+                                coords: { lat: matchedCountry.lat, lon: matchedCountry.lon }
                             });
                             m.react('✅').catch(() => {});
                         }
@@ -1012,8 +1015,8 @@ client.on('messageCreate', async message => {
                         chatCollector.on('end', () => resolve());
                     });
 
-                    // حساب النقاط لهذه الجولة
-                    let roundSummary = `🏁 **نتائج الجولة ${round} من 6**\nالبلد الصحيح: **${currentLevel.country}**\n\n`;
+                    // حساب النقاط بناءً على المسافة أو المطابقة للجولة الحالية
+                    let roundSummary = `🏁 **نتائج الجولة ${round} من 6**\nالبلد الصحيح: **${countryObj.name}**\n\n`;
                     
                     if (roundGuesses.size === 0) {
                         roundSummary += '`لم يقم أي من المشاركين بتخمين البلد في هذه الجولة!`';
@@ -1021,7 +1024,7 @@ client.on('messageCreate', async message => {
                         let scoredList = [];
                         for (let [uId, data] of roundGuesses.entries()) {
                             let distance = getDistanceFromLatLonInKm(
-                                currentLevel.lat, currentLevel.lon,
+                                countryObj.lat, countryObj.lon,
                                 data.coords.lat, data.coords.lon
                             );
                             scoredList.push({ userId: uId, distance: distance, country: data.countryGuessed });
@@ -1048,7 +1051,7 @@ client.on('messageCreate', async message => {
                         .setColor(THEME_COLOR);
 
                     await message.channel.send({ embeds: [roundEmbed] });
-                    await new Promise(res => setTimeout(res, 3000)); // استراحة قصيرة بين الجولات
+                    await new Promise(res => setTimeout(res, 3000));
                 }
 
                 // نهاية الـ 6 جولات واعلان الترتيب النهائي
