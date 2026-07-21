@@ -1,7 +1,6 @@
 // ============================================================
 // index.js - البوت الكامل مع جميع الألعاب الأربعة
-// (اختباء، كراسي، ريبيكا، تخمين البلد)
-// مع صور معالم حقيقية من Wikipedia (بحث متقدم)
+// (اختباء، كراسي، ريبيكا، لعبة الأعلام)
 // ============================================================
 
 const { 
@@ -156,21 +155,90 @@ const rebeccaDatabase = {
 };
 
 // ============================================================
-// توليد قاعدة بيانات الدول
+// تحويل الأسماء العربية إلى أكواد الدول (للأعلام)
 // ============================================================
-const countryNames = rebeccaDatabase['بلاد'];
-const countryData = countryNames.map(name => {
-    const cleanName = name.replace(/\s/g, '').toLowerCase();
-    return {
-        name: name,
-        lat: (Math.random() * 180 - 90).toFixed(2),
-        lon: (Math.random() * 360 - 180).toFixed(2),
-        hint: `بلد من دول العالم، حاول تخمينه من الصورة.`,
-        flag: `https://flagcdn.com/${cleanName.substring(0,2)}.svg`
-    };
-});
-
-const worldCountriesDatabase = countryData.map(c => ({ ...c }));
+const countryCodes = {
+    'الاردن': 'jo',
+    'فلسطين': 'ps',
+    'مصر': 'eg',
+    'السعودية': 'sa',
+    'الإمارات': 'ae',
+    'فرنسا': 'fr',
+    'بريطانيا': 'gb',
+    'اليابان': 'jp',
+    'تركيا': 'tr',
+    'ايطاليا': 'it',
+    'المانيا': 'de',
+    'اسبانيا': 'es',
+    'امريكا': 'us',
+    'كندا': 'ca',
+    'البرازيل': 'br',
+    'الصين': 'cn',
+    'الهند': 'in',
+    'كوريا الجنوبية': 'kr',
+    'الأرجنتين': 'ar',
+    'المكسيك': 'mx',
+    'إندونيسيا': 'id',
+    'هندوراس': 'hn',
+    'كوريا الشمالية': 'kp',
+    'السويد': 'se',
+    'نرويج': 'no',
+    'الجزائر': 'dz',
+    'المغرب': 'ma',
+    'تونس': 'tn',
+    'العراق': 'iq',
+    'سوريا': 'sy',
+    'لبنان': 'lb',
+    'الكويت': 'kw',
+    'قطر': 'qa',
+    'البحرين': 'bh',
+    'عمان': 'om',
+    'اليونان': 'gr',
+    'هولندا': 'nl',
+    'سويسرا': 'ch',
+    'البرتغال': 'pt',
+    'بلجيكا': 'be',
+    'روسيا': 'ru',
+    'أوكرانيا': 'ua',
+    'بولندا': 'pl',
+    'رومانيا': 'ro',
+    'كازاخستان': 'kz',
+    'أوزبكستان': 'uz',
+    'باكستان': 'pk',
+    'نيجيريا': 'ng',
+    'جنوب أفريقيا': 'za',
+    'كينيا': 'ke',
+    'إثيوبيا': 'et',
+    'تنزانيا': 'tz',
+    'فيتنام': 'vn',
+    'تايلاند': 'th',
+    'ماليزيا': 'my',
+    'الفلبين': 'ph',
+    'بيرو': 'pe',
+    'تشيلي': 'cl',
+    'كولومبيا': 'co',
+    'فنزويلا': 've',
+    'نيوزيلندا': 'nz',
+    'أستراليا': 'au',
+    'إيران': 'ir',
+    'أفغانستان': 'af',
+    'نيبال': 'np',
+    'بنغلاديش': 'bd',
+    'ميانمار': 'mm',
+    'سريلانكا': 'lk',
+    'ليبيا': 'ly',
+    'السودان': 'sd',
+    'اليمن': 'ye',
+    'الصومال': 'so',
+    'جيبوتي': 'dj',
+    'إريتريا': 'er',
+    'غانا': 'gh',
+    'السنغال': 'sn',
+    'مالي': 'ml',
+    'النيجر': 'ne',
+    'تشاد': 'td',
+    'الكاميرون': 'cm'
+};
 
 // ============================================================
 // دالة تنظيف النص العربي للمقارنة
@@ -185,170 +253,7 @@ function cleanArabic(text) {
 }
 
 // ============================================================
-// دالة جلب صورة معلم من Wikipedia (بحث متقدم)
-// ============================================================
-const englishNames = {
-    'الاردن': 'Jordan',
-    'فلسطين': 'Palestine',
-    'مصر': 'Egypt',
-    'السعودية': 'Saudi Arabia',
-    'الإمارات': 'United Arab Emirates',
-    'فرنسا': 'France',
-    'بريطانيا': 'United Kingdom',
-    'اليابان': 'Japan',
-    'تركيا': 'Turkey',
-    'ايطاليا': 'Italy',
-    'المانيا': 'Germany',
-    'اسبانيا': 'Spain',
-    'امريكا': 'United States',
-    'كندا': 'Canada',
-    'البرازيل': 'Brazil',
-    'الصين': 'China',
-    'الهند': 'India',
-    'كوريا الجنوبية': 'South Korea',
-    'الأرجنتين': 'Argentina',
-    'المكسيك': 'Mexico',
-    'إندونيسيا': 'Indonesia',
-    'هندوراس': 'Honduras',
-    'كوريا الشمالية': 'North Korea',
-    'السويد': 'Sweden',
-    'نرويج': 'Norway',
-    'الجزائر': 'Algeria',
-    'المغرب': 'Morocco',
-    'تونس': 'Tunisia',
-    'العراق': 'Iraq',
-    'سوريا': 'Syria',
-    'لبنان': 'Lebanon',
-    'الكويت': 'Kuwait',
-    'قطر': 'Qatar',
-    'البحرين': 'Bahrain',
-    'عمان': 'Oman',
-    'اليونان': 'Greece',
-    'هولندا': 'Netherlands',
-    'سويسرا': 'Switzerland',
-    'البرتغال': 'Portugal',
-    'بلجيكا': 'Belgium',
-    'روسيا': 'Russia',
-    'أوكرانيا': 'Ukraine',
-    'بولندا': 'Poland',
-    'رومانيا': 'Romania',
-    'كازاخستان': 'Kazakhstan',
-    'أوزبكستان': 'Uzbekistan',
-    'باكستان': 'Pakistan',
-    'نيجيريا': 'Nigeria',
-    'جنوب أفريقيا': 'South Africa',
-    'كينيا': 'Kenya',
-    'إثيوبيا': 'Ethiopia',
-    'تنزانيا': 'Tanzania',
-    'فيتنام': 'Vietnam',
-    'تايلاند': 'Thailand',
-    'ماليزيا': 'Malaysia',
-    'الفلبين': 'Philippines',
-    'بيرو': 'Peru',
-    'تشيلي': 'Chile',
-    'كولومبيا': 'Colombia',
-    'فنزويلا': 'Venezuela',
-    'نيوزيلندا': 'New Zealand',
-    'أستراليا': 'Australia',
-    'إيران': 'Iran',
-    'أفغانستان': 'Afghanistan',
-    'نيبال': 'Nepal',
-    'بنغلاديش': 'Bangladesh',
-    'ميانمار': 'Myanmar',
-    'سريلانكا': 'Sri Lanka',
-    'ليبيا': 'Libya',
-    'السودان': 'Sudan',
-    'اليمن': 'Yemen',
-    'الصومال': 'Somalia',
-    'جيبوتي': 'Djibouti',
-    'إريتريا': 'Eritrea',
-    'غانا': 'Ghana',
-    'السنغال': 'Senegal',
-    'مالي': 'Mali',
-    'النيجر': 'Niger',
-    'تشاد': 'Chad',
-    'الكاميرون': 'Cameroon'
-};
-
-// قائمة المعالم الشهيرة لكل دولة (للبحث الدقيق)
-const landmarks = {
-    'مصر': 'Pyramids',
-    'فرنسا': 'Eiffel Tower',
-    'بريطانيا': 'Big Ben',
-    'ايطاليا': 'Colosseum',
-    'الصين': 'Great Wall',
-    'الهند': 'Taj Mahal',
-    'امريكا': 'Statue of Liberty',
-    'اليابان': 'Mount Fuji',
-    'تركيا': 'Hagia Sophia',
-    'المانيا': 'Brandenburg Gate',
-    'اسبانيا': 'Sagrada Familia',
-    'البرازيل': 'Christ the Redeemer',
-    'الأرجنتين': 'Casa Rosada',
-    'المكسيك': 'Chichen Itza',
-    'كندا': 'Niagara Falls',
-    'أستراليا': 'Sydney Opera House',
-    'نيوزيلندا': 'Auckland Sky Tower',
-    'اليونان': 'Parthenon',
-    'هولندا': 'Amsterdam Canals',
-    'سويسرا': 'Matterhorn',
-    'البرتغال': 'Lisbon Tower',
-    'بلجيكا': 'Atomium',
-    'الاردن': 'Petra',
-    'فلسطين': 'Dome of the Rock',
-    'السعودية': 'Kaaba',
-    'الإمارات': 'Burj Khalifa',
-    'العراق': 'Babylon',
-    'سوريا': 'Damascus',
-    'لبنان': 'Beirut',
-    'الكويت': 'Kuwait Towers',
-    'قطر': 'Doha Skyline',
-    'البحرين': 'Manama',
-    'عمان': 'Muscat',
-    'المغرب': 'Marrakech',
-    'تونس': 'Tunis',
-    'الجزائر': 'Algiers',
-    'السودان': 'Khartoum',
-    'اليمن': 'Sanaa',
-    'ليبيا': 'Leptis Magna'
-};
-
-async function getWikipediaImage(cityName) {
-    try {
-        const searchTerm = englishNames[cityName] || cityName;
-        const landmark = landmarks[cityName] || '';
-        
-        // محاولات متعددة للبحث
-        const queries = [
-            `${landmark} ${searchTerm}`,
-            `${searchTerm} landmark`,
-            `${searchTerm} city`,
-            `${searchTerm} architecture`,
-            searchTerm
-        ];
-
-        for (const query of queries) {
-            if (!query.trim()) continue;
-            const url = `https://en.wikipedia.org/w/api.php?action=query&prop=pageimages&format=json&piprop=original&titles=${encodeURIComponent(query)}&origin=*`;
-            const response = await axios.get(url, { timeout: 10000 });
-            const pages = response.data.query?.pages;
-            if (!pages) continue;
-            for (const pageId in pages) {
-                const page = pages[pageId];
-                if (page.original && page.original.source) {
-                    return page.original.source;
-                }
-            }
-        }
-        return null;
-    } catch (error) {
-        console.error(`❌ فشل جلب صورة من Wikipedia لـ ${cityName}:`, error.message);
-        return null;
-    }
-}
-
-// ============================================================
-// دالة تحميل الصورة وإرجاع Buffer مع Fallback
+// دالة تحميل الصورة وإرجاع Buffer
 // ============================================================
 async function fetchImageBuffer(url) {
     try {
@@ -361,26 +266,18 @@ async function fetchImageBuffer(url) {
         });
         return Buffer.from(response.data);
     } catch (error) {
-        console.error('❌ فشل تحميل الصورة من الرابط:', url, error.message);
-        // صورة احتياطية (صورة فارغة مع نص)
-        const fallbackUrl = 'https://picsum.photos/seed/fallback' + Date.now() + '/800/600';
-        try {
-            const fallbackResponse = await axios.get(fallbackUrl, { responseType: 'arraybuffer' });
-            return Buffer.from(fallbackResponse.data);
-        } catch (e) {
-            console.error('❌ فشل حتى تحميل الصورة الاحتياطية:', e.message);
-            return Buffer.from([0xFF, 0xD8, 0xFF, 0xE0]); // Minimal JPEG
-        }
+        console.error('❌ فشل تحميل الصورة:', error.message);
+        return null;
     }
 }
 
 client.on('ready', () => {
     console.log(`✅ Bot Logged in as ${client.user.tag}!`);
-    client.user.setActivity('!اختباء أو !كراسي أو !ريبيكا أو !تخمين', { type: 3 });
+    client.user.setActivity('!اختباء أو !كراسي أو !ريبيكا أو !علم', { type: 3 });
 });
 
 // ============================================================
-// معالج الأوامر (جميع الألعاب الأربعة)
+// معالج الأوامر
 // ============================================================
 client.on('messageCreate', async message => {
     if (message.author.bot) return;
@@ -1050,9 +947,9 @@ client.on('messageCreate', async message => {
     }
 
     // ============================================================
-    // 4. لعبة تخمين البلد (مع صور معالم من Wikipedia)
+    // 4. لعبة الأعلام (بديل التخمين)
     // ============================================================
-    if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
+    if (message.content === prefix + 'علم' || message.content === prefix + 'flag') {
         if (activeGames.has(guildId)) {
             return message.reply({ content: '⚠️ توجد لعبة أخرى تعمل حالياً في السيرفر! انتظر حتى تنتهي.', ephemeral: true });
         }
@@ -1065,13 +962,13 @@ client.on('messageCreate', async message => {
         const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
 
         const lobbyEmbed = new EmbedBuilder()
-            .setTitle('◆ لعبة تخمين البلد الجغرافي الشاملة (6 جولات)')
-            .setDescription(`انضم إلى الساحة للمنافسة على أعلى نقاط عبر 6 جولات من دول العالم!\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
+            .setTitle('◆ لعبة الأعلام العالمية (6 جولات)')
+            .setDescription(`انضم إلى الساحة للمنافسة على معرفة أعلام دول العالم!\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
             .setColor(THEME_COLOR)
             .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
 
-        const joinBtn = new ButtonBuilder().setCustomId('guess_join').setLabel('دخول').setStyle(ButtonStyle.Secondary);
-        const leaveBtn = new ButtonBuilder().setCustomId('guess_leave').setLabel('انسحاب').setStyle(ButtonStyle.Secondary);
+        const joinBtn = new ButtonBuilder().setCustomId('flag_join').setLabel('دخول').setStyle(ButtonStyle.Secondary);
+        const leaveBtn = new ButtonBuilder().setCustomId('flag_leave').setLabel('انسحاب').setStyle(ButtonStyle.Secondary);
         const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn);
 
         const gameMessage = await message.reply({ embeds: [lobbyEmbed], components: [row] });
@@ -1081,7 +978,7 @@ client.on('messageCreate', async message => {
             const userId = interaction.user.id;
             const playerName = interaction.user.displayName || interaction.user.username;
 
-            if (interaction.customId === 'guess_join') {
+            if (interaction.customId === 'flag_join') {
                 if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
                     return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
                 }
@@ -1089,7 +986,7 @@ client.on('messageCreate', async message => {
                     playersMap.set(userId, { id: userId, name: playerName, score: 0 });
                 }
                 await interaction.reply({ content: 'تم انضمامك بنجاح.', ephemeral: true });
-            } else if (interaction.customId === 'guess_leave') {
+            } else if (interaction.customId === 'flag_leave') {
                 if (playersMap.has(userId)) {
                     playersMap.delete(userId);
                     await interaction.reply({ content: 'تم انسحابك.', ephemeral: true });
@@ -1115,45 +1012,33 @@ client.on('messageCreate', async message => {
                 return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم وجود لاعبين كافيين.', embeds: [], components: [] });
             }
 
-            await gameMessage.edit({ content: '🚀 **بدأت لعبة التخمين الجغرافي الشاملة (6 جولات)!**', components: [] }).catch(()=>{});
+            await gameMessage.edit({ content: '🚀 **بدأت لعبة الأعلام العالمية (6 جولات)!**', components: [] }).catch(()=>{});
 
-            let shuffledCountries = [...worldCountriesDatabase].sort(() => 0.5 - Math.random());
+            // قائمة الدول للأعلام
+            const flagCountries = Object.keys(countryCodes);
+            let shuffledCountries = [...flagCountries].sort(() => 0.5 - Math.random());
             let gameRoundsData = shuffledCountries.slice(0, 6);
-
-            function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-                let R = 6371;
-                let dLat = (lat2 - lat1) * (Math.PI / 180);
-                let dLon = (lon2 - lon1) * (Math.PI / 180);
-                let a =
-                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-                let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-                return R * c;
-            }
 
             try {
                 for (let round = 1; round <= 6; round++) {
-                    let countryObj = gameRoundsData[round - 1];
+                    let countryName = gameRoundsData[round - 1];
+                    let countryCode = countryCodes[countryName];
+                    let flagUrl = `https://flagcdn.com/w800/${countryCode}.png`;
 
-                    // جلب الصورة من Wikipedia (معلم)
-                    let imageUrl = await getWikipediaImage(countryObj.name);
-                    let imageBuffer;
-                    if (imageUrl) {
-                        imageBuffer = await fetchImageBuffer(imageUrl);
-                    } else {
-                        // إذا فشل، استخدم صورة احتياطية
-                        imageBuffer = await fetchImageBuffer('https://picsum.photos/seed/fallback' + Date.now() + '/800/600');
+                    // تحميل صورة العلم
+                    let imageBuffer = await fetchImageBuffer(flagUrl);
+                    if (!imageBuffer) {
+                        // استخدم صورة احتياطية
+                        imageBuffer = await fetchImageBuffer('https://picsum.photos/seed/flagfallback/800/600');
                     }
+                    let attachment = new AttachmentBuilder(imageBuffer, { name: 'flag.png' });
 
-                    let attachment = new AttachmentBuilder(imageBuffer, { name: 'country.jpg' });
-
-                    let roundTimeSeconds = 25;
+                    let roundTimeSeconds = 20;
                     let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
 
-                    // إرسال الصورة كمرفق مع رسالة نصية
+                    // إرسال الصورة مع رسالة
                     let roundMsg = await message.channel.send({
-                        content: `◆ **لعبة تخمين البلد الجغرافي (الجولة ${round}/6)**\nلديك ${roundTimeSeconds} ثانية لتخمين اسم الدولة من الصورة!\n💡 تلميح: \`${countryObj.hint}\`\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`,
+                        content: `◆ **لعبة الأعلام العالمية (الجولة ${round}/6)**\nلديك ${roundTimeSeconds} ثانية لتخمين اسم الدولة من العلم!\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`,
                         files: [attachment]
                     });
 
@@ -1165,23 +1050,20 @@ client.on('messageCreate', async message => {
 
                     chatCollector.on('collect', m => {
                         let userAns = cleanArabic(m.content);
-
-                        // عرض العلم فوراً عند كتابة أي دولة
-                        let matchedCountry = worldCountriesDatabase.find(c => cleanArabic(c.name) === userAns);
-                        if (matchedCountry) {
-                            const replyEmbed = new EmbedBuilder()
-                                .setDescription(`<@${m.author.id}> 🌍 **${matchedCountry.name}**`)
-                                .setThumbnail(matchedCountry.flag)
-                                .setColor(THEME_COLOR);
-                            message.channel.send({ embeds: [replyEmbed] }).catch(() => {});
-                        }
-
-                        // التحقق من صحة الإجابة
-                        let isCorrect = (cleanArabic(countryObj.name) === userAns);
+                        
+                        // التحقق من صحة الإجابة (تطابق تام مع اسم الدولة)
+                        let isCorrect = (cleanArabic(countryName) === userAns);
                         if (isCorrect && !answerTimestamps.has(m.author.id)) {
                             answerTimestamps.set(m.author.id, Date.now());
                             correctAnswers.push({ userId: m.author.id, timestamp: Date.now() });
                             m.react('✅').catch(() => {});
+                            
+                            // إرسال رد فوري
+                            const replyEmbed = new EmbedBuilder()
+                                .setDescription(`<@${m.author.id}> ✅ إجابة صحيحة!`)
+                                .setThumbnail(flagUrl)
+                                .setColor(THEME_COLOR);
+                            message.channel.send({ embeds: [replyEmbed] }).catch(() => {});
                         }
                     });
 
@@ -1191,10 +1073,10 @@ client.on('messageCreate', async message => {
 
                     correctAnswers.sort((a, b) => a.timestamp - b.timestamp);
 
-                    let roundSummary = `🏁 **نتائج الجولة ${round} من 6**\nالبلد الصحيح: **${countryObj.name}**\n\n`;
+                    let roundSummary = `🏁 **نتائج الجولة ${round} من 6**\nالدولة الصحيحة: **${countryName}**\n\n`;
 
                     if (correctAnswers.length === 0) {
-                        roundSummary += '`لم يقم أي من المشاركين بتخمين البلد بشكل صحيح في هذه الجولة!`';
+                        roundSummary += '`لم يقم أي من المشاركين بتخمين الدولة بشكل صحيح في هذه الجولة!`';
                     } else {
                         const rewardPoints = [50, 40, 30, 20, 10];
                         correctAnswers.forEach((item, index) => {
@@ -1208,13 +1090,14 @@ client.on('messageCreate', async message => {
                     const roundEmbed = new EmbedBuilder()
                         .setTitle(`◆ حصيلة الجولة ${round}`)
                         .setDescription(roundSummary)
-                        .setThumbnail(countryObj.flag)
+                        .setThumbnail(flagUrl)
                         .setColor(THEME_COLOR);
 
                     await message.channel.send({ embeds: [roundEmbed] });
                     await new Promise(res => setTimeout(res, 3000));
                 }
 
+                // الترتيب النهائي
                 let finalPlayersArr = Array.from(playersMap.values());
                 finalPlayersArr.sort((a, b) => b.score - a.score);
 
@@ -1232,14 +1115,14 @@ client.on('messageCreate', async message => {
                 }
 
                 const finalEmbed = new EmbedBuilder()
-                    .setTitle('◆ لوحة الشرف النهائية - تخمين البلد')
+                    .setTitle('◆ لوحة الشرف النهائية - لعبة الأعلام')
                     .setDescription(finalDesc)
                     .setColor(THEME_COLOR);
 
                 await message.channel.send({ embeds: [finalEmbed] });
 
             } catch (error) {
-                console.error('❌ خطأ في لعبة التخمين:', error);
+                console.error('❌ خطأ في لعبة الأعلام:', error);
                 await message.channel.send('❌ حدث خطأ، يرجى المحاولة مرة أخرى.');
             } finally {
                 activeGames.delete(guildId);
