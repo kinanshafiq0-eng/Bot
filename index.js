@@ -164,7 +164,7 @@ function cleanArabic(text) {
         .replace(/أ|إ|آ/g, 'ا')
         .replace(/ة/g, 'ه')
         .replace(/ى/g, 'ي')
-        .replace(/[\u064b-\u0652]/g, ''); // إزالة التشكيل
+        .replace(/[\u064b-\u0652]/g, '');
 }
 
 client.on('ready', () => {
@@ -254,7 +254,7 @@ client.on('messageCreate', async message => {
                             
                             let btnStyle = ButtonStyle.Secondary;
                             if (status === 'hit') btnStyle = ButtonStyle.Success;  
-                            else if (status === 'safe') btnStyle = ButtonStyle.Danger;    
+                            else if (status === 'safe') btnStyle = ButtonStyle.Danger;  
 
                             rowComponents.push(
                                 new ButtonBuilder()
@@ -841,7 +841,7 @@ client.on('messageCreate', async message => {
     }
 
     // ==========================================
-    // 4. لعبة تخمين البلد من الصورة (الخريطة الجغرافية الصحيحة)
+    // 4. لعبة تخمين البلد الجغرافي (6 جولات بنظام واجهة الدخول والنقاط)
     // ==========================================
     if (message.content === prefix + 'تخمين' || message.content === prefix + 'guess') {
         if (activeGames.has(guildId)) {
@@ -850,149 +850,237 @@ client.on('messageCreate', async message => {
 
         activeGames.add(guildId);
 
-        // قائمة الصور والبلدان والإحداثيات الصحيحة لكل صورة
-        const guessLevels = [
-            {
-                imageUrl: 'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?q=80&w=1000&auto=format&fit=crop', // جامع السلطان أحمد - إسطنبول
-                country: 'تركيا',
-                lat: 41.0082, lon: 28.9784,
-                hint: 'معلم تاريخي شهير في مدينة تبعد بين قارتين'
-            },
-            {
-                imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000&auto=format&fit=crop', // باريس
-                country: 'فرنسا',
-                lat: 48.8566, lon: 2.3522,
-                hint: 'عاصمة النور والأناقة الأوروبية'
-            },
-            {
-                imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1000&auto=format&fit=crop', // لندن
-                country: 'بريطانيا',
-                lat: 51.5074, lon: -0.1278,
-                hint: 'تتميز بطقس ممطر وجسر شهير وساعاتها الكبرى'
-            },
-            {
-                imageUrl: 'https://images.unsplash.com/photo-1534430480872-3498386e7856?q=80&w=1000&auto=format&fit=crop', // طوكيو
-                country: 'اليابان',
-                lat: 35.6762, lon: 139.6503,
-                hint: 'بلاد الساموراي والتكنولوجيا المتقدمة'
-            },
-            {
-                imageUrl: 'https://images.unsplash.com/photo-1539650116574-8efeb43e2750?q=80&w=1000&auto=format&fit=crop', // برج إيفل زاوية أخرى أو باريس
-                country: 'فرنسا',
-                lat: 48.8584, lon: 2.2945,
-                hint: 'دولة تشتهر بالمعالم السياحية الشهيرة في أوروبا'
-            }
-        ];
+        const playersMap = new Map();
+        const MAX_PLAYERS = 15;
+        const durationSeconds = 15; // وقت الانظار والدخول
+        const endTime = Math.floor(Date.now() / 1000) + durationSeconds;
 
-        const countryCoords = {
-            'الاردن': { lat: 31.95, lon: 35.91 },
-            'فلسطين': { lat: 31.90, lon: 35.20 },
-            'سوريا': { lat: 33.51, lon: 36.27 },
-            'لبنان': { lat: 33.89, lon: 35.50 },
-            'مصر': { lat: 30.04, lon: 31.23 },
-            'السعودية': { lat: 24.71, lon: 46.67 },
-            'العراق': { lat: 33.31, lon: 44.36 },
-            'فرنسا': { lat: 48.85, lon: 2.35 },
-            'بريطانيا': { lat: 51.50, lon: -0.12 },
-            'اليابان': { lat: 35.67, lon: 139.65 },
-            'الامارات': { lat: 24.45, lon: 54.37 },
-            'تركيا': { lat: 41.00, lon: 28.97 },
-            'المانيا': { lat: 52.52, lon: 13.40 },
-            'ايطاليا': { lat: 41.90, lon: 12.49 }
-        };
+        const lobbyEmbed = new EmbedBuilder()
+            .setTitle('◆ لعبة تخمين البلد الجغرافي (6 جولات)')
+            .setDescription(`انضم إلى الساحة للمنافسة على أعلى نقاط عبر 6 جولات!\n\n⏳ **تبدأ اللعبة تلقائياً خلال:** <t:${endTime}:R>`)
+            .setColor(THEME_COLOR)
+            .addFields({ name: `• المُنضمون (0/${MAX_PLAYERS})`, value: '`لا توجد أسماء...`' });
 
-        function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
-            let R = 6371;
-            let dLat = (lat2 - lat1) * (Math.PI / 180);
-            let dLon = (lon2 - lon1) * (Math.PI / 180);
-            let a =
-                Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-                Math.sin(dLon / 2) * Math.sin(dLon / 2);
-            let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-            return R * c;
-        }
+        const joinBtn = new ButtonBuilder().setCustomId('guess_join').setLabel('دخول').setStyle(ButtonStyle.Secondary);
+        const leaveBtn = new ButtonBuilder().setCustomId('guess_leave').setLabel('انسحاب').setStyle(ButtonStyle.Secondary);
+        const row = new ActionRowBuilder().addComponents(joinBtn, leaveBtn);
 
-        try {
-            let currentLevel = guessLevels[Math.floor(Math.random() * guessLevels.length)];
-            let roundTimeSeconds = 40;
-            let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
+        const gameMessage = await message.reply({ embeds: [lobbyEmbed], components: [row] });
+        const lobbyCollector = gameMessage.createMessageComponentCollector({ time: durationSeconds * 1000 });
 
-            const guessEmbed = new EmbedBuilder()
-                .setTitle('◆ لعبة تخمين البلد الجغرافي')
-                .setDescription(`تأمل الصورة أدناه واكتب اسم **البلد** في الشات.\n💡 تلميح: \`${currentLevel.hint}\`\n\n⏳ **ينتهي الوقت خلال:** <t:${endTimeStamp}:R>`)
-                .setImage(currentLevel.imageUrl)
-                .setColor(THEME_COLOR);
+        lobbyCollector.on('collect', async interaction => {
+            const userId = interaction.user.id;
+            const playerName = interaction.user.displayName || interaction.user.username;
 
-            let guessMsg = await message.channel.send({ embeds: [guessEmbed] });
-
-            let playerGuesses = new Map();
-            let filter = m => !m.author.bot;
-            let chatCollector = message.channel.createMessageCollector({ filter, time: roundTimeSeconds * 1000 });
-
-            chatCollector.on('collect', m => {
-                let userAns = cleanArabic(m.content);
-                let matchedCountryKey = Object.keys(countryCoords).find(c => cleanArabic(c) === userAns || userAns.includes(cleanArabic(c)));
-                
-                if (matchedCountryKey) {
-                    playerGuesses.set(m.author.id, {
-                        userId: m.author.id,
-                        username: m.author.displayName || m.author.username,
-                        countryGuessed: matchedCountryKey,
-                        coords: countryCoords[matchedCountryKey]
-                    });
-                    m.react('✅').catch(() => {});
+            if (interaction.customId === 'guess_join') {
+                if (playersMap.size >= MAX_PLAYERS && !playersMap.has(userId)) {
+                    return interaction.reply({ content: 'العدد مكتمل.', ephemeral: true });
                 }
-            });
-
-            chatCollector.on('end', async () => {
-                let resultsText = `🏁 **انتهى الوقت!**\nالبلد الصحيح كان: **${currentLevel.country}**\n\n**النتائج وتوزيع النقاط:**\n`;
-                
-                if (playerGuesses.size === 0) {
-                    resultsText += '`لم يقم أي أحد بتخمين البلد الصحيح أو القريب!`';
+                if (!playersMap.has(userId)) {
+                    playersMap.set(userId, { id: userId, name: playerName, score: 0 });
+                }
+                await interaction.reply({ content: 'تم انضمامك بنجاح.', ephemeral: true });
+            } else if (interaction.customId === 'guess_leave') {
+                if (playersMap.has(userId)) {
+                    playersMap.delete(userId);
+                    await interaction.reply({ content: 'تم انسحابك.', ephemeral: true });
                 } else {
-                    let scoredList = [];
-                    for (let [uId, data] of playerGuesses.entries()) {
-                        let distance = getDistanceFromLatLonInKm(
-                            currentLevel.lat, currentLevel.lon,
-                            data.coords.lat, data.coords.lon
-                        );
-                        scoredList.push({ userId: uId, username: data.username, distance: distance, country: data.countryGuessed });
-                    }
+                    return interaction.reply({ content: 'أنت لست منضماً.', ephemeral: true });
+                }
+            }
 
-                    scoredList.sort((a, b) => a.distance - b.distance);
+            const playersArray = Array.from(playersMap.values());
+            const playersList = playersArray.length > 0 
+                ? playersArray.map(p => `• ${p.name}`).join('\n') 
+                : '`لا توجد أسماء...`';
 
-                    let rewardPoints = [50, 40, 30, 20, 10];
-                    let distributedAny = false;
-                    
-                    scoredList.forEach((player, index) => {
-                        let points = rewardPoints[index] || 5;
-                        if (player.distance > 4000 && index > 1) {
-                            resultsText += `• <@${player.userId}> اختر (${player.country}) - المسافة بعيدة جداً (0 نقاط)\n`;
-                        } else {
-                            distributedAny = true;
-                            resultsText += `• <@${player.userId}> اختر (${player.country}) - المسافة عن الهدف ~${Math.round(player.distance)} كم ➔ **+${points} نقطة**\n`;
+            const updatedEmbed = EmbedBuilder.from(lobbyEmbed).setFields({ name: `• المُنضمون (${playersMap.size}/${MAX_PLAYERS})`, value: playersList });
+            await gameMessage.edit({ embeds: [updatedEmbed] });
+        });
+
+        lobbyCollector.on('end', async () => {
+            let registeredPlayers = Array.from(playersMap.values());
+
+            if (registeredPlayers.length < 1) {
+                activeGames.delete(guildId);
+                return gameMessage.edit({ content: '◆ تم إلغاء الجولة لعدم وجود لاعبين كافيين.', embeds: [], components: [] });
+            }
+
+            await gameMessage.edit({ content: '🚀 **بدأت لعبة التخمين الجغرافي (6 جولات)!**', components: [] }).catch(()=>{});
+
+            const guessLevels = [
+                {
+                    imageUrl: 'https://images.unsplash.com/photo-1541432901042-2d8bd64b4a9b?q=80&w=1000&auto=format&fit=crop', // جامع السلطان أحمد - إسطنبول
+                    country: 'تركيا',
+                    lat: 41.0082, lon: 28.9784,
+                    hint: 'معلم تاريخي شهير في مدينة تبعد بين قارتين'
+                },
+                {
+                    imageUrl: 'https://images.unsplash.com/photo-1502602898657-3e91760cbb34?q=80&w=1000&auto=format&fit=crop', // باريس
+                    country: 'فرنسا',
+                    lat: 48.8566, lon: 2.3522,
+                    hint: 'عاصمة النور والأناقة الأوروبية'
+                },
+                {
+                    imageUrl: 'https://images.unsplash.com/photo-1513635269975-59663e0ac1ad?q=80&w=1000&auto=format&fit=crop', // لندن
+                    country: 'بريطانيا',
+                    lat: 51.5074, lon: -0.1278,
+                    hint: 'تتميز بطقس ممطر وجسر شهير وساعاتها الكبرى'
+                },
+                {
+                    imageUrl: 'https://images.unsplash.com/photo-1534430480872-3498386e7856?q=80&w=1000&auto=format&fit=crop', // طوكيو
+                    country: 'اليابان',
+                    lat: 35.6762, lon: 139.6503,
+                    hint: 'بلاد الساموراي والتكنولوجيا المتقدمة'
+                },
+                {
+                    imageUrl: 'https://images.unsplash.com/photo-1539650116574-8efeb43e2750?q=80&w=1000&auto=format&fit=crop', // برج إيفل زاوية أخرى
+                    country: 'فرنسا',
+                    lat: 48.8584, lon: 2.2945,
+                    hint: 'دولة تشتهر بالمعالم السياحية الشهيرة في أوروبا'
+                },
+                {
+                    imageUrl: 'https://images.unsplash.com/photo-1526481280693-3bfa7568e0f3?q=80&w=1000&auto=format&fit=crop', // روما، إيطاليا
+                    country: 'ايطاليا',
+                    lat: 41.9028, lon: 12.4964,
+                    hint: 'بلد تاريخي مشهور بالكولوسيوم على شكل المعالم الرومانية القديمة'
+                }
+            ];
+
+            const countryCoords = {
+                'الاردن': { lat: 31.95, lon: 35.91 },
+                'فلسطين': { lat: 31.90, lon: 35.20 },
+                'سوريا': { lat: 33.51, lon: 36.27 },
+                'لبنان': { lat: 33.89, lon: 35.50 },
+                'مصر': { lat: 30.04, lon: 31.23 },
+                'السعودية': { lat: 24.71, lon: 46.67 },
+                'العراق': { lat: 33.31, lon: 44.36 },
+                'فرنسا': { lat: 48.85, lon: 2.35 },
+                'بريطانيا': { lat: 51.50, lon: -0.12 },
+                'اليابان': { lat: 35.67, lon: 139.65 },
+                'الامارات': { lat: 24.45, lon: 54.37 },
+                'تركيا': { lat: 41.00, lon: 28.97 },
+                'المانيا': { lat: 52.52, lon: 13.40 },
+                'ايطاليا': { lat: 41.90, lon: 12.49 }
+            };
+
+            function getDistanceFromLatLonInKm(lat1, lon1, lat2, lon2) {
+                let R = 6371;
+                let dLat = (lat2 - lat1) * (Math.PI / 180);
+                let dLon = (lon2 - lon1) * (Math.PI / 180);
+                let a =
+                    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+                    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                let c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                return R * c;
+            }
+
+            try {
+                for (let round = 1; round <= 6; round++) {
+                    let currentLevel = guessLevels[round - 1];
+                    let roundTimeSeconds = 25;
+                    let endTimeStamp = Math.floor(Date.now() / 1000) + roundTimeSeconds;
+
+                    const guessEmbed = new EmbedBuilder()
+                        .setTitle(`◆ لعبة تخمين البلد الجغرافي (الجولة ${round}/6)`)
+                        .setDescription(`تأمل الصورة أدناه واكتب اسم **البلد** في الشات.\n💡 تلميح: \`${currentLevel.hint}\`\n\n⏳ **ينتهي وقت الجولة خلال:** <t:${endTimeStamp}:R>`)
+                        .setImage(currentLevel.imageUrl)
+                        .setColor(THEME_COLOR);
+
+                    let roundMsg = await message.channel.send({ embeds: [guessEmbed] });
+
+                    let roundGuesses = new Map();
+                    let filter = m => playersMap.has(m.author.id) && !m.author.bot;
+                    let chatCollector = message.channel.createMessageCollector({ filter, time: roundTimeSeconds * 1000 });
+
+                    chatCollector.on('collect', m => {
+                        let userAns = cleanArabic(m.content);
+                        let matchedCountryKey = Object.keys(countryCoords).find(c => cleanArabic(c) === userAns || userAns.includes(cleanArabic(c)));
+                        
+                        if (matchedCountryKey && !roundGuesses.has(m.author.id)) {
+                            roundGuesses.set(m.author.id, {
+                                userId: m.author.id,
+                                countryGuessed: matchedCountryKey,
+                                coords: countryCoords[matchedCountryKey]
+                            });
+                            m.react('✅').catch(() => {});
                         }
                     });
 
-                    if (!distributedAny) {
-                        resultsText += '\n`لم يكن هناك أي لاعب قريب بما فيه الكفاية لتوزيع النقاط.`';
+                    await new Promise(resolve => {
+                        chatCollector.on('end', () => resolve());
+                    });
+
+                    // حساب النقاط لهذه الجولة
+                    let roundSummary = `🏁 **نتائج الجولة ${round} من 6**\nالبلد الصحيح: **${currentLevel.country}**\n\n`;
+                    
+                    if (roundGuesses.size === 0) {
+                        roundSummary += '`لم يقم أي من المشاركين بتخمين البلد في هذه الجولة!`';
+                    } else {
+                        let scoredList = [];
+                        for (let [uId, data] of roundGuesses.entries()) {
+                            let distance = getDistanceFromLatLonInKm(
+                                currentLevel.lat, currentLevel.lon,
+                                data.coords.lat, data.coords.lon
+                            );
+                            scoredList.push({ userId: uId, distance: distance, country: data.countryGuessed });
+                        }
+
+                        scoredList.sort((a, b) => a.distance - b.distance);
+
+                        let rewardPoints = [50, 40, 30, 20, 10];
+                        scoredList.forEach((item, index) => {
+                            let points = rewardPoints[index] || 5;
+                            if (item.distance > 4000 && index > 1) {
+                                roundSummary += `• <@${item.userId}> اختر (${item.country}) - بعيد جداً (0 نقاط)\n`;
+                            } else {
+                                let pObj = playersMap.get(item.userId);
+                                if (pObj) pObj.score += points;
+                                roundSummary += `• <@${item.userId}> اختر (${item.country}) - المسافة ~${Math.round(item.distance)} كم ➔ **+${points} نقطة**\n`;
+                            }
+                        });
                     }
+
+                    const roundEmbed = new EmbedBuilder()
+                        .setTitle(`◆ حصيلة الجولة ${round}`)
+                        .setDescription(roundSummary)
+                        .setColor(THEME_COLOR);
+
+                    await message.channel.send({ embeds: [roundEmbed] });
+                    await new Promise(res => setTimeout(res, 3000)); // استراحة قصيرة بين الجولات
                 }
 
-                const finalResultEmbed = new EmbedBuilder()
-                    .setTitle('◆ نتائج جولة التخمين الجغرافي')
-                    .setDescription(resultsText)
+                // نهاية الـ 6 جولات واعلان الترتيب النهائي
+                let finalPlayersArr = Array.from(playersMap.values());
+                finalPlayersArr.sort((a, b) => b.score - a.score);
+
+                let finalDesc = `🏆 **انتهت الـ 6 جولات بنجاح! إليكم الترتيب النهائي والمجموع الكلي للنقاط:**\n\n`;
+                finalPlayersArr.forEach((p, idx) => {
+                    let medal = idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '🔹';
+                    finalDesc += `${medal} **${p.name}**: \`${p.score} نقطة\`\n`;
+                });
+
+                let winner = finalPlayersArr[0];
+                if (winner && winner.score > 0) {
+                    finalDesc += `\n🎉 **الفائز بالمركز الأول بجدارة هو <@${winner.id}> برصيد ${winner.score} نقطة!**`;
+                } else {
+                    finalDesc += `\n◆ انتهت اللعبة بدون جمع نقاط كافية.`;
+                }
+
+                const finalEmbed = new EmbedBuilder()
+                    .setTitle('◆ لوحة الشرف النهائية - تخمين البلد')
+                    .setDescription(finalDesc)
                     .setColor(THEME_COLOR);
 
-                await message.channel.send({ embeds: [finalResultEmbed] });
-                activeGames.delete(guildId);
-            });
+                await message.channel.send({ embeds: [finalEmbed] });
 
-        } catch (error) {
-            console.error(error);
-            activeGames.delete(guildId);
-        }
+            } catch (error) {
+                console.error(error);
+            } finally {
+                activeGames.delete(guildId);
+            }
+        });
     }
 });
 
