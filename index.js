@@ -24,35 +24,35 @@ app.listen(port, () => console.log(`✅ Web server on port ${port}`));
 const TOKEN = process.env.DISCORD_TOKEN;
 if (!TOKEN) { console.error('❌ DISCORD_TOKEN missing'); process.exit(1); }
 
-// --- تحميل الخط العربي (اختياري) ---
+// --- Arabic Font Handling ---
 const fontPath = path.join(__dirname, 'Cairo-Regular.ttf');
 let arabicFontLoaded = false;
 
 async function downloadFont() {
   if (fs.existsSync(fontPath)) {
-    console.log('✅ Font file found');
+    console.log('✅ Font file already exists');
     return;
   }
   const urls = [
-    'https://cdn.jsdelivr.net/gh/google/fonts/ofl/cairo/static/Cairo-Regular.ttf',
+    'https://cdn.jsdelivr.net/gh/googlefonts/cairo@main/static/Cairo-Regular.ttf',
     'https://raw.githubusercontent.com/google/fonts/main/ofl/cairo/static/Cairo-Regular.ttf',
     'https://github.com/google/fonts/raw/main/ofl/cairo/static/Cairo-Regular.ttf',
   ];
   for (const url of urls) {
     try {
-      console.log(`⬇️ Trying: ${url}`);
+      console.log(`⬇️ Trying to download font from: ${url}`);
       const response = await fetch(url);
-      if (!response.ok) throw new Error(`Status ${response.status}`);
+      if (!response.ok) continue;
       const buffer = Buffer.from(await response.arrayBuffer());
       fs.writeFileSync(fontPath, buffer);
-      console.log('✅ Font downloaded');
+      console.log('✅ Font downloaded successfully');
       return;
     } catch (e) {
       console.log(`❌ Failed: ${e.message}`);
-      if (fs.existsSync(fontPath)) fs.unlinkSync(fontPath);
+      try { if (fs.existsSync(fontPath)) fs.unlinkSync(fontPath); } catch {}
     }
   }
-  console.log('❌ All font URLs failed. Arabic names will not display on wheel.');
+  console.log('❌ Could not download any Arabic font. Wheel will show English names.');
 }
 
 function registerFont() {
@@ -61,9 +61,9 @@ function registerFont() {
       const fontBuffer = fs.readFileSync(fontPath);
       GlobalFonts.register(fontBuffer, 'Cairo');
       arabicFontLoaded = true;
-      console.log('✅ Arabic font registered');
+      console.log('✅ Arabic font registered successfully');
     } else {
-      console.warn('⚠️ Font file not found, Arabic names may not display on wheel');
+      console.warn('⚠️ Font file missing. Arabic names will not display on wheel.');
     }
   } catch (e) {
     console.error('⚠️ Font registration error:', e.message);
@@ -94,13 +94,12 @@ const db = {
   ticTacToe: {},
   mafia: {},
 };
-
 function saveDB() { try { fs.writeFileSync('./db.json', JSON.stringify(db)); } catch(e){} }
 function loadDB() { try { if (fs.existsSync('./db.json')) Object.assign(db, JSON.parse(fs.readFileSync('./db.json', 'utf8'))); } catch(e){} }
 loadDB();
 setInterval(saveDB, 300000);
 
-// ================== [ Theme ] ==================
+// ================== [ Theme & Helpers ] ==================
 const MAIN_COLOR = 0xcc0000;
 const DARK_BG = '#1a1a1a';
 
@@ -153,9 +152,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.translate(textX, textY);
     ctx.rotate(textAngle + Math.PI / 2);
     ctx.fillStyle = '#FFFFFF';
-    ctx.font = arabicFontLoaded
-      ? 'bold 17px "Cairo", Arial, sans-serif'
-      : 'bold 17px Arial, sans-serif';
+    ctx.font = arabicFontLoaded ? 'bold 17px "Cairo", Arial, sans-serif' : 'bold 17px Arial, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
 
@@ -170,7 +167,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
     ctx.restore();
   }
 
-  // الدائرة المركزية
+  // center circle
   ctx.beginPath();
   ctx.arc(centerX, centerY, 55, 0, 2 * Math.PI);
   ctx.fillStyle = '#2c3e50';
@@ -184,7 +181,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.textBaseline = 'middle';
   ctx.fillText('🎡', centerX, centerY);
 
-  // المؤشر
+  // pointer
   ctx.beginPath();
   ctx.moveTo(centerX, centerY - radius - 5);
   ctx.lineTo(centerX - 25, centerY - radius - 40);
@@ -196,7 +193,7 @@ function drawWheel(players, rotationDegrees = 0, highlightIndex = -1) {
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  // الإطار
+  // outer ring
   ctx.beginPath();
   ctx.arc(centerX, centerY, radius + 18, 0, 2 * Math.PI);
   ctx.strokeStyle = '#cc0000';
@@ -259,7 +256,7 @@ client.on('messageCreate', async (message) => {
   const config = getGuildConfig(guildId);
   const serverImg = getServerImage(message.guild, config);
 
-  // ========== [ قائمة الألعاب ] ==========
+  // ========== [ Games List ] ==========
   if (cmd === 'ألعاب' || cmd === 'العاب' || cmd === 'games') {
     const embed = new EmbedBuilder()
       .setTitle('🎮 قائمة الألعاب')
@@ -319,7 +316,7 @@ client.on('messageCreate', async (message) => {
     return message.delete().catch(()=>{});
   }
 
-  // ========== [ سحب الروليت ] ==========
+  // ========== [ Spin Roulette ] ==========
   if (cmd === 'سحب' || cmd === 'spin') {
     const session = db.roulette[guildId];
     if (!session || session.players.length < 2) return message.reply('⚠️ جلسة غير متاحة أو تحتاج لاعبَين على الأقل.');
@@ -384,7 +381,7 @@ client.on('messageCreate', async (message) => {
     return message.reply('✅ ألغيت.');
   }
 
-  // ========== [ ريبيكا ] ==========
+  // ========== [ Replica (Slot) ] ==========
   if (cmd === 'ريبيكا' || cmd === 'replica') {
     const symbols = ['🍒', '🍋', '🍊', '🍇', '🔔', '💎', '7️⃣', '⭐'];
     const s = [symbols[Math.floor(Math.random()*symbols.length)], symbols[Math.floor(Math.random()*symbols.length)], symbols[Math.floor(Math.random()*symbols.length)]];
@@ -401,7 +398,7 @@ client.on('messageCreate', async (message) => {
     return message.channel.send({ embeds: [embed] });
   }
 
-  // ========== [ اختباء ] ==========
+  // ========== [ Hide and Seek ] ==========
   if (cmd === 'اختباء' || cmd === 'hide') {
     if (db.hideSeek[guildId]) return message.reply('⚠️ لعبة اختباء جارية.');
     db.hideSeek[guildId] = { players: [], phase: 'joining', hiderId: null, votes: {}, messageId: null };
@@ -445,7 +442,7 @@ client.on('messageCreate', async (message) => {
     return;
   }
 
-  // ========== [ كراسي ] ==========
+  // ========== [ Musical Chairs ] ==========
   if (cmd === 'كراسي' || cmd === 'chairs') {
     if (db.musicalChairs[guildId]) return message.reply('⚠️ لعبة كراسي جارية.');
     db.musicalChairs[guildId] = { players: [], messageId: null, active: false };
@@ -464,7 +461,7 @@ client.on('messageCreate', async (message) => {
     return message.delete().catch(()=>{});
   }
 
-  // ========== [ اكس او ] ==========
+  // ========== [ Tic Tac Toe ] ==========
   if (cmd === 'اكس_او' || cmd === 'xo') {
     const opponent = message.mentions.members.first();
     if (!opponent || opponent.id === message.author.id) return message.reply('⚠️ منشن خصمك.');
@@ -483,7 +480,7 @@ client.on('messageCreate', async (message) => {
     return message.delete().catch(()=>{});
   }
 
-  // ========== [ مافيا ] ==========
+  // ========== [ Mafia ] ==========
   if (cmd === 'مافيا' || cmd === 'mafia') {
     if (db.mafia[guildId]) return message.reply('⚠️ لعبة مافيا جارية.');
     db.mafia[guildId] = { players: [], phase: 'joining', roles: {}, nightKill: null, detectiveCheck: null, doctorSave: null, votes: {}, messageId: null };
