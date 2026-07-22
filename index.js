@@ -178,6 +178,7 @@ function getGeneralImage(guild, config) {
 }
 
 // ========== العميل ==========
+// ✅ تم إضافة GuildMembers للتأكد من عمل حدث guildMemberAdd
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -185,6 +186,7 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildMembers, // مهم جداً للترحيب
   ],
 });
 
