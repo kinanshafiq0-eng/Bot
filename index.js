@@ -38,7 +38,6 @@ const db = {
   users: {},
   levelRoles: {},
   controllers: {},
-  economy: {}, // <-- نظام العملات الجديد
 };
 
 function saveDB() { try { fs.writeFileSync('./database.json', JSON.stringify(db, null, 2)); } catch (e) {} }
@@ -80,7 +79,6 @@ function getGuildConfig(guildId) {
       suggestionsDescription: 'هل لديك فكرة لتطوير السيرفر؟ شاركنا اقتراحك!',
       suggestionsColor: '#cc0000',
       suggestionsImage: null,
-      economyRole: null, // <-- رتبة الاقتصاد الجديدة
     };
   }
   return db.config[guildId];
@@ -169,34 +167,6 @@ function getUserData(userId, guildId) {
 }
 function saveUserData(userId, guildId, data) {
   db.users[guildId][userId] = data;
-}
-
-// ========== دوال الاقتصاد الجديدة ==========
-function getEconomyData(guildId, userId) {
-  if (!db.economy[guildId]) db.economy[guildId] = {};
-  if (!db.economy[guildId][userId]) {
-    db.economy[guildId][userId] = {
-      od: 0,
-      messageCount: 0,
-      voiceSeconds: 0,
-      lastVoiceJoin: null,
-    };
-  }
-  return db.economy[guildId][userId];
-}
-
-function saveEconomyData(guildId, userId, data) {
-  if (!db.economy[guildId]) db.economy[guildId] = {};
-  db.economy[guildId][userId] = data;
-}
-
-function hasEconomyPermission(member, guildId) {
-  if (!member) return false;
-  if (isOwner(member.id)) return true;
-  if (isController(member.id, guildId)) return true;
-  const config = getGuildConfig(guildId);
-  if (config.economyRole && member.roles.cache.has(config.economyRole)) return true;
-  return false;
 }
 
 // ========== دالة الصورة العامة ==========
@@ -435,28 +405,6 @@ client.on('messageCreate', async (message) => {
     }
   }
   saveUserData(userId, guildId, userData);
-
-  // ========== [ نظام العملات - عداد الرسائل ] ==========
-  const ecoData = getEconomyData(guildId, userId);
-  ecoData.messageCount += 1;
-  if (ecoData.messageCount >= 30) {
-    ecoData.messageCount = 0;
-    ecoData.od += 15;
-    saveEconomyData(guildId, userId, ecoData);
-    // إرسال إشعار خاص
-    try {
-      const member = await message.guild.members.fetch(userId).catch(() => null);
-      if (member) {
-        const dmEmbed = new EmbedBuilder()
-          .setTitle('💰 مكافأة OD')
-          .setDescription(`حصلت على **15 OD** مقابل 30 رسالة في **${message.guild.name}**!\nرصيدك الحالي: **${ecoData.od} OD**`)
-          .setColor(0x00ff00);
-        await member.send({ embeds: [dmEmbed] }).catch(() => {});
-      }
-    } catch (e) {}
-  } else {
-    saveEconomyData(guildId, userId, ecoData);
-  }
 });
 
 // ============================================================
@@ -516,48 +464,6 @@ client.on('messageCreate', async (message) => {
 });
 
 // ============================================================
-// ========== [ نظام العملات - تتبع الفويس ] ==========
-// ============================================================
-
-const voiceTimeMap = new Map(); // لتتبع وقت دخول الفويس
-
-client.on('voiceStateUpdate', async (oldState, newState) => {
-  const member = newState.member || oldState.member;
-  if (!member || member.user.bot) return;
-  const guildId = newState.guild.id;
-  const userId = member.id;
-
-  // دخل روم صوتي
-  if (!oldState.channelId && newState.channelId) {
-    voiceTimeMap.set(`${guildId}-${userId}`, Date.now());
-  }
-
-  // خرج من روم صوتي
-  if (oldState.channelId && !newState.channelId) {
-    const key = `${guildId}-${userId}`;
-    const joinTime = voiceTimeMap.get(key);
-    if (joinTime) {
-      const seconds = Math.floor((Date.now() - joinTime) / 1000);
-      const minutes = Math.floor(seconds / 60);
-      if (minutes >= 1) {
-        const ecoData = getEconomyData(guildId, userId);
-        ecoData.od += minutes; // عملة واحدة لكل دقيقة
-        saveEconomyData(guildId, userId, ecoData);
-        // إرسال إشعار خاص
-        try {
-          const dmEmbed = new EmbedBuilder()
-            .setTitle('💰 مكافأة OD للفويس')
-            .setDescription(`حصلت على **${minutes} OD** مقابل ${minutes} دقيقة في الروم الصوتي في **${oldState.guild.name}**!\nرصيدك الحالي: **${ecoData.od} OD**`)
-            .setColor(0x00ff00);
-          await member.send({ embeds: [dmEmbed] }).catch(() => {});
-        } catch (e) {}
-      }
-      voiceTimeMap.delete(key);
-    }
-  }
-});
-
-// ============================================================
 // ========== الأوامر الرئيسية ==========
 // ============================================================
 
@@ -571,100 +477,6 @@ client.on('messageCreate', async (message) => {
   const generalImage = getGeneralImage(message.guild, config);
 
   autoDelete(message, 20000);
-
-  // ========== [ أوامر الاقتصاد الجديدة ] ==========
-  
-  // أمر رصيدي
-  if (cmd === 'رصيدي') {
-    const ecoData = getEconomyData(guildId, message.author.id);
-    const embed = new EmbedBuilder()
-      .setTitle(`💰 رصيد ${message.author.username}`)
-      .setDescription(`**${ecoData.od} OD**`)
-      .setColor(0xcc0000);
-    await message.channel.send({ embeds: [embed] });
-    return;
-  }
-
-  // أمر توب
-  if (cmd === 'توب') {
-    const economy = db.economy[guildId];
-    if (!economy || Object.keys(economy).length === 0) {
-      return message.reply('📭 لا يوجد أي شخص لديه OD حتى الآن.');
-    }
-    const sorted = Object.entries(economy)
-      .sort((a, b) => b[1].od - a[1].od)
-      .slice(0, 10);
-    let desc = '';
-    let rank = 1;
-    for (const [id, data] of sorted) {
-      const member = message.guild.members.cache.get(id);
-      const name = member ? member.user.username : `مستخدم ${id}`;
-      desc += `**#${rank}** ${name} - \`${data.od} OD\`\n`;
-      rank++;
-    }
-    const embed = new EmbedBuilder()
-      .setTitle('🏆 ترتيب أغنى 10 أشخاص')
-      .setDescription(desc || 'لا توجد بيانات')
-      .setColor(0xcc0000)
-      .setTimestamp();
-    await message.channel.send({ embeds: [embed] });
-    return;
-  }
-
-  // أمر اعطاء_عملات
-  if (cmd === 'اعطاء_عملات' || cmd === 'اعطاء_عمله') {
-    if (!hasEconomyPermission(message.member, guildId)) {
-      return message.reply('❌ تحتاج صلاحية رتبة الاقتصاد أو متحكم.');
-    }
-    const target = message.mentions.members.first();
-    const amount = parseInt(args[0]);
-    if (!target || !amount || amount <= 0) {
-      return message.reply('⚠️ الاستخدام: `!اعطاء_عملات @شخص <المبلغ>`');
-    }
-    if (target.user.bot) return message.reply('❌ لا يمكن إعطاء البوتات.');
-    const ecoData = getEconomyData(guildId, target.id);
-    ecoData.od += amount;
-    saveEconomyData(guildId, target.id, ecoData);
-    const embed = new EmbedBuilder()
-      .setTitle('✅ تم إعطاء العملات')
-      .setDescription(`تم إعطاء <@${target.id}> **${amount} OD** بنجاح.\nرصيده الآن: **${ecoData.od} OD**`)
-      .setColor(0x00ff00);
-    await message.channel.send({ embeds: [embed] });
-    // إشعار للمستلم
-    try {
-      const dmEmbed = new EmbedBuilder()
-        .setTitle('💰 استلام OD')
-        .setDescription(`تم إعطاؤك **${amount} OD** في **${message.guild.name}**!\nرصيدك الحالي: **${ecoData.od} OD**`)
-        .setColor(0x00ff00);
-      await target.send({ embeds: [dmEmbed] }).catch(() => {});
-    } catch (e) {}
-    return;
-  }
-
-  // أمر سحب_عملات
-  if (cmd === 'سحب_عملات' || cmd === 'سحب_عمله') {
-    if (!hasEconomyPermission(message.member, guildId)) {
-      return message.reply('❌ تحتاج صلاحية رتبة الاقتصاد أو متحكم.');
-    }
-    const target = message.mentions.members.first();
-    const amount = parseInt(args[0]);
-    if (!target || !amount || amount <= 0) {
-      return message.reply('⚠️ الاستخدام: `!سحب_عملات @شخص <المبلغ>`');
-    }
-    if (target.user.bot) return message.reply('❌ لا يمكن السحب من البوتات.');
-    const ecoData = getEconomyData(guildId, target.id);
-    if (ecoData.od < amount) {
-      return message.reply(`⚠️ رصيده غير كافٍ. لديه **${ecoData.od} OD** فقط.`);
-    }
-    ecoData.od -= amount;
-    saveEconomyData(guildId, target.id, ecoData);
-    const embed = new EmbedBuilder()
-      .setTitle('✅ تم سحب العملات')
-      .setDescription(`تم سحب **${amount} OD** من <@${target.id}>.\nرصيده الآن: **${ecoData.od} OD**`)
-      .setColor(0xff0000);
-    await message.channel.send({ embeds: [embed] });
-    return;
-  }
 
   // ========== المساعدة ==========
   if (cmd === 'مساعدة') {
@@ -689,8 +501,7 @@ client.on('messageCreate', async (message) => {
         { name: '✏️ تغيير الاسم', value: '`تغيير_اسم`', inline: false },
         { name: 'ℹ️ معلومات', value: '`معلومات` `سيرفر` `بينق`', inline: false },
         { name: '⚙️ إعدادات', value: '`تعيين` (للمتحكمين)', inline: false },
-        { name: '📸 إنستغرام', value: '`ig رابط_الريلز` – تحميل فيديو من إنستغرام', inline: false },
-        { name: '💰 الاقتصاد', value: '`رصيدي` `توب` `اعطاء_عملات @شخص مبلغ` `سحب_عملات @شخص مبلغ`', inline: false }
+        { name: '📸 إنستغرام', value: '`ig رابط_الريلز` – تحميل فيديو من إنستغرام', inline: false }
       )
       .setFooter({ text: `🔥 البادئة: !` });
     if (generalImage) embed.setImage(generalImage);
@@ -782,23 +593,11 @@ client.on('messageCreate', async (message) => {
           { name: '🔔 رتب الإشعارات', value: '`صورة_رتب رابط`' },
           { name: '🖼️ عام', value: '`صورة_بنر رابط`، `صورة_عامة رابط`' },
           { name: '🚪 دور الدخول', value: '`دور_دخول @دور`' },
-          { name: '💡 الاقتراحات', value: '`قناة_اقتراح #قناة`، `عنوان_اقتراح نص`، `وصف_اقتراح نص`، `لون_اقتراح #هيكس`، `صورة_اقتراح رابط`' },
-          { name: '💰 الاقتصاد', value: '`رتبة_اقتصاد @رتبة`' }
+          { name: '💡 الاقتراحات', value: '`قناة_اقتراح #قناة`، `عنوان_اقتراح نص`، `وصف_اقتراح نص`، `لون_اقتراح #هيكس`، `صورة_اقتراح رابط`' }
         )
         .setFooter({ text: 'الصيغة: !تعيين [الخيار] [القيمة]' });
       if (generalImage) embed.setImage(generalImage);
       return message.channel.send({ embeds: [embed] });
-    }
-
-    // ===== رتبة الاقتصاد =====
-    if (sub === 'رتبة_اقتصاد') {
-      const role = message.mentions.roles.first();
-      if (!role) {
-        updateGuildConfig(guildId, { economyRole: null });
-        return message.reply('✅ تم إزالة رتبة الاقتصاد.');
-      }
-      updateGuildConfig(guildId, { economyRole: role.id });
-      return message.reply(`✅ تم تعيين رتبة الاقتصاد إلى ${role}`);
     }
 
     // ===== الترحيب =====
